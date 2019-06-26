@@ -126,7 +126,6 @@ class YoungStars(object):
         else:
             q = self.data.quality == 0
             ind = self.find_breaks(time=self.data.time[q])
-            print(ind)
             sector_t, sector_f, sector_e = normalized_subset(ind, self.data.time[q], 
                                                              self.data.corr_flux[q],
                                                              self.data.flux_err[q])
@@ -198,8 +197,8 @@ class YoungStars(object):
         if self.p_rot is not None:
             self.age = (self.p_rot/denom)**(1.0/0.566)
         else:
-            print("Please measure rotation period before getting age.")
-        return
+            raise Exception("Please measure rotation period before getting age.")
+
                   
     
     def savitsky_golay(self, sigma=2.5, window_length=15, niters=5):
@@ -229,8 +228,8 @@ class YoungStars(object):
             mask = np.zeros(len(time), dtype=bool)
 
         if (len(time) != len(flux)) or (len(time) != len(flux_err)):
-            print("Please ensure you're passing in arrays of the same length.")
-            return
+            raise ValueError("Please ensure you're passing in arrays of the same length.")
+
 
         self.mask = mask
 
@@ -337,8 +336,7 @@ class YoungStars(object):
         """Iteratively fits GP model after first one has been created.
         """
         if self.gp_model is None:
-            print("Please call gp_model() before iteratively fitting.")
-            return
+            raise Exception("Please call gp_model() before iteratively fitting.")
 
         else:
             filtered = sigma_clip(self.gp_flux, sigma=sigma, maxiters=niters)
@@ -358,8 +356,8 @@ class YoungStars(object):
             elif (self.sg_flux is not None) and (method.lower() == "savitsky-golay"):
                 detrended_flux = self.sg_flux
             elif (detrended_flux is None) and (self.sg_flux is None) and (self.gp_flux is None):
-                print("Pleae either run a detrending method or pass in a 'detrend_flux' argument.")
-                return
+                raise Exception("Pleae either run a detrending method or pass in a 'detrend_flux' argument.")
+
         if detrended_flux_err is None:
             detrended_flux_err = self.flux_err
 
