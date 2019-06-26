@@ -1,6 +1,7 @@
 import numpy as np
 import os, sys
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 from astropy.coordinates import SkyCoord, Angle
 from astropy.stats import sigma_clip, LombScargle
@@ -211,7 +212,7 @@ class YoungStars(object):
         
         self.sg_flux     = np.array(lc.flux)
         self.sg_flux_err = np.array(lc.flux_err)
-        self.sg_trend    = np.array(trend)
+        self.sg_trend    = np.array(trend.flux)
             
 
     def gp_modeling(self, time=None, flux=None, flux_err=None,
@@ -397,4 +398,33 @@ class YoungStars(object):
         plt.plot(self.LS_period, self.LS_power, 'k', alpha=0.8)
         plt.xlabel('Period [days]')
         plt.ylabel('Lomb-Scargle Power')
+        plt.show()
+
+    @property
+    def plot_residuals(self, x=None, y=None, model=None):
+        if x is None:
+            x = self.time
+        if y is None:
+            y = self.norm_flux
+        if model is None:
+            if self.gp_flux is None:
+                model = self.sg_trend
+                resid = y - model
+            elif self.sg_flux is None:
+                model = self.gp_model
+                resid = self.sg_flux
+        else:
+            resid = y - model
+    
+        plt.figure(figsize=(14,8))
+        gs  = gridspec.GridSpec(3,3)
+    
+        ax1 = plt.subplot(gs[0:2,0:])
+        ax1.set_xticks([])
+        ax1.plot(x, y, 'k', linewidth=3, label='Raw', alpha=0.8)
+        ax1.plot(x, model, c='orange', label='Model')
+        plt.legend()
+        ax2 = plt.subplot(gs[2, 0:])
+        ax2.plot(x, resid, c='turquoise', linewidth=2)
+        
         plt.show()
