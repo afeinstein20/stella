@@ -47,7 +47,6 @@ class YoungStars(object):
         self.age()
     
         self.gp_flux = None
-        self.sg_flux = None
         self.flares  = None
         self.flc     = None
 
@@ -77,14 +76,19 @@ class YoungStars(object):
         return
             
 
+    def find_breaks(self, time=None):
+        """Finds gaps due to data downlink or other telescope issues.
+        """
+        if time is None:
+            time = self.time
+        diff = np.diff(time)
+        ind  = np.where((diff >= 2.5*np.std(diff)+np.mean(diff)))[0]
+        return ind
+
+
     def normalize_lc(self):
         """Normalizes light curve via chunks of data.
         """
-        def find_breaks(time):
-            diff = np.diff(time)
-            ind  = np.where((diff >= 2*np.std(diff)+np.mean(diff)))[0]
-            return ind
-
         def normalized_subset(ind, t, flux, err):
             time, norm_flux = np.array([]), np.array([])
             error           = np.array([])
@@ -113,15 +117,15 @@ class YoungStars(object):
                 err = d.flux_err[q]
 
                 # Searches for breaks based on differences in time array
-                ind = find_breaks(t)
+                ind = self.find_breaks(time=t)
                 sector_t, sector_f, sector_e = normalized_subset(ind, t, f, err)
                 self.time = np.append(sector_t, self.time)
                 self.norm_flux = np.append(sector_f, self.norm_flux)
                 self.flux_err  = np.append(sector_e, self.flux_err)
-
         else:
             q = self.data.quality == 0
-            ind = find_breaks(self.data.time[q])
+            ind = self.find_breaks(time=self.data.time[q])
+            print(ind)
             sector_t, sector_f, sector_e = normalized_subset(ind, self.data.time[q], 
                                                              self.data.corr_flux[q],
                                                              self.data.flux_err[q])
@@ -187,6 +191,8 @@ class YoungStars(object):
         
 
     def age(self):
+        """Determines the age (in Myr) using relation from Mamajek & Hillenbrand (2009).
+        """
         denom = 0.407 * np.abs((self.gaia_bp-self.vmag) - 0.495)**0.325
         if self.p_rot is not None:
             self.age = (self.p_rot/denom)**(1.0/0.566)
@@ -214,29 +220,25 @@ class YoungStars(object):
         """
         if flux is None:
             flux = self.norm_flux
+        if time is None:
             time = self.time
+        if flux_err is None:
             flux_err = self.flux_err
-
         if mask is None:
             mask = np.zeros(len(time), dtype=bool)
-
-        if self.sg_flux is None:
-            self.savitsky_golay()
-
-#        if iterative is False:
-#            filtered = sigma_clip(self.sg_flux, sigma=sigma, maxiters=niters)
-#            amp_mask = filtered.mask
-#        else:
-#            amp_mask = mask
 
         if (len(time) != len(flux)) or (len(time) != len(flux_err)):
             print("Please ensure you're passing in arrays of the same length.")
             return
 
+        self.mask = mask
+
+        brks = self.find_breaks()
+
         x    = np.array(time)
         y    = np.array(flux)
         yerr = np.array(flux_err)
-
+        
         x = np.array(x[~mask])
         y = np.array(y[~mask])
         yerr = np.array(yerr[~mask])
@@ -246,11 +248,10 @@ class YoungStars(object):
         yerr = np.ascontiguousarray(yerr, dtype=np.float64)
         time = np.ascontiguousarray(self.time, dtype=np.float64)
 
-        mu = np.nanmedian(y)
-        y = (y/mu - 1) * 1e3
-        yerr = yerr * 1e3 / mu
-#        amp = np.var(y[~amp_mask])
-
+        mu = np.nanmean(y)
+        y = (y/mu - 1)# * 1e3
+        yerr = yerr / mu # * 1e3 / mu
+        
         results   = xo.estimators.lomb_scargle_estimator(x, y, 
                                                          min_period=self.p_rot-0.5, 
                                                          max_period=self.p_rot+0.5) 
@@ -262,14 +263,14 @@ class YoungStars(object):
         freq, power = results["periodogram"]
 
         with pm.Model() as model:
-            mean = pm.Normal("mean", mu=mu, sd=10.0)
+            mean = pm.Normal("mean", mu=0.0, sd=5.0)
 
             # white noise
             logs2 = pm.Normal("logs2", mu=2*np.log(np.min(yerr)), sd=5.0)
 
             
             # The parameters of the RotationTerm kernel
-            logamp = pm.Normal("logamp", mu=np.log(np.var(y)), sd=20.0)
+            logamp = pm.Normal("logamp", mu=np.log(np.var(y)/2.0), sd=20.0)
 
             # Bounds on period
             BoundedNormal = pm.Bound(pm.Normal, lower=np.log(peak_per-0.5), 
@@ -308,9 +309,9 @@ class YoungStars(object):
             # Fit period and amplitude together again
             map_soln = xo.optimize(start=model.test_point, vars=[mean])
             map_soln = xo.optimize(start=map_soln, vars=[logamp, logperiod])
-            map_soln = xo.optimize(start=map_soln, vars=[logQ0])
-            map_soln = xo.optimize(start=map_soln, vars=[logdeltaQ, mix])
+            map_soln = xo.optimize(start=map_soln, vars=[logQ0, logdeltaQ])
             map_soln = xo.optimize(start=map_soln, vars=[logs2])
+            map_soln = xo.optimize(start=map_soln, vars=[mix])
             map_soln = xo.optimize(start=map_soln, vars=[mean])
             map_soln = xo.optimize(start=map_soln, vars=[logamp, logperiod])
             map_soln = xo.optimize(start=map_soln, vars=[mix])
@@ -330,7 +331,8 @@ class YoungStars(object):
             self.gp_it_model = mu
             self.gp_it_glux  = self.norm_flux - (mu+1)
 
-    def iterative_gp_modeling(self, sigma=3, niters=8):
+
+    def iterative_gp_modeling(self, sigma=3, niters=5):
         """Iteratively fits GP model after first one has been created.
         """
         if self.gp_model is None:
@@ -341,13 +343,9 @@ class YoungStars(object):
             filtered = sigma_clip(self.gp_flux, sigma=sigma, maxiters=niters)
             mask = filtered.mask
 
-            plt.plot(self.time[~mask], self.norm_flux[~mask], '.')
-            plt.show()
-            sys.exit()
-
             self.gp_modeling(time=self.time, flux=self.norm_flux,
                              flux_err=self.flux_err, mask=filtered.mask,
-                             iterative=True)
+                             iterative=True, sigma=sigma, niters=niters)
 
 
     def identify_flares(self, detrended_flux=None, detrended_flux_err=None, method="gp"):
