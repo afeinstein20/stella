@@ -19,6 +19,8 @@ from altaipony.flarelc import FlareLightCurve
 import pymc3 as pm
 import theano.tensor as tt
 
+plt.rcParams['font.size'] = 15
+plt.rcParams['figure.figsize'] = (14,8)
 
 __all__ = ['YoungStars']
 
@@ -90,9 +92,9 @@ class YoungStars(object):
     def normalize_lc(self):
         """Normalizes light curve via chunks of data.
         """
-        def normalized_subset(ind, t, flux, err):
+        def normalized_subset(ind, t, flux, err, cads):
             time, norm_flux = np.array([]), np.array([])
-            error           = np.array([])
+            error, cadences = np.array([]), np.array([])
             for i in range(len(ind)):
                 if i == 0:
                     region = np.arange(0, ind[i]+1, 1)
@@ -104,11 +106,13 @@ class YoungStars(object):
                 norm_flux = np.append( f/np.nanmedian(f), norm_flux)
                 time      = np.append(t[region], time)
                 error     = np.append(err[region], error)
-            return time, norm_flux, error
+                cadences  = np.append(cads[region], cadences)
+            return time, norm_flux, error, cadences
 
 
         self.time, self.norm_flux = np.array([]), np.array([])
         self.flux_err = np.array([])
+        self.cadences = np.array([])
 
         if self.multi is True:
             for d in self.data:
@@ -119,23 +123,26 @@ class YoungStars(object):
 
                 # Searches for breaks based on differences in time array
                 ind = self.find_breaks(time=t)
-                sector_t, sector_f, sector_e = normalized_subset(ind, t, f, err)
+                sector_t, sector_f, sector_e, sector_c = normalized_subset(ind, t, f, err, d.ffiindex[q])
                 self.time = np.append(sector_t, self.time)
                 self.norm_flux = np.append(sector_f, self.norm_flux)
                 self.flux_err  = np.append(sector_e, self.flux_err)
+                self.cadences  = np.append(sector_c, self.cadences)
         else:
             q = self.data.quality == 0
             ind = self.find_breaks(time=self.data.time[q])
-            sector_t, sector_f, sector_e = normalized_subset(ind, self.data.time[q], 
-                                                             self.data.corr_flux[q],
-                                                             self.data.flux_err[q])
+            sector_t, sector_f, sector_e, sector_c = normalized_subset(ind, self.data.time[q], 
+                                                                       self.data.corr_flux[q],
+                                                                       self.data.flux_err[q],
+                                                                       self.data.ffiindex[q])
             self.time = sector_t
             self.norm_flux = sector_f
             self.flux_err  = sector_e
+            self.cadences  = sector_c
             
         self.time, self.norm_flux = zip(*sorted(zip(self.time, self.norm_flux)))
         self.time, self.norm_flux = np.array(self.time), np.array(self.norm_flux)
-
+        self.cadences = np.sort(self.cadences)
 
     def query_information(self):        
         """Queries the TIC for basic stellar parameters. 
@@ -347,7 +354,8 @@ class YoungStars(object):
                              iterative=True, sigma=sigma, niters=niters)
 
 
-    def identify_flares(self, detrended_flux=None, detrended_flux_err=None, method="gp"):
+    def identify_flares(self, detrended_flux=None, detrended_flux_err=None, method="gp",
+                        N1=3, N2=1, N3=1):
         """Identifies flare candidates using AltaiPony.
         """
         if detrended_flux is None:
@@ -360,15 +368,26 @@ class YoungStars(object):
 
         if detrended_flux_err is None:
             detrended_flux_err = self.flux_err
-
         
         flc = FlareLightCurve(self.time, flux=self.norm_flux, flux_err=self.flux_err,
                                detrended_flux=detrended_flux,
-                               detrended_flux_err=detrended_flux_err)
+                               detrended_flux_err=detrended_flux_err,
+                               cadenceno=self.cadences)
         flc = flc.find_flares(N1=3, N2=1, N3=1)
 
         self.flares = flc.flares
         self.flc    = flc
+
+
+    def characterize_flares(self, N1=3, N2=1, N3=1):
+        """Characterizes flares identified.
+        """
+        if self.flc is None:
+            raise ValueError("Please call YoungStars.identify_flares() before calling this function.")
+        else:
+            flc = self.flc.characterize_flares(N1=N1, N2=N2, N3=N3)
+            self.flc = flc
+            self.flares = flc.flares
 
     @property
     def plot_flares(self, high_amp=0.009):
@@ -392,11 +411,18 @@ class YoungStars(object):
 
 
     @property
-    def plot_periodogram(self):
+    def plot_periodogram(self, save=False):
         plt.plot(self.LS_period, self.LS_power, 'k', alpha=0.8)
         plt.xlabel('Period [days]')
         plt.ylabel('Lomb-Scargle Power')
-        plt.show()
+        if save is False:
+            plt.show()
+        else:
+            fn = '{}_periodogram.png'.format(self.tic)
+            path = os.path.join(self.directory, fn)
+            plt.tight_layout()
+            plt.savefig(path, bbox_inches='tight', dpi=200)
+
 
     @property
     def plot_residuals(self, x=None, y=None, model=None):
