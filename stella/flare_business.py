@@ -8,8 +8,6 @@ from astropy.stats import sigma_clip, LombScargle
 from astropy import units as u
 
 from astroquery.mast import Catalogs
-from astroquery.gaia import Gaia
-from astroquery.vizier import Vizier
 
 import eleanor
 import exoplanet as xo
@@ -256,8 +254,8 @@ class YoungStars(object):
         time = np.ascontiguousarray(self.time, dtype=np.float64)
 
         mu = np.nanmean(y)
-        y = (y/mu - 1)# * 1e3
-        yerr = yerr / mu # * 1e3 / mu
+        y = (y/mu - 1) * 1e3
+        yerr = yerr * 1e3 / mu
         
         results   = xo.estimators.lomb_scargle_estimator(x, y, 
                                                          min_period=self.p_rot-0.5, 
@@ -273,7 +271,7 @@ class YoungStars(object):
             mean = pm.Normal("mean", mu=0.0, sd=5.0)
 
             # white noise
-            logs2 = pm.Normal("logs2", mu=2*np.log(np.min(yerr)), sd=5.0)
+            logs2 = pm.Normal("logs2", mu=np.log(np.min(yerr)/2.0), sd=10.0)
 
             
             # The parameters of the RotationTerm kernel
@@ -285,8 +283,8 @@ class YoungStars(object):
             logperiod = BoundedNormal("logperiod", mu=np.log(peak["period"]), sd=per_uncert)
         
             # Q from simple harmonic oscillator 
-            logQ0 = pm.Normal("logQ0", mu=1.0, sd=20.0)
-            logdeltaQ = pm.Normal("logdeltaQ", mu=2.0, sd=20.0)
+            logQ0 = pm.Normal("logQ0", mu=1.0, sd=10.0)
+            logdeltaQ = pm.Normal("logdeltaQ", mu=2.0, sd=10.0)
             mix = pm.Uniform("mix", lower=0, upper=1.0)
 
             # Track the period as a deterministic
@@ -314,16 +312,19 @@ class YoungStars(object):
             # Fit over Q
             # Fit over mean
             # Fit period and amplitude together again
-            map_soln = xo.optimize(start=model.test_point, vars=[mean])
-            map_soln = xo.optimize(start=map_soln, vars=[logamp, logperiod])
-            map_soln = xo.optimize(start=map_soln, vars=[logQ0, logdeltaQ])
-            map_soln = xo.optimize(start=map_soln, vars=[logs2])
-            map_soln = xo.optimize(start=map_soln, vars=[mix])
-            map_soln = xo.optimize(start=map_soln, vars=[mean])
-            map_soln = xo.optimize(start=map_soln, vars=[logamp, logperiod])
-            map_soln = xo.optimize(start=map_soln, vars=[mix])
+            map_soln = xo.optimize(start=model.test_point)
+#            map_soln = xo.optimize(start=model.test_point, vars=[mean])
+#            map_soln = xo.optimize(start=map_soln, vars=[logamp])
+#            map_soln = xo.optimize(start=map_soln, vars=[logperiod])
+#            map_soln = xo.optimize(start=map_soln, vars=[logQ0])
+#            map_soln = xo.optimize(start=map_soln, vars=[logdeltaQ])
+#            map_soln = xo.optimize(start=map_soln, vars=[logs2])
+#            map_soln = xo.optimize(start=map_soln, vars=[mix])
+#            map_soln = xo.optimize(start=map_soln, vars=[mean])
+#            map_soln = xo.optimize(start=map_soln, vars=[logamp, logperiod])
+#            map_soln = xo.optimize(start=map_soln, vars=[mix])
 
-            map_soln = xo.optimize(start=map_soln)
+#            map_soln = xo.optimize(start=map_soln)
 
         with model:
             mu, var = xo.eval_in_model(gp.predict(time, return_var=True), map_soln)
@@ -431,12 +432,14 @@ class YoungStars(object):
         if y is None:
             y = self.norm_flux
         if model is None:
-            if self.gp_flux is None:
+            if (self.gp_flux is None) & (self.sg_flux is not None):
                 model = self.sg_trend
                 resid = y - model
-            elif self.sg_flux is None:
+            elif (self.sg_flux is None) & (self.gp_flux is not None):
                 model = self.gp_model
                 resid = self.sg_flux
+            else:
+                raise ValueError("You have no detrended flux to compare to. Try again.")
         else:
             resid = y - model
     

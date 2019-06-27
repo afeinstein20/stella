@@ -1,0 +1,19 @@
+Metadata-Version: 2.1
+Name: stella
+Version: 0.0.0
+Summary: For characterizing flares in the TESS FFIs
+Home-page: http://github.com/afeinstein20/stella
+Author: Adina D. Feinstein
+Author-email: adina.d.feinstein@gmail.com
+License: MIT
+Description: 
+        stella is a python package to characterize flares for stars in the 
+        TESS Full Frame Images.
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3.0
+Description-Content-Type: text/markdown
