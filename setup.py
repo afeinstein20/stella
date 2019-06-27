@@ -7,28 +7,28 @@ import os
 import sys
 from setuptools import setup
 
-sys.path.insert(0, "eleanor")
+sys.path.insert(0, "stella")
 from version import __version__
 
 
 long_description = \
     """
-sally is a python package to characterize flares for stars in the 
+stella is a python package to characterize flares for stars in the 
 TESS Full Frame Images.
 """
 
 
 setup(
-    name='sally',
+    name='stella',
     version=__version__,
     license='MIT',
     author='Adina D. Feinstein',
     author_email='adina.d.feinstein@gmail.com',
     packages=[
-        'sally',
+        'stella',
         ],
     include_package_data=True,
-    url='http://github.com/afeinstein20/sally',
+    url='http://github.com/afeinstein20/stella',
     description='For characterizing flares in the TESS FFIs',
     long_description=long_description,
     long_description_content_type="text/markdown",
