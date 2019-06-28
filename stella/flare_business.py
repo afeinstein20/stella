@@ -6,6 +6,7 @@ import matplotlib.gridspec as gridspec
 from astropy.coordinates import SkyCoord, Angle
 from astropy.stats import sigma_clip, LombScargle
 from astropy import units as u
+from astropy.io import fits
 
 from astroquery.mast import Catalogs
 
@@ -177,9 +178,12 @@ class YoungStars(object):
 
         # GAIA temperature
         self.teff = result['Teff'][0]
+        self.e_teff = result['e_Teff'][0]
+        self.lum  = result['lum'][0]
+        self.e_lum = result['e_lum'][0]
 
 
-    def measure_rotation(self, fmin=1./100., fmax=1.0/0.1, cut=20):
+    def measure_rotation(self, fmin=1./100., fmax=1.0/0.1, cut=30):
         """Uses a Lomb-Scargle periodogram to measure rotation period.
         """
         freq, power = LombScargle(self.time, self.norm_flux).autopower(minimum_frequency=fmin,
@@ -258,8 +262,8 @@ class YoungStars(object):
         yerr = yerr * 1e3 / mu
         
         results   = xo.estimators.lomb_scargle_estimator(x, y, 
-                                                         min_period=self.p_rot-0.5, 
-                                                         max_period=self.p_rot+0.5) 
+                                                         min_period=self.p_rot-2.5, 
+                                                         max_period=self.p_rot+2.5) 
         peak_per  = results['peaks'][0]['period']
         per_uncert= results['peaks'][0]['period_uncert']
         self.xo_LS_results = results
@@ -285,12 +289,16 @@ class YoungStars(object):
             # Q from simple harmonic oscillator 
             logQ0 = pm.Normal("logQ0", mu=1.0, sd=10.0)
             logdeltaQ = pm.Normal("logdeltaQ", mu=2.0, sd=10.0)
+
+            # TRY WITH NORMAL MU 0.5 SD LOW
             mix = pm.Uniform("mix", lower=0, upper=1.0)
 
             # Track the period as a deterministic
             period = pm.Deterministic("period", tt.exp(logperiod))
 
             # Set up the Gaussian Process model
+
+            # TRY WITH SHOTERM INSTEAD OF ROTATIONTERM
             kernel = xo.gp.terms.RotationTerm(
                 log_amp=logamp,
                 period=period,
@@ -355,8 +363,8 @@ class YoungStars(object):
                              iterative=True, sigma=sigma, niters=niters)
 
 
-    def identify_flares(self, detrended_flux=None, detrended_flux_err=None, method="gp",
-                        N1=3, N2=1, N3=1):
+    def identify_flares(self, detrended_flux=None, detrended_flux_err=None, 
+                        method="gp", N1=3, N2=1, N3=1):
         """Identifies flare candidates using AltaiPony.
         """
         if detrended_flux is None:
@@ -374,6 +382,7 @@ class YoungStars(object):
                                detrended_flux=detrended_flux,
                                detrended_flux_err=detrended_flux_err,
                                cadenceno=self.cadences)
+
         flc = flc.find_flares(N1=3, N2=1, N3=1)
 
         self.flares = flc.flares
@@ -390,21 +399,32 @@ class YoungStars(object):
             self.flc = flc
             self.flares = flc.flares
 
-    @property
-    def plot_flares(self, high_amp=0.009):
+
+    def plot_flares(self, time=None, flux=None, high_amp=0.009, mask=None, flare_table=None):
+        if time is None:
+            time = self.time
+        if flux is None:
+            flux = self.flc.detrended_flux
+        if mask is None:
+            mask = np.zeros(len(time))
+
         if self.flc is None:
             return("Please call YoungStars.identify_flares() before calling this function.")
+        if flare_table is None:
+            flare_table = self.flares
 
         plt.figure(figsize=(12,6))
-        plt.plot(self.flc.time, self.flc.detrended_flux, c='k', alpha=0.8)
+        plt.plot(time[mask], flux[mask], c='k', alpha=0.8)
         plt.title('TIC '+str(self.tic))
-        for i,p in self.flares.iterrows():
-            plt.plot(self.flc.time[p.istart:p.istop+1], self.flc.detrended_flux[p.istart:p.istop+1], '*',
+
+        for i,p in flare_table.iterrows():
+            plt.plot(time[p.istart:p.istop+1], flux[p.istart:p.istop+1], '*',
                      ms=10, c='turquoise')
             if p.ampl_rec >= high_amp:
-                plt.plot(self.flc.time[p.istart:p.istop+1], self.flc.detrended_flux[p.istart:p.istop+1], '*',
+                plt.plot(time[p.istart:p.istop+1], flux[p.istart:p.istop+1], '*',
                          ms=10, c='darkorange')
-        plt.ylim(np.min(self.flc.detrended_flux)-0.01, np.max(self.flc.detrended_flux)+0.01)
+        plt.ylim(np.min(flux[mask])-0.01, np.max(flux[mask])+0.01)
+        plt.xlim(np.min(time[mask]), np.max(time[mask]))
         plt.ylabel('Noralized Flux')
         plt.xlabel('Time (BJD - 2457000)')
         plt.tight_layout()
@@ -425,7 +445,6 @@ class YoungStars(object):
             plt.savefig(path, bbox_inches='tight', dpi=200)
 
 
-    @property
     def plot_residuals(self, x=None, y=None, model=None):
         if x is None:
             x = self.time
