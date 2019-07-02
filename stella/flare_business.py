@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import os, sys
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -7,6 +8,7 @@ from astropy.coordinates import SkyCoord, Angle
 from astropy.stats import sigma_clip, LombScargle
 from astropy import units as u
 from astropy.io import fits
+from astropy import constants as c
 
 from astroquery.mast import Catalogs
 
@@ -14,6 +16,8 @@ import eleanor
 import exoplanet as xo
 from lightkurve.lightcurve import LightCurve as LC
 from altaipony.flarelc import FlareLightCurve
+
+from .injection_recovery import *
 
 import pymc3 as pm
 import theano.tensor as tt
@@ -85,27 +89,38 @@ class YoungStars(object):
             time = self.time
         diff = np.diff(time)
         ind  = np.where((diff >= 2.5*np.std(diff)+np.mean(diff)))[0]
-        return ind
+
+        subsets = []
+        for i in range(len(ind)):
+            if i == 0:
+                region = np.arange(0, ind[i]+1, 1)
+            elif i > 0 and i < (len(ind)-1):
+                region = np.arange(ind[i], ind[i+1]+1, 1)
+            elif i == (len(ind)-1):
+                region = np.arange(ind[i-1], len(time), 1)
+            subsets.append(region)
+        return np.array(subsets)
 
 
     def normalize_lc(self):
         """Normalizes light curve via chunks of data.
         """
-        def normalized_subset(ind, t, flux, err, cads):
+        def normalized_subset(regions, t, flux, err, cads):
             time, norm_flux = np.array([]), np.array([])
             error, cadences = np.array([]), np.array([])
-            for i in range(len(ind)):
-                if i == 0:
-                    region = np.arange(0, ind[i]+1, 1)
-                elif i > 0 and i < (len(ind)-1):
-                    region = np.arange(ind[i], ind[i+1]+1, 1)
-                elif i == (len(ind)-1):
-                    region = np.arange(ind[i-1], len(flux), 1)
-                f = flux[region]
+#            for i in range(len(ind)):
+#                if i == 0:
+#                    region = np.arange(0, ind[i]+1, 1)
+#                elif i > 0 and i < (len(ind)-1):
+#                    region = np.arange(ind[i], ind[i+1]+1, 1)
+#                elif i == (len(ind)-1):
+#                    region = np.arange(ind[i-1], len(flux), 1)
+            for reg in regions:
+                f = flux[reg]
                 norm_flux = np.append( f/np.nanmedian(f), norm_flux)
-                time      = np.append(t[region], time)
-                error     = np.append(err[region], error)
-                cadences  = np.append(cads[region], cadences)
+                time      = np.append(t[reg], time)
+                error     = np.append(err[reg], error)
+                cadences  = np.append(cads[reg], cadences)
             return time, norm_flux, error, cadences
 
 
@@ -121,16 +136,16 @@ class YoungStars(object):
                 err = d.flux_err[q]
 
                 # Searches for breaks based on differences in time array
-                ind = self.find_breaks(time=t)
-                sector_t, sector_f, sector_e, sector_c = normalized_subset(ind, t, f, err, d.ffiindex[q])
+                regions = self.find_breaks(time=t)
+                sector_t, sector_f, sector_e, sector_c = normalized_subset(regions, t, f, err, d.ffiindex[q])
                 self.time = np.append(sector_t, self.time)
                 self.norm_flux = np.append(sector_f, self.norm_flux)
                 self.flux_err  = np.append(sector_e, self.flux_err)
                 self.cadences  = np.append(sector_c, self.cadences)
         else:
             q = self.data.quality == 0
-            ind = self.find_breaks(time=self.data.time[q])
-            sector_t, sector_f, sector_e, sector_c = normalized_subset(ind, self.data.time[q], 
+            regions = self.find_breaks(time=self.data.time[q])
+            sector_t, sector_f, sector_e, sector_c = normalized_subset(regions, self.data.time[q], 
                                                                        self.data.corr_flux[q],
                                                                        self.data.flux_err[q],
                                                                        self.data.ffiindex[q])
@@ -217,7 +232,6 @@ class YoungStars(object):
                                                                                   return_trend=True,
                                                                                   niters=niters,
                                                                                   sigma=sigma)
-        
         self.sg_flux     = np.array(lc.flux)
         self.sg_flux_err = np.array(lc.flux_err)
         self.sg_trend    = np.array(trend.flux)
@@ -239,10 +253,7 @@ class YoungStars(object):
         if (len(time) != len(flux)) or (len(time) != len(flux_err)):
             raise ValueError("Please ensure you're passing in arrays of the same length.")
 
-
         self.mask = mask
-
-        brks = self.find_breaks()
 
         x    = np.array(time)
         y    = np.array(flux)
@@ -262,8 +273,8 @@ class YoungStars(object):
         yerr = yerr * 1e3 / mu
         
         results   = xo.estimators.lomb_scargle_estimator(x, y, 
-                                                         min_period=self.p_rot-2.5, 
-                                                         max_period=self.p_rot+2.5) 
+                                                         min_period=self.p_rot*0.5, 
+                                                         max_period=self.p_rot*2)
         peak_per  = results['peaks'][0]['period']
         per_uncert= results['peaks'][0]['period_uncert']
         self.xo_LS_results = results
@@ -282,9 +293,9 @@ class YoungStars(object):
             logamp = pm.Normal("logamp", mu=np.log(np.var(y)/2.0), sd=20.0)
 
             # Bounds on period
-            BoundedNormal = pm.Bound(pm.Normal, lower=np.log(peak_per-0.5), 
-                                     upper=np.log(peak_per+0.5))
-            logperiod = BoundedNormal("logperiod", mu=np.log(peak["period"]), sd=per_uncert)
+#            BoundedNormal = pm.Bound(pm.Normal, lower=np.log(peak_per*0.5), 
+#                                     upper=np.log(peak_per*3))
+#            logperiod = BoundedNormal("logperiod", mu=np.log(2*peak["period"]), sd=per_uncert)
         
             # Q from simple harmonic oscillator 
             logQ0 = pm.Normal("logQ0", mu=1.0, sd=10.0)
@@ -294,14 +305,14 @@ class YoungStars(object):
             mix = pm.Uniform("mix", lower=0, upper=1.0)
 
             # Track the period as a deterministic
-            period = pm.Deterministic("period", tt.exp(logperiod))
+#            period = pm.Deterministic("period", tt.exp(logperiod))
 
             # Set up the Gaussian Process model
 
             # TRY WITH SHOTERM INSTEAD OF ROTATIONTERM
             kernel = xo.gp.terms.RotationTerm(
                 log_amp=logamp,
-                period=period,
+                period=peak_per,
                 log_Q0=logQ0,
                 log_deltaQ=logdeltaQ,
                 mix=mix
@@ -321,18 +332,18 @@ class YoungStars(object):
             # Fit over mean
             # Fit period and amplitude together again
             map_soln = xo.optimize(start=model.test_point)
-#            map_soln = xo.optimize(start=model.test_point, vars=[mean])
-#            map_soln = xo.optimize(start=map_soln, vars=[logamp])
+            map_soln = xo.optimize(start=model.test_point, vars=[mean])
+            map_soln = xo.optimize(start=map_soln, vars=[logamp])
 #            map_soln = xo.optimize(start=map_soln, vars=[logperiod])
-#            map_soln = xo.optimize(start=map_soln, vars=[logQ0])
-#            map_soln = xo.optimize(start=map_soln, vars=[logdeltaQ])
-#            map_soln = xo.optimize(start=map_soln, vars=[logs2])
-#            map_soln = xo.optimize(start=map_soln, vars=[mix])
-#            map_soln = xo.optimize(start=map_soln, vars=[mean])
-#            map_soln = xo.optimize(start=map_soln, vars=[logamp, logperiod])
-#            map_soln = xo.optimize(start=map_soln, vars=[mix])
+            map_soln = xo.optimize(start=map_soln, vars=[logQ0])
+            map_soln = xo.optimize(start=map_soln, vars=[logdeltaQ])
+            map_soln = xo.optimize(start=map_soln, vars=[logs2])
+            map_soln = xo.optimize(start=map_soln, vars=[mix])
+            map_soln = xo.optimize(start=map_soln, vars=[mean])
+            map_soln = xo.optimize(start=map_soln, vars=[logamp])#, logperiod])
+            map_soln = xo.optimize(start=map_soln, vars=[mix])
 
-#            map_soln = xo.optimize(start=map_soln)
+            map_soln = xo.optimize(start=map_soln)
 
         with model:
             mu, var = xo.eval_in_model(gp.predict(time, return_var=True), map_soln)
@@ -363,10 +374,30 @@ class YoungStars(object):
                              iterative=True, sigma=sigma, niters=niters)
 
 
+    def equivalent_duration(self, time, flux, error):
+        """Calculates the equivalent width and error for a given flare.
+        """
+        x = time * 60.0 * 60.0 * 24.0
+        residual = flux/np.nanmedian(flux)  - 1.0
+        ed = np.sum(np.diff(x) * residual[:-1])
+        err = np.sum( (residual / error)**2.0 / np.size(error))
+        return ed, err
+
+
     def identify_flares(self, detrended_flux=None, detrended_flux_err=None, 
-                        method="gp", N1=3, N2=1, N3=1):
+                        method="gp", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
+                        cut_ends=5):
         """Identifies flare candidates using AltaiPony.
         """
+
+        def tag_flares(flux, sig):
+            mask = sigma_clip(flux, sigma=sig).mask
+            median = np.nanmedian(flux[mask])
+            isflare = np.where( (mask==True) & ( (flux-median) > 0.) &
+                                (flux > (np.std(flux)+median) ))[0]
+            return isflare
+
+
         if detrended_flux is None:
             if (self.gp_flux is not None) and (method.lower() == "gp"):
                 detrended_flux = self.gp_flux
@@ -377,27 +408,68 @@ class YoungStars(object):
 
         if detrended_flux_err is None:
             detrended_flux_err = self.flux_err
+
+        columns = ['istart', 'istop', 'tstart', 'tstop',
+                   'ed_rec_s', 'ed_rec_err', 'ampl_rec', 'energy_ergs']
+        flares = pd.DataFrame(columns=columns)
+        brks = self.find_breaks()
+
+        istart, istop = np.array([], dtype=int), np.array([], dtype=int)
         
-        flc = FlareLightCurve(self.time, flux=self.norm_flux, flux_err=self.flux_err,
-                               detrended_flux=detrended_flux,
-                               detrended_flux_err=detrended_flux_err,
-                               cadenceno=self.cadences)
+        for b in brks:
+            time  = self.time[b]
+            flux  = detrended_flux[b]
+            error = detrended_flux_err[b]
 
-        flc = flc.find_flares(N1=3, N2=1, N3=1)
+            isflare = tag_flares(flux, sigma)
+            candidates = isflare[isflare > 0]
 
-        self.flares = flc.flares
-        self.flc    = flc
+            if len(candidates) < 1:
+                print("No flares found in ", np.min(time), " - ", np.max(time))
+            else:
+                # Find start & stop indices and combine neighboring candidates
+                sep_cand = np.where(np.diff(candidates) > minsep)[0]
+                istart_gap = candidates[ np.append([0], sep_cand + 1) ]
+                istop_gap = candidates[ np.append(sep_cand,
+                                                  [len(candidates) - 1]) ]
+
+            # CUTS 5 DATA POINTS FROM EACH BREAK
+            ends = ((istart_gap > cut_ends) & ( (istart_gap+np.min(b)) < (np.max(b)-cut_ends)) )
+            istart = np.append(istart, istart_gap[ends] + np.min(b))
+            istop  = np.append(istop , istop_gap[ends]  + np.min(b) + 1)
+
+            ed_rec, ed_rec_err = np.array([]), np.array([])
+            ampl_rec = np.array([])
+            for i in range(len(istart)):
+                time = self.time[istart[i]:istop[i]+1]
+                flux = detrended_flux[istart[i]:istop[i]+1]
+                err  = detrended_flux_err[istart[i]:istop[i]+1]
+                ed, ed_err = self.equivalent_duration(time=time, flux=flux, error=err)
+                ed_rec     = np.append(ed_rec, ed)
+                ed_rec_err = np.append(ed_rec_err, ed_err)
+                ampl_rec   = np.append(ampl_rec, np.max(flux))
+                
+
+        flares['istart']     = istart
+        flares['istop']      = istop
+        flares['ed_rec_s']   = ed_rec
+        flares['ed_rec_err'] = ed_rec_err
+        flares['ampl_rec']   = ampl_rec
+        flares['tstart']     = self.time[istart]
+        flares['tstop']      = self.time[istop]
+
+        energy = (flares.ed_rec_s.values * u.s) * (self.lum * c.L_sun)
+        energy = energy.to(u.erg)
+        flares['energy_ergs'] = energy.value
+        self.flares = flares
 
 
-    def characterize_flares(self, N1=3, N2=1, N3=1):
-        """Characterizes flares identified.
+    def flare_recovery(self, N1=3, N2=1, N3=1):
+        """Determines the flare recovery probability.
         """
-        if self.flc is None:
-            raise ValueError("Please call YoungStars.identify_flares() before calling this function.")
-        else:
-            flc = self.flc.characterize_flares(N1=N1, N2=N2, N3=N3)
-            self.flc = flc
-            self.flares = flc.flares
+        ir = InjectionRecovery(self)
+        amp, ed = ir.generate_fake_flares()
+        return amp, ed
 
 
     def plot_flares(self, time=None, flux=None, high_amp=0.009, mask=None, flare_table=None):
@@ -431,7 +503,6 @@ class YoungStars(object):
         plt.show()
 
 
-    @property
     def plot_periodogram(self, save=False):
         plt.plot(self.LS_period, self.LS_power, 'k', alpha=0.8)
         plt.xlabel('Period [days]')
