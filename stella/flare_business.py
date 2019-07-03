@@ -225,17 +225,26 @@ class YoungStars(object):
 
                   
     
-    def savitsky_golay(self, sigma=2.5, window_length=15, niters=5):
+    def savitsky_golay(self, sigma=2.5, window_length=15, niters=5, 
+                       fake=False, flux=None, flux_err=None):
         """Simple Savitsky-Golay filter for detrending.
         """
-        lc, trend = LC(self.time, self.norm_flux, flux_err=self.flux_err).flatten(window_length=window_length,
-                                                                                  return_trend=True,
-                                                                                  niters=niters,
-                                                                                  sigma=sigma)
-        self.sg_flux     = np.array(lc.flux)
-        self.sg_flux_err = np.array(lc.flux_err)
-        self.sg_trend    = np.array(trend.flux)
-            
+        if flux is None:
+            flux = self.norm_flux
+        if flux_err is None:
+            flux_err = self.flux_err
+
+        lc, trend = LC(self.time, flux, flux_err=flux_err).flatten(window_length=window_length,
+                                                                   return_trend=True,
+                                                                   niters=niters,
+                                                                   sigma=sigma)
+        if fake is False:
+            self.sg_flux     = np.array(lc.flux)
+            self.sg_flux_err = np.array(lc.flux_err)
+            self.sg_trend    = np.array(trend.flux)
+        else:
+            return np.array(lc.flux), np.array(lc.flux_err)
+
 
     def gp_modeling(self, time=None, flux=None, flux_err=None,
                     mask=None, sigma=3, niters=8, iterative=False):
@@ -385,8 +394,8 @@ class YoungStars(object):
 
 
     def identify_flares(self, detrended_flux=None, detrended_flux_err=None, 
-                        method="gp", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
-                        cut_ends=5):
+                        method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
+                        cut_ends=5, fake=False):
         """Identifies flare candidates using AltaiPony.
         """
 
@@ -397,7 +406,6 @@ class YoungStars(object):
                                 (flux > (np.std(flux)+median) ))[0]
             return isflare
 
-
         if detrended_flux is None:
             if (self.gp_flux is not None) and (method.lower() == "gp"):
                 detrended_flux = self.gp_flux
@@ -405,6 +413,7 @@ class YoungStars(object):
                 detrended_flux = self.sg_flux
             elif (detrended_flux is None) and (self.sg_flux is None) and (self.gp_flux is None):
                 raise Exception("Pleae either run a detrending method or pass in a 'detrend_flux' argument.")
+
 
         if detrended_flux_err is None:
             detrended_flux_err = self.flux_err
@@ -425,7 +434,8 @@ class YoungStars(object):
             candidates = isflare[isflare > 0]
 
             if len(candidates) < 1:
-                print("No flares found in ", np.min(time), " - ", np.max(time))
+                if fake is False:
+                    print("No flares found in ", np.min(time), " - ", np.max(time))
             else:
                 # Find start & stop indices and combine neighboring candidates
                 sep_cand = np.where(np.diff(candidates) > minsep)[0]
@@ -461,15 +471,27 @@ class YoungStars(object):
         energy = (flares.ed_rec_s.values * u.s) * (self.lum * c.L_sun)
         energy = energy.to(u.erg)
         flares['energy_ergs'] = energy.value
-        self.flares = flares
+
+        if fake is False:
+            self.flares = flares
+        else:
+            return flares
 
 
-    def flare_recovery(self, N1=3, N2=1, N3=1):
+    def flare_recovery(self, nflares=100, mode='uniform', ed=[0.5, 130.0], ampl=[1e-3, 0.1]):
         """Determines the flare recovery probability.
         """
-        ir = InjectionRecovery(self)
-        amp, ed = ir.generate_fake_flares()
-        return amp, ed
+        ir = InjectionRecovery(self, nflares=nflares)
+        ir.generate_fake_flares(ed, ampl, mode=mode)
+        ir.inject_flares()
+        
+        for model in ir.models:
+            detrended_flux, detrended_flux_err = self.savitsky_golay(fake=True, flux=model)
+            flares = self.identify_flares(fake=True, detrended_flux=detrended_flux,
+                                          detrended_flux_err=detrended_flux_err)
+            
+                
+        self.recovery_tests = ir
 
 
     def plot_flares(self, time=None, flux=None, high_amp=0.009, mask=None, flare_table=None):
