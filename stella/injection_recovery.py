@@ -4,40 +4,53 @@ import pandas as pd
 from astropy import units as u
 from astropy import constants as c
 
+from scipy.stats import binned_statistic
+
 __all__ = ['InjectionRecovery']
 
 class InjectionRecovery(object):
     
-    def __init__(self, yso, nflares=100):
+    def __init__(self, yso, nflares=100, mode='uniform', ed=[0.5, 130.0],
+                 ampl=[1e-3, 0.1], breaks=None):
         self.yso = yso
         
-        self.time    = yso.time
-        self.flux    = yso.norm_flux
-        self.flares  = yso.flares
-        self.nflares = nflares    # number of fake flare injections
+        self.time     = yso.time
+        self.flux     = yso.norm_flux
+        self.flares   = yso.flares
+        self.nflares  = nflares    # number of fake flare injections
+
+        self.generate_fake_flares(ed, ampl, mode=mode)
+        self.inject_flares(breaks)
 
 
-    def flare_model(self, time, t0, amp, ed, gauss_rise, exp_decay):
+    def flare_model(self, time, t0, amp, ed, gauss_rise, exp_decay, 
+                    uptime=10):
         """Generates a flare model given parameters.
         """
-        t0 = time[t0]
-
-        rise = np.where(time <= t0)[0]
-        fall = np.where(time >  t0)[0]
-
-        rise_model = amp * np.exp( -(time[rise]-t0)**2.0 / (2.0*gauss_rise**2.0) )
-        fall_model = amp * np.exp( -(time[fall]-t0) / exp_decay )
+        dt = np.nanmedian(np.diff(time))
+        timeup = np.linspace(np.nanmin(time)-dt, np.nanmax(time)+dt, time.size*uptime)
         
-        return np.append(rise_model, fall_model)
+        up_t0 = timeup[np.where( timeup >= time[t0] )[0][0]]
+
+        rise = np.where(timeup <= up_t0)[0]
+        fall = np.where(timeup >  up_t0)[0]
+
+        rise_model = amp * np.exp( -(timeup[rise] - up_t0)**2.0 / (2.0*gauss_rise**2.0) )
+        fall_model = amp * np.exp( -(timeup[fall] - up_t0) / exp_decay )
+        
+        model = np.append(rise_model, fall_model)
+
+        flare = binned_statistic(timeup, model, statistic='mean', bins=len(time))[0]
+        return flare
 
 
     def generate_fake_flares(self, ed, ampl, mode='uniform'):
         """Generates a distribution of fake flares to try and recover.
         """
         if ed is None:
-            ed   = [np.min(self.flares.ed_rec_s)-2, np.max(self.flares.ed_rec_s)+2]
+            ed   = [np.nanmin(self.flares.ed_rec_s)-2, np.nanmax(self.flares.ed_rec_s)+2]
         if ampl is None:
-            ampl = [np.min(self.flares.ampl_rec)-0.033, np.max(self.flares.ampl_rec)+0.033]
+            ampl = [np.nanmin(self.flares.ampl_rec)-0.033, np.nanmax(self.flares.ampl_rec)+0.033]
 
         if mode.lower() == 'uniform':
             rand_ampl = np.random.uniform(ampl[0], ampl[1], size=self.nflares)
@@ -54,13 +67,29 @@ class InjectionRecovery(object):
         self.fake_edurs = rand_ed
     
 
-    def inject_flares(self):
+    def inject_flares(self, brks):
         """Injects random flares into a light curve.
         Returns: new light curves with new flares
         """
-        rand_t0 = np.random.randint(len(self.time), size=self.nflares)
-        
-        models = []
+        rand_t0 = []
+
+        ends = np.array([], dtype=int)
+        for b in brks:
+            ends = np.append(ends, np.arange(b[0], b[0]+11, 1))
+            ends = np.append(ends, np.arange(b[-1]-10, b[-1]+1, 1))
+        ends = np.unique(ends)
+
+        for i in range(5*self.nflares):
+            random =  np.random.randint(len(self.time), size=1)[0]
+            if random not in ends:
+                rand_t0.append(random)
+            if len(rand_t0) == 1.5*self.nflares:
+                break
+
+        rand_t0 = np.array(rand_t0)
+        corrected_t0 = np.zeros(self.nflares, dtype=int)
+        models  = []
+
         for i in range(self.nflares):
             t0 = rand_t0[i]
             a0 = self.fake_ampls[i] - 0.05
@@ -69,10 +98,12 @@ class InjectionRecovery(object):
             exp_decay  = np.random.uniform(low=0.01, high=0.05, size=1)[0]
 
             model = self.flare_model(self.time, t0, a0, ed, gauss_rise, exp_decay) 
-            
+
+            corrected_t0[i] = np.argmax(model)
+
             new_flux = np.copy(self.flux)
             new_flux = new_flux + np.abs(model)
             models.append(new_flux)
 
         self.models  = np.array(models)
-        self.fake_t0 = self.time[rand_t0]
+        self.fake_t0 = self.time[corrected_t0]

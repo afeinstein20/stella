@@ -88,7 +88,7 @@ class YoungStars(object):
         if time is None:
             time = self.time
         diff = np.diff(time)
-        ind  = np.where((diff >= 2.5*np.std(diff)+np.mean(diff)))[0]
+        ind  = np.where((diff >= 2.5*np.std(diff)+np.nanmean(diff)))[0]
 
         subsets = []
         for i in range(len(ind)):
@@ -108,13 +108,7 @@ class YoungStars(object):
         def normalized_subset(regions, t, flux, err, cads):
             time, norm_flux = np.array([]), np.array([])
             error, cadences = np.array([]), np.array([])
-#            for i in range(len(ind)):
-#                if i == 0:
-#                    region = np.arange(0, ind[i]+1, 1)
-#                elif i > 0 and i < (len(ind)-1):
-#                    region = np.arange(ind[i], ind[i+1]+1, 1)
-#                elif i == (len(ind)-1):
-#                    region = np.arange(ind[i-1], len(flux), 1)
+
             for reg in regions:
                 f = flux[reg]
                 norm_flux = np.append( f/np.nanmedian(f), norm_flux)
@@ -295,7 +289,7 @@ class YoungStars(object):
             mean = pm.Normal("mean", mu=0.0, sd=5.0)
 
             # white noise
-            logs2 = pm.Normal("logs2", mu=np.log(np.min(yerr)/2.0), sd=10.0)
+            logs2 = pm.Normal("logs2", mu=np.log(np.nanmin(yerr)/2.0), sd=10.0)
 
             
             # The parameters of the RotationTerm kernel
@@ -368,35 +362,20 @@ class YoungStars(object):
             self.gp_it_glux  = self.norm_flux - (mu+1)
 
 
-    def iterative_gp_modeling(self, sigma=3, niters=5):
-        """Iteratively fits GP model after first one has been created.
-        """
-        if self.gp_model is None:
-            raise Exception("Please call gp_model() before iteratively fitting.")
-
-        else:
-            filtered = sigma_clip(self.gp_flux, sigma=sigma, maxiters=niters)
-            mask = filtered.mask
-
-            self.gp_modeling(time=self.time, flux=self.norm_flux,
-                             flux_err=self.flux_err, mask=filtered.mask,
-                             iterative=True, sigma=sigma, niters=niters)
-
-
     def equivalent_duration(self, time, flux, error):
         """Calculates the equivalent width and error for a given flare.
         """
         x = time * 60.0 * 60.0 * 24.0
         residual = flux/np.nanmedian(flux)  - 1.0
-        ed = np.sum(np.diff(x) * residual[:-1])
-        err = np.sum( (residual / error)**2.0 / np.size(error))
+        ed = np.nansum(np.diff(x) * residual[:-1])
+        err = np.nansum( (residual / error)**2.0 / np.size(error))
         return ed, err
 
 
     def identify_flares(self, detrended_flux=None, detrended_flux_err=None, 
                         method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
                         cut_ends=5, fake=False):
-        """Identifies flare candidates using AltaiPony.
+        """Identifies flare candidates in a given light curve.
         """
 
         def tag_flares(flux, sig):
@@ -421,11 +400,11 @@ class YoungStars(object):
         columns = ['istart', 'istop', 'tstart', 'tstop',
                    'ed_rec_s', 'ed_rec_err', 'ampl_rec', 'energy_ergs']
         flares = pd.DataFrame(columns=columns)
-        brks = self.find_breaks()
+        self.brks = self.find_breaks()
 
         istart, istop = np.array([], dtype=int), np.array([], dtype=int)
         
-        for b in brks:
+        for b in self.brks:
             time  = self.time[b]
             flux  = detrended_flux[b]
             error = detrended_flux_err[b]
@@ -435,7 +414,7 @@ class YoungStars(object):
 
             if len(candidates) < 1:
                 if fake is False:
-                    print("No flares found in ", np.min(time), " - ", np.max(time))
+                    print("No flares found in ", np.nanmin(time), " - ", np.nanmax(time))
             else:
                 # Find start & stop indices and combine neighboring candidates
                 sep_cand = np.where(np.diff(candidates) > minsep)[0]
@@ -444,9 +423,9 @@ class YoungStars(object):
                                                   [len(candidates) - 1]) ]
 
             # CUTS 5 DATA POINTS FROM EACH BREAK
-            ends = ((istart_gap > cut_ends) & ( (istart_gap+np.min(b)) < (np.max(b)-cut_ends)) )
-            istart = np.append(istart, istart_gap[ends] + np.min(b))
-            istop  = np.append(istop , istop_gap[ends]  + np.min(b) + 1)
+            ends = ((istart_gap > cut_ends) & ( (istart_gap+np.nanmin(b)) < (np.nanmax(b)-cut_ends)) )
+            istart = np.append(istart, istart_gap[ends] + np.nanmin(b))
+            istop  = np.append(istop , istop_gap[ends]  + np.nanmin(b) + 1)
 
             ed_rec, ed_rec_err = np.array([]), np.array([])
             ampl_rec = np.array([])
@@ -457,7 +436,7 @@ class YoungStars(object):
                 ed, ed_err = self.equivalent_duration(time=time, flux=flux, error=err)
                 ed_rec     = np.append(ed_rec, ed)
                 ed_rec_err = np.append(ed_rec_err, ed_err)
-                ampl_rec   = np.append(ampl_rec, np.max(flux))
+                ampl_rec   = np.append(ampl_rec, np.nanmax(flux))
                 
 
         flares['istart']     = istart
@@ -481,19 +460,38 @@ class YoungStars(object):
     def flare_recovery(self, nflares=100, mode='uniform', ed=[0.5, 130.0], ampl=[1e-3, 0.1]):
         """Determines the flare recovery probability.
         """
-        ir = InjectionRecovery(self, nflares=nflares)
-        ir.generate_fake_flares(ed, ampl, mode=mode)
-        ir.inject_flares()
+        ir = InjectionRecovery(self, nflares=nflares, mode=mode, ed=ed, ampl=ampl, breaks=self.brks)
 
-        amps = []
+        known_tstart, known_tstop = self.flares.tstart.values, self.flares.tstop.values
 
-        for model in ir.models:
+        columns = ['istart', 'istop', 'tstart', 'tstop',
+                   'ed_rec_s', 'ed_rec_err', 'ampl_rec', 'energy_ergs', 'rec']
+        rec_table = pd.DataFrame(columns=columns)
+
+        potential = []
+        for i, model in enumerate(ir.models):
+            injected_ed  = ir.fake_edurs[i]
+            injected_amp = ir.fake_ampls[i]
+            injected_t0  = ir.fake_t0[i]
+
             detrended_flux, detrended_flux_err = self.savitsky_golay(fake=True, flux=model)
-            flares = self.identify_flares(fake=True, detrended_flux=detrended_flux,
+            f = self.identify_flares(fake=True, detrended_flux=detrended_flux,
                                           detrended_flux_err=detrended_flux_err)
-            amps.append(flares.ampl_rec.values)
+            
+            rec = f[ (f.tstart.values <= injected_t0) & (f.tstop.values >= injected_t0) ]
+            rec = rec.copy()
+
+            if len(rec.tstart.values) != 0:
+                rec['rec'] = 1
+
+            rec['inj_amp'] = injected_amp
+            rec['inj_ed']  = injected_ed
+            rec['inj_t0']  = injected_t0
+
+            rec_table = rec_table.append(rec, sort=True)
+
         self.recovery_tests = ir
-        return np.array(amps)
+        return rec_table
 
 
     def plot_flares(self, time=None, flux=None, high_amp=0.009, mask=None, flare_table=None):
@@ -519,8 +517,8 @@ class YoungStars(object):
             if p.ampl_rec >= high_amp:
                 plt.plot(time[p.istart:p.istop+1], flux[p.istart:p.istop+1], '*',
                          ms=10, c='darkorange')
-        plt.ylim(np.min(flux[mask])-0.01, np.max(flux[mask])+0.01)
-        plt.xlim(np.min(time[mask]), np.max(time[mask]))
+        plt.ylim(np.nanmin(flux[mask])-0.01, np.nanmax(flux[mask])+0.01)
+        plt.xlim(np.nanmin(time[mask]), np.nanmax(time[mask]))
         plt.ylabel('Noralized Flux')
         plt.xlabel('Time (BJD - 2457000)')
         plt.tight_layout()
