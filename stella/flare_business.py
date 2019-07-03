@@ -436,7 +436,7 @@ class YoungStars(object):
                 time = self.time[istart[i]:istop[i]+1]
                 flux = detrended_flux[istart[i]:istop[i]+1]
                 err  = detrended_flux_err[istart[i]:istop[i]+1]
-                ed, ed_err = self.equivalent_duration(time=time, flux=flux, error=err)
+                ed, ed_err = self.equivalent_duration(time=time, flux=flux, error=err, fake=fake)
                 ed_rec     = np.append(ed_rec, ed)
                 ed_rec_err = np.append(ed_rec_err, ed_err)
                 ampl_rec   = np.append(ampl_rec, np.nanmax(flux))
