@@ -1,5 +1,5 @@
 <p align="center">
-  <img width = "500" src="./figures/sally_logo.png"/>
+  <img width = "500" src="./figures/stella_logo.png"/>
 </p>
 
 	pip install stella
