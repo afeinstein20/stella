@@ -27,6 +27,8 @@ class InjectionRecovery(object):
                     uptime=10):
         """Generates a flare model given parameters.
         """
+        amp -= 1
+
         dt = np.nanmedian(np.diff(time))
         timeup = np.linspace(np.nanmin(time)-dt, np.nanmax(time)+dt, time.size*uptime)
         
@@ -63,7 +65,7 @@ class InjectionRecovery(object):
             eds   = np.log10(np.logspace(ed[0]  , ed[1]  , num=5*self.nflares))
             rand_ed = eds[np.random.randint(0, len(eds), size=self.nflares)]
 
-        self.fake_ampls = rand_ampl
+        self.fake_ampls = rand_ampl + 1
         self.fake_edurs = rand_ed
     
 
@@ -87,7 +89,7 @@ class InjectionRecovery(object):
                 break
 
         rand_t0 = np.array(rand_t0)
-        corrected_t0 = np.zeros(self.nflares, dtype=int)
+        corrected_t0, corrected_ed = [], []
         models  = []
 
         for i in range(self.nflares):
@@ -98,12 +100,15 @@ class InjectionRecovery(object):
             exp_decay  = np.random.uniform(low=0.01, high=0.05, size=1)[0]
 
             model = self.flare_model(self.time, t0, a0, ed, gauss_rise, exp_decay) 
+            new_flux = np.copy(self.flux) + np.abs(model)
 
-            corrected_t0[i] = np.argmax(model)
+            # Corrected fake flare parameters due to binning
+            corrected_t0.append(self.time[np.argmax(new_flux-self.flux)])
+            x = self.time * 60.0 * 60.0 * 24.0
+            corrected_ed.append(np.nansum(np.diff(x) * np.abs(model[:-1])))
 
-            new_flux = np.copy(self.flux)
-            new_flux = new_flux + np.abs(model)
             models.append(new_flux)
 
         self.models  = np.array(models)
-        self.fake_t0 = self.time[corrected_t0]
+        self.fake_t0 = np.array(corrected_t0)
+        self.fake_edurs = np.array(corrected_ed)

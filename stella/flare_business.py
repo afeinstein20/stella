@@ -362,13 +362,16 @@ class YoungStars(object):
             self.gp_it_glux  = self.norm_flux - (mu+1)
 
 
-    def equivalent_duration(self, time, flux, error):
+    def equivalent_duration(self, time, flux, error, fake=False):
         """Calculates the equivalent width and error for a given flare.
         """
         x = time * 60.0 * 60.0 * 24.0
-        residual = flux/np.nanmedian(flux)  - 1.0
-        ed = np.nansum(np.diff(x) * residual[:-1])
-        err = np.nansum( (residual / error)**2.0 / np.size(error))
+
+        if fake is False:
+            flux = flux - 1.0
+
+        ed = np.nansum(np.diff(x) * flux[:-1])
+        err = np.nansum( (flux / error)**2.0 / np.size(error))
         return ed, err
 
 
@@ -482,7 +485,7 @@ class YoungStars(object):
             rec = rec.copy()
 
             if len(rec.tstart.values) != 0:
-                rec['rec'] = 1
+                rec['rec'] = i
 
             rec['inj_amp'] = injected_amp
             rec['inj_ed']  = injected_ed
