@@ -484,14 +484,16 @@ class YoungStars(object):
         ir = InjectionRecovery(self, nflares=nflares)
         ir.generate_fake_flares(ed, ampl, mode=mode)
         ir.inject_flares()
-        
+
+        amps = []
+
         for model in ir.models:
             detrended_flux, detrended_flux_err = self.savitsky_golay(fake=True, flux=model)
             flares = self.identify_flares(fake=True, detrended_flux=detrended_flux,
                                           detrended_flux_err=detrended_flux_err)
-            
-                
+            amps.append(flares.ampl_rec.values)
         self.recovery_tests = ir
+        return np.array(amps)
 
 
     def plot_flares(self, time=None, flux=None, high_amp=0.009, mask=None, flare_table=None):
