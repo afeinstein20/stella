@@ -28,7 +28,7 @@ plt.rcParams['figure.figsize'] = (14,8)
 __all__ = ['YoungStars']
 
 class YoungStars(object):
-    
+
     def __init__(self, fn=None, fn_dir=None):
         if fn_dir is None:
             self.directory = '.'
@@ -51,7 +51,7 @@ class YoungStars(object):
         self.normalize_lc()
         self.measure_rotation()
         self.age()
-    
+
         self.gp_flux = None
         self.flares  = None
         self.flc     = None
@@ -61,7 +61,7 @@ class YoungStars(object):
 
 
     def load_data(self):
-        """Allows for the option to pass in multiple files. 
+        """Allows for the option to pass in multiple files.
         """
         if self.multi is True:
             self.star, self.data = [], []
@@ -80,7 +80,7 @@ class YoungStars(object):
             self.tic  = self.star.tic
             self.coords = self.star.coords
         return
-            
+
 
     def find_breaks(self, time=None):
         """Finds gaps due to data downlink or other telescope issues.
@@ -89,16 +89,14 @@ class YoungStars(object):
             time = self.time
         diff = np.diff(time)
         ind  = np.where((diff >= 2.5*np.std(diff)+np.nanmean(diff)))[0]
+        ind = np.append(0, ind)
+        ind = np.append(ind, len(time))
 
         subsets = []
-        for i in range(len(ind)):
-            if i == 0:
-                region = np.arange(0, ind[i]+1, 1)
-            elif i > 0 and i < (len(ind)-1):
-                region = np.arange(ind[i], ind[i+1]+1, 1)
-            elif i == (len(ind)-1):
-                region = np.arange(ind[i-1], len(time), 1)
+        for i in range(len(ind)-1):
+            region = np.arange(ind[i], ind[i+1], 1)
             subsets.append(region)
+
         return np.array(subsets)
 
 
@@ -107,19 +105,20 @@ class YoungStars(object):
         """
         def normalized_subset(regions, t, flux, err, cads):
             time, norm_flux = np.array([]), np.array([])
-            error, cadences = np.array([]), np.array([])
+            norm_flux_err, cadences = np.array([]), np.array([])
 
             for reg in regions:
-                f = flux[reg]
-                norm_flux = np.append( f/np.nanmedian(f), norm_flux)
-                time      = np.append(t[reg], time)
-                error     = np.append(err[reg], error)
-                cadences  = np.append(cads[reg], cadences)
-            return time, norm_flux, error, cadences
+                f          = flux[reg]
+                norm_flux  = np.append(f/np.nanmedian(f), norm_flux)
+                time       = np.append(t[reg], time)
+                e          = err[reg]
+                norm_flux_err = np.append(e/np.nanmedian(f), norm_flux_err)
+                cadences   = np.append(cads[reg], cadences)
+            return time, norm_flux, norm_flux_err, cadences
 
 
         self.time, self.norm_flux = np.array([]), np.array([])
-        self.flux_err = np.array([])
+        self.norm_flux_err = np.array([])
         self.cadences = np.array([])
 
         if self.multi is True:
@@ -134,26 +133,29 @@ class YoungStars(object):
                 sector_t, sector_f, sector_e, sector_c = normalized_subset(regions, t, f, err, d.ffiindex[q])
                 self.time = np.append(sector_t, self.time)
                 self.norm_flux = np.append(sector_f, self.norm_flux)
-                self.flux_err  = np.append(sector_e, self.flux_err)
+                self.norm_flux_err  = np.append(sector_e, self.norm_flux_err)
                 self.cadences  = np.append(sector_c, self.cadences)
         else:
             q = self.data.quality == 0
             regions = self.find_breaks(time=self.data.time[q])
-            sector_t, sector_f, sector_e, sector_c = normalized_subset(regions, self.data.time[q], 
+            self.regions = regions+0.0
+            sector_t, sector_f, sector_e, sector_c = normalized_subset(regions, self.data.time[q],
                                                                        self.data.corr_flux[q],
                                                                        self.data.flux_err[q],
                                                                        self.data.ffiindex[q])
             self.time = sector_t
+            print(sector_c)
             self.norm_flux = sector_f
-            self.flux_err  = sector_e
+            self.norm_flux_err  = sector_e
             self.cadences  = sector_c
-            
-        self.time, self.norm_flux = zip(*sorted(zip(self.time, self.norm_flux)))
-        self.time, self.norm_flux = np.array(self.time), np.array(self.norm_flux)
+
+        self.time, self.norm_flux, self.norm_flux_err = zip(*sorted(zip(self.time, self.norm_flux, self.norm_flux_err)))
+        self.time, self.norm_flux, self.norm_flux_err = np.array(self.time), np.array(self.norm_flux), np.array(self.norm_flux_err)
         self.cadences = np.sort(self.cadences)
 
-    def query_information(self):        
-        """Queries the TIC for basic stellar parameters. 
+
+    def query_information(self):
+        """Queries the TIC for basic stellar parameters.
         """
         result = Catalogs.query_object('tic'+str(int(self.tic)),
                                        radius=0.0001,
@@ -165,7 +167,7 @@ class YoungStars(object):
         self.jmag_err = result['e_Jmag'][0]
         self.hmag_err = result['e_Hmag'][0]
         self.kmag_err = result['e_Kmag'][0]
-        
+
         # 2MASS Magnitude
         self.vmag = result['Vmag'][0]
         self.vmag_err = result['e_Vmag'][0]
@@ -181,7 +183,7 @@ class YoungStars(object):
         # GAIA proper motions
         self.pmra  = result['pmRA'][0]
         self.pmdec = result['pmDEC'][0]
-        
+
         # GAIA parallax
         self.plx = result['plx'][0]
 
@@ -202,11 +204,11 @@ class YoungStars(object):
         power  = power[cut_greater]
         period = period[cut_greater]
         pmax   = period[np.argmax(power)]
-        
+
         self.LS_power   = power
         self.LS_period  = period
         self.p_rot      = pmax
-        
+
 
     def age(self):
         """Determines the age (in Myr) using relation from Mamajek & Hillenbrand (2009).
@@ -217,9 +219,9 @@ class YoungStars(object):
         else:
             raise Exception("Please measure rotation period before getting age.")
 
-                  
-    
-    def savitsky_golay(self, sigma=2.5, window_length=15, niters=5, 
+
+
+    def savitsky_golay(self, sigma=2.5, window_length=15, niters=5,
                        fake=False, flux=None, flux_err=None):
         """Simple Savitsky-Golay filter for detrending.
         """
@@ -261,11 +263,11 @@ class YoungStars(object):
         x    = np.array(time)
         y    = np.array(flux)
         yerr = np.array(flux_err)
-        
+
         x = np.array(x[~mask])
         y = np.array(y[~mask])
         yerr = np.array(yerr[~mask])
-        
+
         x = np.ascontiguousarray(x, dtype=np.float64)
         y = np.ascontiguousarray(y, dtype=np.float64)
         yerr = np.ascontiguousarray(yerr, dtype=np.float64)
@@ -274,9 +276,9 @@ class YoungStars(object):
         mu = np.nanmean(y)
         y = (y/mu - 1) * 1e3
         yerr = yerr * 1e3 / mu
-        
-        results   = xo.estimators.lomb_scargle_estimator(x, y, 
-                                                         min_period=self.p_rot*0.5, 
+
+        results   = xo.estimators.lomb_scargle_estimator(x, y,
+                                                         min_period=self.p_rot*0.5,
                                                          max_period=self.p_rot*2)
         peak_per  = results['peaks'][0]['period']
         per_uncert= results['peaks'][0]['period_uncert']
@@ -291,16 +293,16 @@ class YoungStars(object):
             # white noise
             logs2 = pm.Normal("logs2", mu=np.log(np.nanmin(yerr)/2.0), sd=10.0)
 
-            
+
             # The parameters of the RotationTerm kernel
             logamp = pm.Normal("logamp", mu=np.log(np.var(y)/2.0), sd=20.0)
 
             # Bounds on period
-#            BoundedNormal = pm.Bound(pm.Normal, lower=np.log(peak_per*0.5), 
+#            BoundedNormal = pm.Bound(pm.Normal, lower=np.log(peak_per*0.5),
 #                                     upper=np.log(peak_per*3))
 #            logperiod = BoundedNormal("logperiod", mu=np.log(2*peak["period"]), sd=per_uncert)
-        
-            # Q from simple harmonic oscillator 
+
+            # Q from simple harmonic oscillator
             logQ0 = pm.Normal("logQ0", mu=1.0, sd=10.0)
             logdeltaQ = pm.Normal("logdeltaQ", mu=2.0, sd=10.0)
 
@@ -328,7 +330,7 @@ class YoungStars(object):
 
             # Compute the mean model prediction for plotting purposes
             pm.Deterministic("pred", gp.predict())
-        
+
             # Fit mean model first
             # Fit period and amplitude together
             # Fit over Q
@@ -375,7 +377,7 @@ class YoungStars(object):
         return ed, err
 
 
-    def identify_flares(self, detrended_flux=None, detrended_flux_err=None, 
+    def identify_flares(self, detrended_flux=None, detrended_flux_err=None,
                         method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
                         cut_ends=5, fake=False):
         """Identifies flare candidates in a given light curve.
@@ -406,7 +408,7 @@ class YoungStars(object):
         self.brks = self.find_breaks()
 
         istart, istop = np.array([], dtype=int), np.array([], dtype=int)
-        
+
         for b in self.brks:
             time  = self.time[b]
             flux  = detrended_flux[b]
@@ -440,7 +442,7 @@ class YoungStars(object):
                 ed_rec     = np.append(ed_rec, ed)
                 ed_rec_err = np.append(ed_rec_err, ed_err)
                 ampl_rec   = np.append(ampl_rec, np.nanmax(flux))
-                
+
 
         flares['istart']     = istart
         flares['istop']      = istop
@@ -480,7 +482,7 @@ class YoungStars(object):
             detrended_flux, detrended_flux_err = self.savitsky_golay(fake=True, flux=model)
             f = self.identify_flares(fake=True, detrended_flux=detrended_flux,
                                           detrended_flux_err=detrended_flux_err)
-            
+
             rec = f[ (f.tstart.values <= injected_t0) & (f.tstop.values >= injected_t0) ]
             rec = rec.copy()
 
@@ -557,10 +559,10 @@ class YoungStars(object):
                 raise ValueError("You have no detrended flux to compare to. Try again.")
         else:
             resid = y - model
-    
+
         plt.figure(figsize=(14,8))
         gs  = gridspec.GridSpec(3,3)
-    
+
         ax1 = plt.subplot(gs[0:2,0:])
         ax1.set_xticks([])
         ax1.plot(x, y, 'k', linewidth=3, label='Raw', alpha=0.8)
@@ -568,5 +570,5 @@ class YoungStars(object):
         plt.legend()
         ax2 = plt.subplot(gs[2, 0:])
         ax2.plot(x, resid, c='turquoise', linewidth=2)
-        
+
         plt.show()
