@@ -4,6 +4,8 @@ import pandas as pd
 from astropy import units as u
 from astropy import constants as c
 
+from .identify import *
+
 from scipy.stats import binned_statistic
 
 __all__ = ['InjectionRecovery']
@@ -21,6 +23,12 @@ class InjectionRecovery(object):
 
         self.generate_fake_flares(ed, ampl, mode=mode)
         self.inject_flares(breaks)
+
+        columns = ['istart', 'istop', 'tstart', 'tstop',
+                   'ed_rec_s', 'ed_rec_err', 'ampl_rec', 'energy_ergs', 'rec']
+        self.rec_table = pd.DataFrame(columns=columns)
+
+        self.refind_flares()
 
 
     def flare_model(self, time, t0, amp, ed, gauss_rise, exp_decay, 
@@ -112,3 +120,52 @@ class InjectionRecovery(object):
         self.models  = np.array(models)
         self.fake_t0 = np.array(corrected_t0)
         self.fake_edurs = np.array(corrected_ed)
+
+
+    def recovery_probability(self, results, bins):
+        """Returns the probability a flare of given amp & ed would be detected.
+        """
+        ed = np.log10(results.ed_rec_s.values)
+        am = results.ampl_rec.values
+        prob, xedges, yedges = np.histogram2d(ed, am, bins=bins)
+        prob = (prob - np.nanmin(prob)) / (np.nanmax(prob) - np.nanmin(prob))
+        prob /= np.sum(prob)
+        self.probability = prob
+        return prob, xedges, yedges
+
+
+    def refind_flares(self):
+        """Identifies flares in model light curves.
+        """
+        potential = []
+
+        known_tstart = self.yso.flares.tstart.values
+        known_tstop  = self.yso.flares.tstop.values   
+
+        id = IdentifyFlares(self.yso)
+
+        for i, model in enumerate(self.models):
+            inj_ed = self.fake_edurs[i]
+            inj_am = self.fake_ampls[i]
+            inj_t0 = self.fake_t0[i]
+
+            de_flux, de_flux_err = self.yso.savitsky_golay(fake=True,
+                                                           flux=model)
+
+            brks, f = id.identify_flares(detrended_flux=de_flux,
+                                         detrended_flux_err=de_flux_err,
+                                         N1=3, N2=1, N3=1, sigma=2.5, fake=True)
+
+            rec = f[ (f.tstart.values <= inj_t0) & (f.tstop.values >= inj_t0) ]
+            rec = rec.copy()
+
+            if len(rec.tstart.values) != 0:
+                rec['rec'] = i
+
+            rec['inj_amp'] = inj_am
+            rec['inj_ed']  = inj_ed
+            rec['inj_t0']  = inj_t0
+
+            self.rec_table = self.rec_table.append(rec, sort=True)
+
+        return
