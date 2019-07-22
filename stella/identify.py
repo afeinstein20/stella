@@ -11,19 +11,7 @@ class IdentifyFlares(object):
     def __init__(self, yso):
         self.yso = yso
         
-        
-    def identify_flares(self, detrended_flux=None, detrended_flux_err=None,
-                        method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
-                        cut_ends=5, fake=False):
-        """Identifies flare candidates in a given light curve.                                                                                                                         
-        """
-        
-        def tag_flares(flux, sig):
-            mask = sigma_clip(flux, sigma=sig).mask
-            median = np.nanmedian(flux[mask])
-            isflare = np.where( (mask==True) & ( (flux-median) > 0.))[0]
-            return isflare
-
+    def pick_flux(self, detrended_flux, method):
         if detrended_flux is None:
             if (self.yso.gp_flux is not None) and (method.lower() == "gp"):
                 detrended_flux = self.yso.gp_flux
@@ -32,6 +20,21 @@ class IdentifyFlares(object):
             elif (detrended_flux is None) and (self.yso.sg_flux is None) and (self.yso.gp_flux is None):
                 raise Exception("Pleae either run a detrending method or pass in a 'detrend_flux' argument.")
 
+        return detrended_flux
+
+    def tag_flares(self, flux, sig):
+        mask = sigma_clip(flux, sigma=sig).mask
+        median = np.nanmedian(flux[mask])
+        isflare = np.where( (mask==True) & ( (flux-median) > 0.))[0]
+        return isflare
+
+    def identify_flares(self, detrended_flux=None, detrended_flux_err=None,
+                        method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
+                        cut_ends=5, fake=False):
+        """Identifies flare candidates in a given light curve.                                                                                                                         
+        """
+        
+        detrended_flux = self.pick_flux(detrended_flux, method)
 
         if detrended_flux_err is None:
             detrended_flux_err = self.yso.flux_err
@@ -48,7 +51,7 @@ class IdentifyFlares(object):
             flux  = detrended_flux[b]
             error = detrended_flux_err[b]
 
-            isflare = tag_flares(flux, sigma)
+            isflare = self.tag_flares(flux, sigma)
             candidates = isflare[isflare > 0]
 
             if len(candidates) < 1:
@@ -93,4 +96,11 @@ class IdentifyFlares(object):
             energy = energy.to(u.erg)
             flares['energy_ergs'] = energy.value
 
-        return flares
+        return brks, flares
+
+
+    def gunther_id(self, detrended_flux=None, detrended_flux_err=None,
+                   method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
+                   cut_ends=5, fake=False):
+        
+        return
