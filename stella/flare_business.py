@@ -21,6 +21,7 @@ from altaipony.flarelc import FlareLightCurve
 
 from .injection_recovery import *
 from .identify import *
+from .plotting import *
 
 import pymc3 as pm
 import theano.tensor as tt
@@ -38,50 +39,41 @@ class YoungStars(object):
     def __init__(self, time=None, flux=None, flux_err=None, tic=None,
                  cadences=None, fn=None, fn_dir=None, quality=None):
 
-        if quality is None:
-            quality = np.zeros(len(time))
-        q = quality == 0
+        self.file = np.array(fn)
+        self.time = time
+        self.flux = flux
+        self.directory= fn_dir
+        self.flux_err = flux_err
+        self.cadences = cadences
+        self.quality  = quality
 
-        self.input_time=time[q]
-        self.input_flux=flux[q]
-        self.input_flux_err=flux_err[q]
-        self.input_cads=cadences[q]
-        self.file=fn
-        self.directory=fn_dir
-
-        if fn_dir is None:
-            self.directory = '.'
-        else:
-            self.directory = fn_dir
-
-        if time is not None:
-            self.time = time
-            self.flux = flux
-
-        elif fn is not None:
-            self.file = fn
-            self.load_data()
-
-            if (type(fn) == list) or (type(fn) == np.ndarray):
-                if len(fn) > 1:
-                    self.multi = True
-                else:
-                    self.multi = False
-                    self.file  = fn[0]
-            else:
-                self.multi = False
-
-
+        if (time is not None) and (flux is not None):
             if cadences is None:
                 self.cadences = np.arange(0, len(time), 1, dtype=int)
-                
+
+            if tic is not None:
+                self.tic = tic
+                self.coords, self.tmag, _ = eleanor.mast.coords_from_tic(tic)
+
+        elif fn is not None:
+            # Sets the default directory to current working directory
+            if fn_dir is None:
+                fn_dir = '.'
+            self.directory = fn_dir
+
+            if len(self.file) > 1:
+                self.multi = True
+            else:
+                self.multi = False
+                self.file  = self.file[0]
+
+            self.load_data()
+
 
         self.normalize_lc()
         self.measure_rotation()
 
-        if (tic is not None) and (fn is None):
-            self.tic = tic
-            self.coords, self.tmag, _ = eleanor.mast.coords_from_tic(tic)
+        if self.tic is not None:
             self.query_information()
             self.age()
     
@@ -161,7 +153,7 @@ class YoungStars(object):
         self.flux_err = np.array([])
         self.cadences = np.array([])
 
-        if (self.file is not None) and (self.input_flux is None):
+        if self.file is not None:
 
             if self.multi is True:
                 for d in self.data:
@@ -193,13 +185,13 @@ class YoungStars(object):
             self.time, self.norm_flux = np.array(self.time), np.array(self.norm_flux)
             self.cadences = np.sort(self.cadences)
 
-        elif (self.input_flux is not None):
+        else:
             regions = self.find_breaks(time=self.time)
             self.time, self.norm_flux, self.flux_err, self.cadences = normalized_subset(regions, 
-                                                                                        self.input_time,
-                                                                                        self.input_flux, 
-                                                                                        self.input_flux_err,
-                                                                                        self.input_cads)
+                                                                                        self.time,
+                                                                                        self.flux,
+                                                                                        self.flux_err,
+                                                                                        self.cadences)
             
     def query_information(self):        
         """Queries the TIC for basic stellar parameters. 
@@ -500,10 +492,15 @@ class YoungStars(object):
                         cut_ends=5, fake=False):
         
         id = IdentifyFlares(self)
-        self.flares = id.identify_flares(detrended_flux=None, detrended_flux_err=None,
-                                         method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
-                                         cut_ends=5, fake=False)
-        
+        if fake == False:
+            self.brks, self.flares = id.identify_flares(detrended_flux=None, detrended_flux_err=None,
+                                                        method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
+                                                        cut_ends=5, fake=False)
+        else:
+            brks, flares = id.identify_flares(detrended_flux=None, detrended_flux_err=None,
+                                                        method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
+                                                        cut_ends=5, fake=True)
+            return flares
         
     def recovery_probability(self, results, bins):
         """Returns the probability a flare of given amp & ed would be detected.
@@ -523,6 +520,7 @@ class YoungStars(object):
         """
         ed   = [np.nanmin(self.flares.ed_rec_s.values), np.nanmax(self.flares.ed_rec_s.values)]
         ampl = [np.nanmin(self.flares.ampl_rec.values)-1, np.nanmax(self.flares.ampl_rec.values)-1]
+
         ir   = InjectionRecovery(self, nflares=nflares, mode=mode, ed=ed, ampl=ampl, breaks=self.brks)
 
         known_tstart, known_tstop = self.flares.tstart.values, self.flares.tstop.values
@@ -554,7 +552,7 @@ class YoungStars(object):
             rec_table = rec_table.append(rec, sort=True)
             
         rec_table = rec_table[rec_table.ed_rec_s > 0.]
-        bins = len(rec_table)/recovery_resolution
+        bins = np.round(len(rec_table)/recovery_resolution)
         prob, xedges, yedges = self.recovery_probability(rec_table, bins)
 
         # Finds recovery probability for originally detected flares
@@ -576,83 +574,43 @@ class YoungStars(object):
 
 
 
-    def plot_flares(self, time=None, flux=None, high_amp=0.009, mask=None, flare_table=None):
+    def display_flares(self, time=None, flux=None, high_amp=0.009, flare_table=None, mask=None):
+        """Plots stars where the flares are on the light curve.
+        """
         if time is None:
             time = self.time
         if flux is None:
-            if self.gp_flux is not None:
-                flux = self.gp_flux
-            elif self.sg_flux is not None:
+            if self.gp_flux is None:
                 flux = self.sg_flux
+            elif self.sg_flux is None:
+                flux = self.gp_flux
             else:
                 flux = self.norm_flux
-        if mask is None:
-            mask = np.ones(len(time), dtype=bool)
-        
-        if self.flares is None:
-            return("Please call YoungStars.identify_flares() before calling this function.")
         if flare_table is None:
             flare_table = self.flares
+        if mask is None:
+            mask = np.zeros(len(time), dtype=int)
 
-        plt.figure(figsize=(12,6))
-        plt.plot(time[mask], flux[mask], c='k', alpha=0.8)
-#        plt.title('TIC '+str(self.tic))
-
-        for i,p in flare_table.iterrows():
-            istart, istop = int(p.istart), int(p.istop)
-            plt.plot(time[istart:istop+1], flux[istart:istop+1], '*',
-                     ms=10, c='turquoise')
-            if p.ampl_rec >= high_amp:
-                plt.plot(time[istart:istop+1], flux[istart:istop+1], '*',
-                         ms=10, c='darkorange')
-
-        plt.ylim(np.nanmin(flux[mask])-0.01, np.nanmax(flux[mask])+0.01)
-        plt.xlim(np.nanmin(time[mask]), np.nanmax(time[mask]))
-        plt.ylabel('Noralized Flux')
-        plt.xlabel('Time (BJD - 2457000)')
-        plt.tight_layout()
-        plt.show()
+        plot_flares(time, flux, flare_table, mask)
 
 
-    def plot_periodogram(self, save=False):
-        plt.plot(self.LS_period, self.LS_power, 'k', alpha=0.8)
-        plt.xlabel('Period [days]')
-        plt.ylabel('Lomb-Scargle Power')
-        if save is False:
-            plt.show()
-        else:
-            fn = '{}_periodogram.png'.format(self.tic)
-            path = os.path.join(self.directory, fn)
-            plt.tight_layout()
-            plt.savefig(path, bbox_inches='tight', dpi=200)
+    def periodogram(self, save=False):
+        """Plots periodogram from Lomb-Scargle.
+        """
+        plot_periodogram(self.LS_period, self.LS_power,
+                         save, self.tic)
 
-
-    def plot_residuals(self, x=None, y=None, model=None):
+    def residuals(self, x=None, y=None, model=None):
+        """Plots residuals from a given detrending model.
+        """
         if x is None:
             x = self.time
         if y is None:
             y = self.norm_flux
         if model is None:
-            if (self.gp_flux is None) & (self.sg_flux is not None):
-                model = self.sg_trend
-                resid = y - model
-            elif (self.sg_flux is None) & (self.gp_flux is not None):
-                model = self.gp_model
-                resid = self.sg_flux
-            else:
-                raise ValueError("You have no detrended flux to compare to. Try again.")
-        else:
-            resid = y - model
-    
-        plt.figure(figsize=(14,8))
-        gs  = gridspec.GridSpec(3,3)
-    
-        ax1 = plt.subplot(gs[0:2,0:])
-        ax1.set_xticks([])
-        ax1.plot(x, y, 'k', linewidth=3, label='Raw', alpha=0.8)
-        ax1.plot(x, model, c='orange', label='Model')
-        plt.legend()
-        ax2 = plt.subplot(gs[2, 0:])
-        ax2.plot(x, resid, c='turquoise', linewidth=2)
-        
-        plt.show()
+            if self.sg_flux is None:
+                model = self.gp_flux
+            elif self.gp_flux is None:
+                model = self.sg_flux
+
+        plot_residuals(x, y, model)
