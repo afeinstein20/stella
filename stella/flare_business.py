@@ -11,6 +11,8 @@ from astropy.io import fits
 from astropy import constants as c
 
 from astroquery.mast import Catalogs
+from astroquery.gaia import Gaia
+import wotan
 
 import eleanor
 import exoplanet as xo
@@ -18,9 +20,13 @@ from lightkurve.lightcurve import LightCurve as LC
 from altaipony.flarelc import FlareLightCurve
 
 from .injection_recovery import *
+from .identify import *
 
 import pymc3 as pm
 import theano.tensor as tt
+
+import warnings
+warnings.filterwarnings("ignore", module='astropy.io.votable.tree')
 
 plt.rcParams['font.size'] = 15
 plt.rcParams['figure.figsize'] = (14,8)
@@ -29,28 +35,55 @@ __all__ = ['YoungStars']
 
 class YoungStars(object):
     
-    def __init__(self, fn=None, fn_dir=None):
+    def __init__(self, time=None, flux=None, flux_err=None, tic=None,
+                 cadences=None, fn=None, fn_dir=None, quality=None):
+
+        if quality is None:
+            quality = np.zeros(len(time))
+        q = quality == 0
+
+        self.input_time=time[q]
+        self.input_flux=flux[q]
+        self.input_flux_err=flux_err[q]
+        self.input_cads=cadences[q]
+        self.file=fn
+        self.directory=fn_dir
+
         if fn_dir is None:
             self.directory = '.'
         else:
             self.directory = fn_dir
 
-        self.file = fn
+        if time is not None:
+            self.time = time
+            self.flux = flux
 
-        if (type(fn) == list) or (type(fn) == np.ndarray):
-            if len(fn) > 1:
-                self.multi = True
+        elif fn is not None:
+            self.file = fn
+            self.load_data()
+
+            if (type(fn) == list) or (type(fn) == np.ndarray):
+                if len(fn) > 1:
+                    self.multi = True
+                else:
+                    self.multi = False
+                    self.file  = fn[0]
             else:
                 self.multi = False
-                self.file  = fn[0]
-        else:
-            self.multi = False
 
-        self.load_data()
-        self.query_information()
+
+            if cadences is None:
+                self.cadences = np.arange(0, len(time), 1, dtype=int)
+                
+
         self.normalize_lc()
         self.measure_rotation()
-        self.age()
+
+        if (tic is not None) and (fn is None):
+            self.tic = tic
+            self.coords, self.tmag, _ = eleanor.mast.coords_from_tic(tic)
+            self.query_information()
+            self.age()
     
         self.gp_flux = None
         self.flares  = None
@@ -78,6 +111,7 @@ class YoungStars(object):
             self.star = eleanor.Source(fn=self.file, fn_dir=self.directory)
             self.data = eleanor.TargetData(self.star)
             self.tic  = self.star.tic
+            print("TIC", self.tic)
             self.coords = self.star.coords
         return
             
@@ -89,13 +123,12 @@ class YoungStars(object):
             time = self.time
         diff = np.diff(time)
         ind  = np.where((diff >= 2.5*np.std(diff)+np.nanmean(diff)))[0]
-
         subsets = []
         for i in range(len(ind)):
             if i == 0:
-                region = np.arange(0, ind[i]+1, 1)
+                region = np.arange(0, ind[i], 1)
             elif i > 0 and i < (len(ind)-1):
-                region = np.arange(ind[i], ind[i+1]+1, 1)
+                region = np.arange(ind[i-1], ind[i], 1)
             elif i == (len(ind)-1):
                 region = np.arange(ind[i-1], len(time), 1)
             subsets.append(region)
@@ -109,12 +142,18 @@ class YoungStars(object):
             time, norm_flux = np.array([]), np.array([])
             error, cadences = np.array([]), np.array([])
 
-            for reg in regions:
-                f = flux[reg]
-                norm_flux = np.append( f/np.nanmedian(f), norm_flux)
-                time      = np.append(t[reg], time)
-                error     = np.append(err[reg], error)
-                cadences  = np.append(cads[reg], cadences)
+            if len(regions) > 0:
+                for reg in regions:
+                    f = flux[reg]
+                    norm_flux = np.append( f/np.nanmedian(f), norm_flux)
+                    time      = np.append(t[reg], time)
+                    error     = np.append(err[reg], error)
+                    cadences  = np.append(cads[reg], cadences)
+            else:
+                time      = t
+                norm_flux = flux/np.nanmedian(flux)
+                error     = err
+                cadences  = cads
             return time, norm_flux, error, cadences
 
 
@@ -122,42 +161,54 @@ class YoungStars(object):
         self.flux_err = np.array([])
         self.cadences = np.array([])
 
-        if self.multi is True:
-            for d in self.data:
-                q = d.quality == 0
-                t = d.time[q]
-                f = d.corr_flux[q]
-                err = d.flux_err[q]
+        if (self.file is not None) and (self.input_flux is None):
 
-                # Searches for breaks based on differences in time array
-                regions = self.find_breaks(time=t)
-                sector_t, sector_f, sector_e, sector_c = normalized_subset(regions, t, f, err, d.ffiindex[q])
-                self.time = np.append(sector_t, self.time)
-                self.norm_flux = np.append(sector_f, self.norm_flux)
-                self.flux_err  = np.append(sector_e, self.flux_err)
-                self.cadences  = np.append(sector_c, self.cadences)
-        else:
-            q = self.data.quality == 0
-            regions = self.find_breaks(time=self.data.time[q])
-            sector_t, sector_f, sector_e, sector_c = normalized_subset(regions, self.data.time[q], 
-                                                                       self.data.corr_flux[q],
-                                                                       self.data.flux_err[q],
-                                                                       self.data.ffiindex[q])
+            if self.multi is True:
+                for d in self.data:
+                    q = d.quality == 0
+                    t = d.time[q]
+                    f = d.corr_flux[q]
+                    err = d.flux_err[q]
+                    
+                    # Searches for breaks based on differences in time array
+                    regions = self.find_breaks(time=t)
+                    sector_t, sector_f, sector_e, sector_c = normalized_subset(regions, t, f, err, d.ffiindex[q])
+                    self.time = np.append(sector_t, self.time)
+                    self.norm_flux = np.append(sector_f, self.norm_flux)
+                    self.flux_err  = np.append(sector_e, self.flux_err)
+                    self.cadences  = np.append(sector_c, self.cadences)
+            else:
+                q = self.data.quality == 0
+                regions = self.find_breaks(time=self.data.time[q])
+                sector_t, sector_f, sector_e, sector_c = normalized_subset(regions, self.data.time[q], 
+                                                                           self.data.corr_flux[q],
+                                                                           self.data.flux_err[q],
+                                                                           self.data.ffiindex[q])
             self.time = sector_t
             self.norm_flux = sector_f
             self.flux_err  = sector_e
             self.cadences  = sector_c
             
-        self.time, self.norm_flux = zip(*sorted(zip(self.time, self.norm_flux)))
-        self.time, self.norm_flux = np.array(self.time), np.array(self.norm_flux)
-        self.cadences = np.sort(self.cadences)
+            self.time, self.norm_flux = zip(*sorted(zip(self.time, self.norm_flux)))
+            self.time, self.norm_flux = np.array(self.time), np.array(self.norm_flux)
+            self.cadences = np.sort(self.cadences)
 
+        elif (self.input_flux is not None):
+            regions = self.find_breaks(time=self.time)
+            self.time, self.norm_flux, self.flux_err, self.cadences = normalized_subset(regions, 
+                                                                                        self.input_time,
+                                                                                        self.input_flux, 
+                                                                                        self.input_flux_err,
+                                                                                        self.input_cads)
+            
     def query_information(self):        
         """Queries the TIC for basic stellar parameters. 
         """
         result = Catalogs.query_object('tic'+str(int(self.tic)),
                                        radius=0.0001,
                                        catalog="TIC")
+        self.tmag = result['Tmag'][0]
+
         # APASS Magnitudes
         self.jmag = result['Jmag'][0]
         self.hmag = result['Hmag'][0]
@@ -169,27 +220,53 @@ class YoungStars(object):
         # 2MASS Magnitude
         self.vmag = result['Vmag'][0]
         self.vmag_err = result['e_Vmag'][0]
+        self.bmag = result['Bmag'][0]
+        self.bmag_err = result['e_Bmag'][0]
+
+
+        coord = SkyCoord(self.coords[0], self.coords[1], unit=(u.deg, u.deg),
+                         frame='icrs')
+        radius = u.Quantity(22, u.arcsec)
+        j = Gaia.cone_search_async(coord, radius)
+        result = j.get_results()
 
         # Gaia magnitudes
-        self.gaia_bp = result['gaiabp'][0]
-        self.gaia_rp = result['gaiarp'][0]
-        self.gaia_g  = result['GAIAmag'][0]
-        self.gaia_bp_err = result['e_gaiabp'][0]
-        self.gaia_rp_err = result['e_gaiarp'][0]
-        self.gaia_g_err  = result['e_GAIAmag'][0]
+        self.gaia_bp = np.round(result['phot_bp_mean_mag'][0],4)
+        self.gaia_rp = np.round(result['phot_rp_mean_mag'][0],4)
+        self.gaia_g  = np.round(result['phot_g_mean_mag'][0],4)
 
         # GAIA proper motions
-        self.pmra  = result['pmRA'][0]
-        self.pmdec = result['pmDEC'][0]
-        
+        self.pmra  = result['pmra'][0]
+        self.pmdec = result['pmdec'][0]
+        self.pmra_err = result['pmra_error'][0]
+        self.pmdec_err = result['pmdec_error'][0]
+
         # GAIA parallax
-        self.plx = result['plx'][0]
+        self.plx = result['parallax'][0]
+        self.plx_err = result['parallax_error'][0]
+
+        # GAIA radial velocity
+        self.rv = result['radial_velocity'][0]
+        self.rv_err = result['radial_velocity_error'][0]
 
         # GAIA temperature
-        self.teff = result['Teff'][0]
-        self.e_teff = result['e_Teff'][0]
-        self.lum  = result['lum'][0]
-        self.e_lum = result['e_lum'][0]
+        self.teff = np.round(result['teff_val'][0],4)
+        self.teff_err = [np.round(result['teff_percentile_lower'][0],4), 
+                         np.round(result['teff_percentile_upper'][0],4)]
+        self.lum  = np.round(result['lum_val'][0],4)
+        self.lum_err = [np.round(result['lum_percentile_lower'][0],4), 
+                        np.round(result['lum_percentile_upper'][0],4)]
+        self.rad = np.round(result['radius_val'][0],4)
+        self.rad_err = [np.round(result['radius_percentile_lower'][0],4), 
+                        np.round(result['radius_percentile_upper'][0],4)]
+
+        if (type(self.lum) == np.ma.core.MaskedConstant) and (type(self.teff) != np.ma.core.MaskedConstant):
+            if type(self.rad) != np.ma.core.MaskedConstant:
+                lum = 4 * np.pi * (self.rad * c.R_sun)**2 * (self.teff * u.K)**4 * c.sigma_sb
+                self.lum = lum / c.L_sun
+            else:
+                print("rad is bad; teff is good; implement here")
+                
 
 
     def measure_rotation(self, fmin=1./100., fmax=1.0/0.1, cut=30):
@@ -211,7 +288,7 @@ class YoungStars(object):
     def age(self):
         """Determines the age (in Myr) using relation from Mamajek & Hillenbrand (2009).
         """
-        denom = 0.407 * np.abs((self.gaia_bp-self.vmag) - 0.495)**0.325
+        denom = 0.407 * np.abs((self.bmag-self.vmag) - 0.495)**0.325
         if self.p_rot is not None:
             self.age = (self.p_rot/denom)**(1.0/0.566)
         else:
@@ -238,6 +315,52 @@ class YoungStars(object):
             self.sg_trend    = np.array(trend.flux)
         else:
             return np.array(lc.flux), np.array(lc.flux_err)
+
+
+    def wotan(self, time=None, flux=None, flux_err=None,
+              mask=None, sigma=3, niters=8, iterative=False, kernel='squared_exp',
+              kernel_size=10.0, window_length=15, method='gp'):
+        """Applies GP model to trend normalized light curve.
+        """
+        def gp(m, k, ks):
+            nonlocal time, flux
+            f, t = wotan.flatten(time, flux, kernel_size=ks, return_trend=True,
+                                 method=m, kernel=k)
+            return f, t
+
+        def sg(wl):
+            nonlocal time, flux
+            f, t = wotan.flatten(time, flux, return_trend=True, method='savgol',
+                                 window_length=wl)
+            return f, t
+
+        if flux is None:
+            flux = self.norm_flux
+        if time is None:
+            time = self.time
+        if flux_err is None:
+            flux_err = self.flux_err
+        if mask is None:
+            mask = np.zeros(len(time), dtype=bool)
+
+        if (len(time) != len(flux)) or (len(time) != len(flux_err)):
+            raise ValueError("Please ensure you're passing in arrays of the same length.")
+
+        self.mask = mask
+
+        gp_flux, gp_trend = np.array([]), np.array([])
+
+        for i,b in enumerate(self.brks):
+            if method == 'savgol':
+                flattened, trend = sg(window_length)
+            if method == 'gp':
+                flattened, trend = gp(method, kernel, kernel_size)
+
+            gp_flux  = np.append(gp_flux, flattened[b])
+            gp_trend = np.append(gp_trend, trend[b])
+ 
+        self.gp_flux  = gp_flux
+        self.gp_trend = gp_trend 
 
 
     def gp_modeling(self, time=None, flux=None, flux_err=None,
@@ -272,8 +395,8 @@ class YoungStars(object):
         time = np.ascontiguousarray(self.time, dtype=np.float64)
 
         mu = np.nanmean(y)
-        y = (y/mu - 1) * 1e3
-        yerr = yerr * 1e3 / mu
+#        y = (y/mu - 1) * 1e3
+#        yerr = yerr  * 1e3 / mu
         
         results   = xo.estimators.lomb_scargle_estimator(x, y, 
                                                          min_period=self.p_rot*0.5, 
@@ -286,19 +409,18 @@ class YoungStars(object):
         freq, power = results["periodogram"]
 
         with pm.Model() as model:
-            mean = pm.Normal("mean", mu=0.0, sd=5.0)
+            mean = pm.Normal("mean", mu=1.0, sd=5.0)
 
             # white noise
             logs2 = pm.Normal("logs2", mu=np.log(np.nanmin(yerr)/2.0), sd=10.0)
 
-            
             # The parameters of the RotationTerm kernel
-            logamp = pm.Normal("logamp", mu=np.log(np.var(y)/2.0), sd=20.0)
+            logamp = pm.Normal("logamp", mu=np.log(np.var(y)/2.0), sd=50.0)
 
             # Bounds on period
-#            BoundedNormal = pm.Bound(pm.Normal, lower=np.log(peak_per*0.5), 
-#                                     upper=np.log(peak_per*3))
-#            logperiod = BoundedNormal("logperiod", mu=np.log(2*peak["period"]), sd=per_uncert)
+            BoundedNormal = pm.Bound(pm.Normal, lower=np.log(peak_per*0.5), 
+                                     upper=np.log(peak_per*3))
+            logperiod = BoundedNormal("logperiod", mu=np.log(2*peak["period"]), sd=per_uncert)
         
             # Q from simple harmonic oscillator 
             logQ0 = pm.Normal("logQ0", mu=1.0, sd=10.0)
@@ -308,7 +430,7 @@ class YoungStars(object):
             mix = pm.Uniform("mix", lower=0, upper=1.0)
 
             # Track the period as a deterministic
-#            period = pm.Deterministic("period", tt.exp(logperiod))
+            period = pm.Deterministic("period", tt.exp(logperiod))
 
             # Set up the Gaussian Process model
 
@@ -334,22 +456,22 @@ class YoungStars(object):
             # Fit over Q
             # Fit over mean
             # Fit period and amplitude together again
-            map_soln = xo.optimize(start=model.test_point)
+#            map_soln = xo.optimize(start=model.test_point)
             map_soln = xo.optimize(start=model.test_point, vars=[mean])
             map_soln = xo.optimize(start=map_soln, vars=[logamp])
-#            map_soln = xo.optimize(start=map_soln, vars=[logperiod])
+            map_soln = xo.optimize(start=map_soln, vars=[logperiod])
             map_soln = xo.optimize(start=map_soln, vars=[logQ0])
             map_soln = xo.optimize(start=map_soln, vars=[logdeltaQ])
             map_soln = xo.optimize(start=map_soln, vars=[logs2])
             map_soln = xo.optimize(start=map_soln, vars=[mix])
-            map_soln = xo.optimize(start=map_soln, vars=[mean])
-            map_soln = xo.optimize(start=map_soln, vars=[logamp])#, logperiod])
-            map_soln = xo.optimize(start=map_soln, vars=[mix])
+ #           map_soln = xo.optimize(start=map_soln, vars=[mean])
+ #           map_soln = xo.optimize(start=map_soln, vars=[logamp, logperiod])
+ #           map_soln = xo.optimize(start=map_soln, vars=[mix])
 
             map_soln = xo.optimize(start=map_soln)
 
         with model:
-            mu, var = xo.eval_in_model(gp.predict(time, return_var=True), map_soln)
+            mu = xo.eval_in_model(gp.predict(time, return_var=False), map_soln)
 
         if iterative is False:
             self.gp_soln  = map_soln
@@ -362,108 +484,46 @@ class YoungStars(object):
             self.gp_it_glux  = self.norm_flux - (mu+1)
 
 
-    def equivalent_duration(self, time, flux, error, fake=False):
+
+    def equivalent_duration(self, time, flux, error):
         """Calculates the equivalent width and error for a given flare.
         """
         x = time * 60.0 * 60.0 * 24.0
-
-        if fake is False:
-            flux = flux - 1.0
-
+        flux = flux/np.nanmedian(flux) - 1.0
         ed = np.nansum(np.diff(x) * flux[:-1])
         err = np.nansum( (flux / error)**2.0 / np.size(error))
         return ed, err
 
 
-    def identify_flares(self, detrended_flux=None, detrended_flux_err=None, 
+    def identify_flares(self, detrended_flux=None, detrended_flux_err=None,
                         method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
                         cut_ends=5, fake=False):
-        """Identifies flare candidates in a given light curve.
-        """
-
-        def tag_flares(flux, sig):
-            mask = sigma_clip(flux, sigma=sig).mask
-            median = np.nanmedian(flux[mask])
-            isflare = np.where( (mask==True) & ( (flux-median) > 0.) &
-                                (flux > (np.std(flux)+median) ))[0]
-            return isflare
-
-        if detrended_flux is None:
-            if (self.gp_flux is not None) and (method.lower() == "gp"):
-                detrended_flux = self.gp_flux
-            elif (self.sg_flux is not None) and (method.lower() == "savitsky-golay"):
-                detrended_flux = self.sg_flux
-            elif (detrended_flux is None) and (self.sg_flux is None) and (self.gp_flux is None):
-                raise Exception("Pleae either run a detrending method or pass in a 'detrend_flux' argument.")
-
-
-        if detrended_flux_err is None:
-            detrended_flux_err = self.flux_err
-
-        columns = ['istart', 'istop', 'tstart', 'tstop',
-                   'ed_rec_s', 'ed_rec_err', 'ampl_rec', 'energy_ergs']
-        flares = pd.DataFrame(columns=columns)
-        self.brks = self.find_breaks()
-
-        istart, istop = np.array([], dtype=int), np.array([], dtype=int)
         
-        for b in self.brks:
-            time  = self.time[b]
-            flux  = detrended_flux[b]
-            error = detrended_flux_err[b]
-
-            isflare = tag_flares(flux, sigma)
-            candidates = isflare[isflare > 0]
-
-            if len(candidates) < 1:
-                if fake is False:
-                    print("No flares found in ", np.nanmin(time), " - ", np.nanmax(time))
-            else:
-                # Find start & stop indices and combine neighboring candidates
-                sep_cand = np.where(np.diff(candidates) > minsep)[0]
-                istart_gap = candidates[ np.append([0], sep_cand + 1) ]
-                istop_gap = candidates[ np.append(sep_cand,
-                                                  [len(candidates) - 1]) ]
-
-            # CUTS 5 DATA POINTS FROM EACH BREAK
-            ends = ((istart_gap > cut_ends) & ( (istart_gap+np.nanmin(b)) < (np.nanmax(b)-cut_ends)) )
-            istart = np.append(istart, istart_gap[ends] + np.nanmin(b))
-            istop  = np.append(istop , istop_gap[ends]  + np.nanmin(b) + 1)
-
-            ed_rec, ed_rec_err = np.array([]), np.array([])
-            ampl_rec = np.array([])
-            for i in range(len(istart)):
-                time = self.time[istart[i]:istop[i]+1]
-                flux = detrended_flux[istart[i]:istop[i]+1]
-                err  = detrended_flux_err[istart[i]:istop[i]+1]
-                ed, ed_err = self.equivalent_duration(time=time, flux=flux, error=err, fake=fake)
-                ed_rec     = np.append(ed_rec, ed)
-                ed_rec_err = np.append(ed_rec_err, ed_err)
-                ampl_rec   = np.append(ampl_rec, np.nanmax(flux))
-                
-
-        flares['istart']     = istart
-        flares['istop']      = istop
-        flares['ed_rec_s']   = ed_rec
-        flares['ed_rec_err'] = ed_rec_err
-        flares['ampl_rec']   = ampl_rec
-        flares['tstart']     = self.time[istart]
-        flares['tstop']      = self.time[istop]
-
-        energy = (flares.ed_rec_s.values * u.s) * (self.lum * c.L_sun)
-        energy = energy.to(u.erg)
-        flares['energy_ergs'] = energy.value
-
-        if fake is False:
-            self.flares = flares
-        else:
-            return flares
+        id = IdentifyFlares(self)
+        self.flares = id.identify_flares(detrended_flux=None, detrended_flux_err=None,
+                                         method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
+                                         cut_ends=5, fake=False)
+        
+        
+    def recovery_probability(self, results, bins):
+        """Returns the probability a flare of given amp & ed would be detected.
+        """
+        ed = np.log10(results.ed_rec_s.values)
+        am = results.ampl_rec.values
+        prob, xedges, yedges = np.histogram2d(ed, am, bins=bins)
+        prob = (prob - np.nanmin(prob)) / (np.nanmax(prob) - np.nanmin(prob))
+        prob /= np.sum(prob)
+        self.probability = prob
+        return prob, xedges, yedges
 
 
-    def flare_recovery(self, nflares=100, mode='uniform', ed=[0.5, 130.0], ampl=[1e-3, 0.1]):
+    def flare_recovery(self, nflares=100, mode='uniform', ed=[0.5, 130.0], ampl=[1e-3, 0.1],
+                       recovery_resolution=5.0):
         """Determines the flare recovery probability.
         """
-        ir = InjectionRecovery(self, nflares=nflares, mode=mode, ed=ed, ampl=ampl, breaks=self.brks)
+        ed   = [np.nanmin(self.flares.ed_rec_s.values), np.nanmax(self.flares.ed_rec_s.values)]
+        ampl = [np.nanmin(self.flares.ampl_rec.values)-1, np.nanmax(self.flares.ampl_rec.values)-1]
+        ir   = InjectionRecovery(self, nflares=nflares, mode=mode, ed=ed, ampl=ampl, breaks=self.brks)
 
         known_tstart, known_tstop = self.flares.tstart.values, self.flares.tstop.values
 
@@ -492,34 +552,60 @@ class YoungStars(object):
             rec['inj_t0']  = injected_t0
 
             rec_table = rec_table.append(rec, sort=True)
+            
+        rec_table = rec_table[rec_table.ed_rec_s > 0.]
+        bins = len(rec_table)/recovery_resolution
+        prob, xedges, yedges = self.recovery_probability(rec_table, bins)
 
+        # Finds recovery probability for originally detected flares
+        ed = np.log10(self.flares.ed_rec_s)
+        am = self.flares.ampl_rec
+
+        rec_prob = pd.DataFrame(columns=['rec_prob'])
+        rec = []
+        for i in range(len(ed)):
+            xbin = np.where( (ed[i] >= xedges[:-1]) & (ed[i] <= xedges[1:]) )[0]
+            ybin = np.where( (am[i] >= yedges[:-1]) & (am[i] <= yedges[1:]) )[0]
+            if (len(xbin) > 0) & (len(ybin) > 0):
+                rec.append( prob[xbin, ybin][0])
+            else:
+                rec.append(0)
+        rec_prob['rec_prob'] = rec
+        self.flares = self.flares.join(rec_prob)
         self.recovery_tests = ir
-        return rec_table
+
 
 
     def plot_flares(self, time=None, flux=None, high_amp=0.009, mask=None, flare_table=None):
         if time is None:
             time = self.time
         if flux is None:
-            flux = self.flc.detrended_flux
+            if self.gp_flux is not None:
+                flux = self.gp_flux
+            elif self.sg_flux is not None:
+                flux = self.sg_flux
+            else:
+                flux = self.norm_flux
         if mask is None:
-            mask = np.zeros(len(time))
-
-        if self.flc is None:
+            mask = np.ones(len(time), dtype=bool)
+        
+        if self.flares is None:
             return("Please call YoungStars.identify_flares() before calling this function.")
         if flare_table is None:
             flare_table = self.flares
 
         plt.figure(figsize=(12,6))
         plt.plot(time[mask], flux[mask], c='k', alpha=0.8)
-        plt.title('TIC '+str(self.tic))
+#        plt.title('TIC '+str(self.tic))
 
         for i,p in flare_table.iterrows():
-            plt.plot(time[p.istart:p.istop+1], flux[p.istart:p.istop+1], '*',
+            istart, istop = int(p.istart), int(p.istop)
+            plt.plot(time[istart:istop+1], flux[istart:istop+1], '*',
                      ms=10, c='turquoise')
             if p.ampl_rec >= high_amp:
-                plt.plot(time[p.istart:p.istop+1], flux[p.istart:p.istop+1], '*',
+                plt.plot(time[istart:istop+1], flux[istart:istop+1], '*',
                          ms=10, c='darkorange')
+
         plt.ylim(np.nanmin(flux[mask])-0.01, np.nanmax(flux[mask])+0.01)
         plt.xlim(np.nanmin(time[mask]), np.nanmax(time[mask]))
         plt.ylabel('Noralized Flux')
