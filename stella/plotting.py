@@ -41,16 +41,16 @@ def plot_flares(time, flux, flare_table, mask):
         return("Please call YoungStars.identify_flares() before calling this function.")
 
     plt.figure(figsize=(12,6))
-    plt.plot(time[mask], flux[mask], c='k', alpha=0.8)
+    plt.plot(time, flux, 'k')
+    plt.xlim(np.nanmin(time)-0.5, np.nanmax(time)+0.5)
+    plt.ylim(np.nanmin(flux)-0.01, np.nanmax(flux)+0.01)
 
     for i,p in flare_table.iterrows():
-        istart, istop = int(p.istart), int(p.istop)
-        plt.plot(time[istart:istop+1], flux[istart:istop+1], '*',
+        plt.plot(time[p.istart:p.istop+1], flux[p.istart:p.istop+1], '*',
                  ms=10, c='turquoise')
 
-    plt.ylim(np.nanmin(flux[mask])-0.01, np.nanmax(flux[mask])+0.01)
-    plt.xlim(np.nanmin(time[mask]), np.nanmax(time[mask]))
     plt.ylabel('Noralized Flux')
     plt.xlabel('Time (BJD - 2457000)')
     plt.tight_layout()
     plt.show()
+
