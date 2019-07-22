@@ -256,8 +256,6 @@ class YoungStars(object):
             if type(self.rad) != np.ma.core.MaskedConstant:
                 lum = 4 * np.pi * (self.rad * c.R_sun)**2 * (self.teff * u.K)**4 * c.sigma_sb
                 self.lum = lum / c.L_sun
-            else:
-                print("rad is bad; teff is good; implement here")
                 
 
 
@@ -502,17 +500,6 @@ class YoungStars(object):
                                                         cut_ends=5, fake=True)
             return flares
         
-    def recovery_probability(self, results, bins):
-        """Returns the probability a flare of given amp & ed would be detected.
-        """
-        ed = np.log10(results.ed_rec_s.values)
-        am = results.ampl_rec.values
-        prob, xedges, yedges = np.histogram2d(ed, am, bins=bins)
-        prob = (prob - np.nanmin(prob)) / (np.nanmax(prob) - np.nanmin(prob))
-        prob /= np.sum(prob)
-        self.probability = prob
-        return prob, xedges, yedges
-
 
     def flare_recovery(self, nflares=100, mode='uniform', ed=[0.5, 130.0], ampl=[1e-3, 0.1],
                        recovery_resolution=5.0):
@@ -522,34 +509,9 @@ class YoungStars(object):
         ampl = [np.nanmin(self.flares.ampl_rec.values)-1, np.nanmax(self.flares.ampl_rec.values)-1]
 
         ir   = InjectionRecovery(self, nflares=nflares, mode=mode, ed=ed, ampl=ampl, breaks=self.brks)
+        self.ir = ir
 
-        known_tstart, known_tstop = self.flares.tstart.values, self.flares.tstop.values
-
-        columns = ['istart', 'istop', 'tstart', 'tstop',
-                   'ed_rec_s', 'ed_rec_err', 'ampl_rec', 'energy_ergs', 'rec']
-        rec_table = pd.DataFrame(columns=columns)
-
-        potential = []
-        for i, model in enumerate(ir.models):
-            injected_ed  = ir.fake_edurs[i]
-            injected_amp = ir.fake_ampls[i]
-            injected_t0  = ir.fake_t0[i]
-
-            detrended_flux, detrended_flux_err = self.savitsky_golay(fake=True, flux=model)
-            f = self.identify_flares(fake=True, detrended_flux=detrended_flux,
-                                          detrended_flux_err=detrended_flux_err)
-            
-            rec = f[ (f.tstart.values <= injected_t0) & (f.tstop.values >= injected_t0) ]
-            rec = rec.copy()
-
-            if len(rec.tstart.values) != 0:
-                rec['rec'] = i
-
-            rec['inj_amp'] = injected_amp
-            rec['inj_ed']  = injected_ed
-            rec['inj_t0']  = injected_t0
-
-            rec_table = rec_table.append(rec, sort=True)
+################
             
         rec_table = rec_table[rec_table.ed_rec_s > 0.]
         bins = np.round(len(rec_table)/recovery_resolution)
@@ -574,7 +536,7 @@ class YoungStars(object):
 
 
 
-    def display_flares(self, time=None, flux=None, high_amp=0.009, flare_table=None, mask=None):
+    def display_flares(self, time=None, flux=None, flare_table=None, mask=None):
         """Plots stars where the flares are on the light curve.
         """
         if time is None:
@@ -586,13 +548,13 @@ class YoungStars(object):
                 flux = self.gp_flux
             else:
                 flux = self.norm_flux
+
         if flare_table is None:
             flare_table = self.flares
         if mask is None:
             mask = np.zeros(len(time), dtype=int)
 
         plot_flares(time, flux, flare_table, mask)
-
 
     def periodogram(self, save=False):
         """Plots periodogram from Lomb-Scargle.
