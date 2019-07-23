@@ -39,7 +39,6 @@ class YoungStars(object):
     def __init__(self, time=None, flux=None, flux_err=None, tic=None,
                  cadences=None, fn=None, fn_dir=None, quality=None):
 
-        self.file = np.array(fn)
         self.time = time
         self.flux = flux
         self.directory= fn_dir
@@ -48,14 +47,23 @@ class YoungStars(object):
         self.quality  = quality
 
         if (time is not None) and (flux is not None):
+            self.multi = False
+
             if cadences is None:
                 self.cadences = np.arange(0, len(time), 1, dtype=int)
+            if flux_err is None:
+                self.flux_err = np.zeros(len(flux))
 
             if tic is not None:
                 self.tic = tic
                 self.coords, self.tmag, _ = eleanor.mast.coords_from_tic(tic)
+            else:
+                self.tic = tic
+
+            self.file = fn
 
         elif fn is not None:
+            self.file = np.array(fn)
             # Sets the default directory to current working directory
             if fn_dir is None:
                 fn_dir = '.'
@@ -69,13 +77,14 @@ class YoungStars(object):
 
             self.load_data()
 
-
         self.normalize_lc()
         self.measure_rotation()
 
         if self.tic is not None:
             self.query_information()
             self.age()
+        else:
+            print("No TIC was given. Cannot query magnitudes to estimate age or flare energies.")
     
         self.gp_flux = None
         self.flares  = None
@@ -114,7 +123,9 @@ class YoungStars(object):
         if time is None:
             time = self.time
         diff = np.diff(time)
-        ind  = np.where((diff >= 2.5*np.std(diff)+np.nanmean(diff)))[0]
+        std  = np.std(diff)
+        mean = np.nanmean(diff)
+        ind  = np.where((diff > (2.5*std+mean)))[0]
         subsets = []
         for i in range(len(ind)):
             if i == 0:
@@ -148,12 +159,10 @@ class YoungStars(object):
                 cadences  = cads
             return time, norm_flux, error, cadences
 
-
-        self.time, self.norm_flux = np.array([]), np.array([])
-        self.flux_err = np.array([])
-        self.cadences = np.array([])
-
         if self.file is not None:
+            self.time, self.norm_flux = np.array([]), np.array([])
+            self.flux_err = np.array([])
+            self.cadences = np.array([])
 
             if self.multi is True:
                 for d in self.data:
@@ -187,6 +196,7 @@ class YoungStars(object):
 
         else:
             regions = self.find_breaks(time=self.time)
+            
             self.time, self.norm_flux, self.flux_err, self.cadences = normalized_subset(regions, 
                                                                                         self.time,
                                                                                         self.flux,
