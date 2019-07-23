@@ -157,10 +157,21 @@ class InjectionRecovery(object):
                                          N1=3, N2=1, N3=1, sigma=2.5, fake=True)
 
             rec = f[ (f.tstart.values <= inj_t0) & (f.tstop.values >= inj_t0) ]
-            rec = rec.copy()
 
             if len(rec.tstart.values) != 0:
-                rec['rec'] = i
+                rec = rec.copy()
+                rec['rec'] = 1
+            elif len(rec.tstart.values) == 0:
+                rec = f.iloc[0].copy()
+                rec['rec'] = 0
+                rec['ampl_rec'] = 0.
+                rec['ed_rec_s'] = 0.
+                rec['ed_rec_err']  = 0.
+                rec['energy_ergs'] = np.nan
+                rec['istart'] = 0.
+                rec['tstart'] = 0.
+                rec['istop']  = 0.
+                rec['tstop']  = 0.
 
             rec['inj_amp'] = inj_am
             rec['inj_ed']  = inj_ed
