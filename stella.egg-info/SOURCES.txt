@@ -2,6 +2,9 @@ README.md
 setup.py
 stella/__init__.py
 stella/flare_business.py
+stella/identify.py
+stella/injection_recovery.py
+stella/plotting.py
 stella/version.py
 stella.egg-info/PKG-INFO
 stella.egg-info/SOURCES.txt
