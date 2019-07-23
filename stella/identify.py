@@ -18,15 +18,18 @@ class IdentifyFlares(object):
             elif (self.yso.sg_flux is not None) and (method.lower() == "savitsky-golay"):
                 detrended_flux = self.yso.sg_flux
             elif (detrended_flux is None) and (self.yso.sg_flux is None) and (self.yso.gp_flux is None):
-                raise Exception("Pleae either run a detrending method or pass in a 'detrend_flux' argument.")
+                print("No detrended flux was recognized. Using normalized flux.")
+                detrended_flux = self.yso.norm_flux
 
         return detrended_flux
+
 
     def tag_flares(self, flux, sig):
         mask = sigma_clip(flux, sigma=sig).mask
         median = np.nanmedian(flux[mask])
         isflare = np.where( (mask==True) & ( (flux-median) > 0.))[0]
         return isflare
+
 
     def identify_flares(self, detrended_flux=None, detrended_flux_err=None,
                         method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
@@ -45,6 +48,10 @@ class IdentifyFlares(object):
         brks = self.yso.find_breaks()
 
         istart, istop = np.array([], dtype=int), np.array([], dtype=int)
+
+        # If there are no breaks in the light curve
+        if len(brks) == 0:
+            brks = np.array( [np.arange(0, len(self.yso.time), 1, dtype=int)] )
 
         for b in brks:
             time  = self.yso.time[b]
@@ -91,16 +98,10 @@ class IdentifyFlares(object):
         flares['tstart']     = self.yso.time[istart]
         flares['tstop']      = self.yso.time[istop]
 
-        if type(self.yso.lum) != np.ma.core.MaskedConstant:
+        if (self.yso.lum is not None) and (type(self.yso.lum) != np.ma.core.MaskedConstant):
             energy = (flares.ed_rec_s.values * u.s) * (self.yso.lum * c.L_sun)                                                                                                       
             energy = energy.to(u.erg)
             flares['energy_ergs'] = energy.value
 
         return brks, flares
 
-
-    def gunther_id(self, detrended_flux=None, detrended_flux_err=None,
-                   method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
-                   cut_ends=5, fake=False):
-        
-        return
