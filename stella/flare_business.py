@@ -84,9 +84,11 @@ class YoungStars(object):
             self.query_information()
             self.age()
         else:
+            self.lum = None
             print("No TIC was given. Cannot query magnitudes to estimate age or flare energies.")
     
         self.gp_flux = None
+        self.sg_flux = None
         self.flares  = None
         self.flc     = None
 
@@ -502,11 +504,11 @@ class YoungStars(object):
         id = IdentifyFlares(self)
         if fake == False:
             self.brks, self.flares = id.identify_flares(detrended_flux=None, detrended_flux_err=None,
-                                                        method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
+                                                        method=method, N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
                                                         cut_ends=5, fake=False)
         else:
             brks, flares = id.identify_flares(detrended_flux=None, detrended_flux_err=None,
-                                                        method="savitsky-golay", N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
+                                                        method=method, N1=3, N2=1, N3=2, sigma=2.5, minsep=3,
                                                         cut_ends=5, fake=True)
             return flares
         
