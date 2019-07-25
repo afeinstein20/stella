@@ -3,7 +3,6 @@ lightkurve
 astropy
 astroquery
 exoplanet
-altaipony
 setuptools>=41.0.0
 tensorflow
 vaneska
