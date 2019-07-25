@@ -42,6 +42,7 @@ def plot_flares(time, flux, flare_table, mask):
 
     plt.figure(figsize=(12,6))
     plt.plot(time, flux, 'k')
+
     plt.xlim(np.nanmin(time)-0.5, np.nanmax(time)+0.5)
     plt.ylim(np.nanmin(flux)-0.01, np.nanmax(flux)+0.01)
 

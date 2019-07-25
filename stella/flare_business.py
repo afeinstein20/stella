@@ -150,10 +150,10 @@ class YoungStars(object):
             if len(regions) > 0:
                 for reg in regions:
                     f = flux[reg]
-                    norm_flux = np.append( f/np.nanmedian(f), norm_flux)
-                    time      = np.append(t[reg], time)
-                    error     = np.append(err[reg], error)
-                    cadences  = np.append(cads[reg], cadences)
+                    norm_flux = np.append(norm_flux, f/np.nanmedian(f))
+                    time      = np.append(time, t[reg])
+                    error     = np.append(error, err[reg])
+                    cadences  = np.append(cadences, cads[reg])
             else:
                 time      = t
                 norm_flux = flux/np.nanmedian(flux)
@@ -523,21 +523,27 @@ class YoungStars(object):
         ir   = InjectionRecovery(self, nflares=nflares, mode=mode, ed=ed, ampl=ampl, breaks=self.brks)
         self.ir = ir
 
-################
-            
-        rec_table = rec_table[rec_table.ed_rec_s > 0.]
-        bins = np.round(len(rec_table)/recovery_resolution)
-        prob, xedges, yedges = self.recovery_probability(rec_table, bins)
+        rec_table = self.ir.rec_table[self.ir.rec_table.ed_rec_s > 0.]
 
+        bins = np.round(len(rec_table)/recovery_resolution)
+        if bins <= 0:
+            bins = 1
+
+        prob, xedges, yedges = self.ir.recovery_probability(rec_table, bins)
+        plt.imshow(prob, origin='lower')
+        plt.colorbar()
+        plt.show()
         # Finds recovery probability for originally detected flares
         ed = np.log10(self.flares.ed_rec_s)
         am = self.flares.ampl_rec
 
         rec_prob = pd.DataFrame(columns=['rec_prob'])
         rec = []
+        print(xedges, yedges)
         for i in range(len(ed)):
             xbin = np.where( (ed[i] >= xedges[:-1]) & (ed[i] <= xedges[1:]) )[0]
             ybin = np.where( (am[i] >= yedges[:-1]) & (am[i] <= yedges[1:]) )[0]
+            print(ed[i], am[i], xbin, ybin)
             if (len(xbin) > 0) & (len(ybin) > 0):
                 rec.append( prob[xbin, ybin][0])
             else:

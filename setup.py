@@ -35,7 +35,7 @@ setup(
     package_data={'': ['README.md', 'LICENSE']},
     install_requires=[
         'tqdm', 'lightkurve', 'astropy',
-        'astroquery', 'exoplanet', 'altaipony',
+        'astroquery', 'exoplanet',
         'setuptools>=41.0.0',
         'tensorflow', 'vaneska', 'beautifulsoup4>=4.6.0', 'tess-point'],
 
