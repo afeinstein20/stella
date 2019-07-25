@@ -36,7 +36,7 @@ setup(
     install_requires=[
         'tqdm', 'lightkurve', 'astropy',
         'astroquery', 'exoplanet',
-        'setuptools>=41.0.0',
+        'setuptools>=41.0.0', 'wotan',
         'tensorflow', 'vaneska', 'beautifulsoup4>=4.6.0', 'tess-point'],
 
 
