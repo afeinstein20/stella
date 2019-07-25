@@ -17,7 +17,6 @@ import wotan
 import eleanor
 import exoplanet as xo
 from lightkurve.lightcurve import LightCurve as LC
-from altaipony.flarelc import FlareLightCurve
 
 from .injection_recovery import *
 from .identify import *
