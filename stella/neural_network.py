@@ -19,7 +19,7 @@ class NeuralNetwork(object):
             self.training_dir = training_dir
 
         if training_size is None:
-            self.training_size = 300000
+            self.training_size = 3000
         else:
             self.training_size = training_size
 
