@@ -251,5 +251,5 @@ class NeuralNetwork(object):
              A 2D array of probabilities for each data set put in.
              Index 0 = Junk; Index 1 = Flare
         """
-        loss, acc = self.model.evaluate(input_data)
-        self.predictions = self.model.predict(input_data)
+        predictions = self.model.predict(input_data)
+        self.predictions = predictions
