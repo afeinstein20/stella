@@ -12,15 +12,15 @@ from astropy import constants as c
 
 from astroquery.mast import Catalogs
 from astroquery.gaia import Gaia
-import wotan
+#import wotan
 
 import eleanor
 import exoplanet as xo
 from lightkurve.lightcurve import LightCurve as LC
 
-from .injection_recovery import *
-from .identify import *
-from .plotting import *
+#from .injection_recovery import *
+#from .identify import *
+#from .plotting import *
 
 import pymc3 as pm
 import theano.tensor as tt
