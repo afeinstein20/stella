@@ -180,7 +180,7 @@ class NeuralNetwork(object):
             binned_data_detrended.append(f)
 
         self.binned_data   = np.array(binned_data)
-        self.binned_labels = np.array(binned_label)
+        self.binned_labels = np.array(binned_labels)
         self.binned_data_detrended = np.array(binned_data_detrended)
 
 
