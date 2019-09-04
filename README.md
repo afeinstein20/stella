@@ -9,5 +9,3 @@ or
         git clone https://github.com/afeinstein20/stella
         cd stella
         python setup.py install
-
-
