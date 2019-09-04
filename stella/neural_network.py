@@ -136,7 +136,7 @@ class NeuralNetwork(object):
             """ Bins the non-flare data to the same length. """
             j = 0
             while len(data) % self.cadences != 0:
-                data = training_data[start:stop-j]
+                data = self.training_data[start:stop-j]
                 j += 1
             return np.reshape(data, (int(len(data)/self.cadences), self.cadences))
 
@@ -176,7 +176,7 @@ class NeuralNetwork(object):
             f = self.training_data[flares[i][0]:flares[i][1]]
             binned_data.append(f)
             binned_labels.append(1)
-            f = self.trainind_data_detrended[flares[i][0]:flares[i][1]]
+            f = self.training_data_detrended[flares[i][0]:flares[i][1]]
             binned_data_detrended.append(f)
 
         self.binned_data   = np.array(binned_data)
