@@ -11,8 +11,7 @@ __all__ = ['NeuralNetwork']
 
 class NeuralNetwork(object):
 
-    def __init__(self, training_dir=None, training_size=None,
-                 epochs=None, layers=None, density=None, cadences=None):
+    def __init__(self, training_dir=None, training_size=None, cadences=None):
 
         if training_dir is None:
             self.training_dir = os.path.join(stella.__path__[0], 'training_set')
@@ -24,33 +23,14 @@ class NeuralNetwork(object):
         else:
             self.training_size = training_size
 
-        if epochs is None:
-            self.epochs = 20
-        else:
-            self.epochs = epochs
-
-        if layers is None:
-            self.layers = 2
-        else:
-            self.layers = layers
-
         if cadences is None:
             self.cadences = 128
         else:
             self.cadences = cadences
 
-        if density is None:
-            self.density = np.array([32, 128, 2])
-        else:
-            self.density = density
-
-        if int(len(self.density)-1) != self.layers:
-            raise ValueError("Please put in as many densities as you want layers.")
-
         self.training_files()
         self.training_set()
         self.preparing_set()
-        self.network_model()
 
     
     def training_files(self):
@@ -73,7 +53,7 @@ class NeuralNetwork(object):
 
         Parameters
         ----------
-        window_length : int, opt
+        window_length : int, optional
              Allows the user to specify the window_length used to
              detrend the light curve. Uses lightkurve.lightcurve.LightCurve.flatten.
 
@@ -185,11 +165,28 @@ class NeuralNetwork(object):
 
 
 
-    def network_model(self, optimizer='adam', metrics=['accuracy'],
+    def network_model(self, layers=2, density=[32,128],
+                      optimizer='adam', metrics=['accuracy'],
                       loss='sparse_categorical_crossentropy'):
         """
         Creates the neural network model based on layer and density specifications.
-        
+
+        Parameters
+        ----------
+        layers : int, optional
+             Specifies how many layers in the neural network the user wants. Default = 2.
+        density : list or np.ndarray, optional
+             Specifices the density in each layer in the network. Default = [32, 128].
+        optimizer : str, optional
+             The type of optimizer. See https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
+             for options. Default = 'adam'.
+        metrics : list, optional
+             The list of metrics to be evaluated by the model during training and testing.
+             Default = ['accuracy'].
+        loss : str, optional
+             The objective function. SEe https://www.tensorflow.org/api_docs/python/tf/losses
+             for options. Default = 'sparse_categotical_crossentropy'
+
         Attributes
         ----------
         model : tensorflow.python.keras.engine.sequential.Sequential
@@ -197,13 +194,10 @@ class NeuralNetwork(object):
 
         keras_layers = []
 
-        for i in range(len(self.density)):
-            if self.density[i] == 2:
-                kl = keras.layers.Dense(self.density[i], activation=tf.nn.softmax)
-            else:
-                kl = keras.layers.Dense(self.density[i], activation=tf.nn.relu)
-            keras_layers.append(kl)
+        for i in range(len(density)):
+            keras_layers.append(keras.layers.Dense(density[i], activation=tf.nn.relu))
             
+        keras_layers.append(keras.layers.Dense(2, activation=tf.nn.softmax))
 
         model = keras.Sequential(keras_layers)
         
@@ -213,3 +207,49 @@ class NeuralNetwork(object):
         
         self.model = model
                     
+
+    def train(self, epochs=15, percentage=None, detrended=False):
+        """
+        Trains the neural network.
+
+        Parameters
+        ---------- 
+        percentage : float, optional
+             Gives the user the option to choose a certain number
+             of binned data sets to use from the full set. Default is 0.66.
+        detrended  : bool, optional
+             Gives the user the option to train on detrended
+             simulated light curves.
+        """
+
+        if percentage is None:
+            bins = int( 0.66 * self.binned_data.shape[0])
+        else:
+            bins = int( percentage * self.binned_data.shape[0])
+
+        if detrended is True:
+            self.model.fit(self.binned_data_detrended[0:bins],
+                           self.binned_labels[0:bins],
+                           epochs=epochs)
+        else:
+            self.model.fit(self.binned_data[0:bins],
+                           self.binned_labels[0:bins],
+                           epochs=epochs)
+
+
+    def predict(self, input_data):
+        """
+        Uses the trained neural network to predict data.
+
+        Parameters
+        ---------- 
+        input_data : np.ndarray            
+        
+        Attributes
+        ---------- 
+        predictions : np.ndarray
+             A 2D array of probabilities for each data set put in.
+             Index 0 = Junk; Index 1 = Flare
+        """
+        loss, acc = self.model.evaluate(input_data)
+        self.predictions = self.model.predict(input_data)
