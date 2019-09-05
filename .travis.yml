@@ -36,5 +36,4 @@ install:
   - python setup.py install
 
 after_success:
-  - codecov
   - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
