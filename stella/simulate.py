@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from tqdm import tqdm
 from scipy.stats import binned_statistic
@@ -18,8 +19,8 @@ class SimulateLightCurves(object):
         sample_size : int, optional
              The number of light curves to generate.
              Default = 8000.
-        output_dir : path, optional
-             The path where to save the simulated flares.
+        output_dir : str, optional
+             Path to location where to save the simulated flares.
              Default = '~/.stella/training_set/'.'
 
         Attributes
@@ -28,19 +29,31 @@ class SimulateLightCurves(object):
              The number of light curves to generate.
         time : np.ndarray
              An array of time.
+        output_dir : str
+             Path to location where to save the simulated light curves to.
         """
 
         self.sample_size = sample_size
         self.time = np.arange(0,8000,1)
+        self.output_dir = output_dir
 
 
-    def flare_model(self, uptime=10, statistic='mean'):
+    def flare_model(self, amp, t0, rise, decay,
+                    uptime=10, statistic='mean'):
         """
         Generates a simple flare model with a Gaussian rise
         and an exponential decay.
 
         Parameters
         ----------
+        amp : float
+             The amplitude of the flare.
+        t0 : int
+             The index in the time array where the flare will occur.
+        rise : float
+             The Gaussian rise of the flare.
+        decay : float
+             The exponential decay of the flare.
         uptime : int, optional
              The number of points to bin. Default = 10.
         statistic : str, optional
@@ -52,6 +65,8 @@ class SimulateLightCurves(object):
         ----------
         flare model : np.ndarray
              A light curve of 0s with an injected flare of given parameters.
+        dur : float
+             The duration of the flare.
         """
         
         def gauss_rise(time, amp, t0, rise):
@@ -67,11 +82,11 @@ class SimulateLightCurves(object):
                              self.time.size*uptime)
 
         up_t0 = timeup[ np.where(timeip >= self.time[t0])[0][0] ]
-        rise  = np.where(timeup <= up_t0)[0]
-        fall  = np.where(timeup >  up_t0)[0]
+        growth  = np.where(timeup <= up_t0)[0]
+        decay   = np.where(timeup >  up_t0)[0]
 
-        rise_model = gauss_rise(timeup[rise], amp, up_t0, growth_factor)
-        fall_model = exp_decay( timeup[fall], amp, up_t0, decay_factory)
+        rise_model = gauss_rise(timeup[growth], amp, up_t0, rise)
+        fall_model = exp_decay( timeup[decay],  amp, up_t0 , fall)
 
         model = np.append(rise_model, fall_model)
         
@@ -122,4 +137,141 @@ class SimulateLightCurves(object):
         self.fluxes = fluxes
         
 
-    def inject_flare(self):
+    def inject_flare(self, number_per=np.random.randint(0,20,self.sample_size),
+                     amplitudes=[1.2,0.1], decays=[0.05,0.15],
+                     rises=[0.001,0.006], window_length=101):
+        """
+        Injects flares of given parameters into a light curve.
+
+        Parameters
+        ----------
+        number_per : np.ndarray, optional
+             The number of injected flares per each light curve.
+             Default = np.random.randint(0,20).
+        amplitudes : list, optional
+             The mean and std of flare amplitudes to draw from a 
+             normal distritbution. Default = [1.2, 0.1].
+        decays : list, optional
+             The minimum and maximum exponential decay rate to draw from a 
+             uniform distribution. Default = [0.05, 0.15].
+        rises : list, optional
+             The minimum and maximum Gaussian rise rate to draw from a 
+             uniform distribution. Default = [0.001, 0.006]
+        window_length : int, optional
+             The window length to use in the Savitsky-Golay filter to detrend
+             simulated light curves. Default = 101.
+
+        Attributes
+        ----------
+        total_flares : int
+             The total number of injected flares.
+        flare_fluxes : np.ndarray
+             An array of simulated fluxes with injected flares.
+        flare_fluxes_detrended : np.ndarray
+             An array of detrended simulated fluxes with injected flares.
+        flare_durs : np.ndarray
+             An array of the durations of the injected flares.
+        labels : np.ndarray
+             An array of labels for each flare-injected flux.
+        """
+        self.total_flares = np.sum(number_per)
+
+        self.flare_amps  = np.random.normal(amplitudes[0], amplitudes[1], self.total_flares)
+        self.flare_decays= np.random.uniform(decays[0]   , decays[1]    , self.total_flares)
+        self.flare_rises = np.random.uniform(rises[0]    , rises[1]     , self.total_flares)
+        self.flare_t0s   = np.random.randint(0, len(self.time)          , self.total_flares)
+
+        flare_fluxes = np.zeros( (self.sample_size, len(self.time) ))
+        flare_fluxes_detrended = np.zeros( (self.sample_size, len(self.time) ))
+        labels = np.zeros( (self.sample_size, len(self.time) ), dtype=int)
+
+        durations = np.zeros(self.total_flares)
+
+        loc = 0
+        for i in tqdm(range(self.sample_size)):
+            # Loops through each injected flare per light curve
+            if number_per[i] == 0:
+                flare_fluxes[i] = self.fluxes[i]
+                
+            else:
+                for n in number_per[i]:
+                    flare, dur = self.flare_model(self.flare_amps[loc],
+                                                  self.flare_t0s[loc],
+                                                  self.flare_rises[loc],
+                                                  self.flare_decays[loc])
+                    durations[loc] = dur
+
+                    if n == 0:
+                        flare_flux = self.fluxes[i] + flare
+                    else:
+                        flare_flux += flare
+
+                    loc += 1
+
+            q = flare_flux > (np.nanmedian(flare_flux)+(0.001*np.std(flare_flux)) )
+
+            labels[i] = q*1
+            flare_fluxes[i] = flare_flux + 1
+            flare_fluxes_detrended[i] = LC(self.time, flare_fluxes[i]).flatten(window_length=
+                                                                              window_length).flux
+            
+
+        self.flare_fluxes = flare_fluxes 
+        self.labels       = labels
+        self.flare_durs   = durations
+        self.flare_fluxes_detrended = flare_fluxes_detrended
+
+
+    def save(self, output_fn_format='sim{0:04d}.npy'):
+        """
+        A function that allows the user to save the simulated light curves.
+        Saves as .npy files in the given output directory.
+
+        Parameters
+        ------- 
+        output_fn : str, optional
+             The naming convention used for saving the simulated light curves to.
+             Default = 'sim{0:04d}.npy'.format(simulation_number).
+        """
+
+        self.output_fn_format = output_fn_format
+
+        if self.output_dir is None:
+            self.fetch_dir()
+
+        for i in tqdm(range(len(self.flare_fluxes))):
+            path = os.path.join(self.output_dir, self.output_fn_format.format(i))
+            data = [self.time, self.flare_fluxes[i], self.flare_fluxes_detrended[i], self.labels[i]]
+            np.save(path, data)
+
+
+    def fetch_dir(self):
+        """
+        Returns the default path to the directory where files will be saved
+        or loaded.
+        By default, this method will return "~/.stella" and create
+        this directory if it does not exist.  If the directory cannot be
+        access or created, then it returns the local directory (".").
+
+        Attributes
+        -------
+        output_dir : str
+            Path to location of where simulated light curves will be saved to.
+        """
+
+        output_dir    = os.path.join(os.path.expanduser('~'), '.stella/training_set')
+        if os.path.isdir(output_dir):
+            return output_dir
+        else:
+            # if it doesn't exist, make a new cache directory
+            try:
+                os.mkdir(output_dir)
+            # downloads locally if OS error occurs
+            except OSError:
+                output_dir = '.'
+                warnings.warn('Warning: unable to create {}. '
+                              'Saving simulated light curves to '
+                              'working directory instead.'.format(output_dir))
+
+        self.output_dir = output_dir
+        
