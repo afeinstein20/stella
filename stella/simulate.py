@@ -1,3 +1,4 @@
+import os
 import warnings
 import numpy as np
 from tqdm import tqdm
@@ -35,10 +36,15 @@ class SimulateLightCurves(object):
 
         self.sample_size = sample_size
         self.time = np.arange(0,8000,1)
-        self.output_dir = output_dir
+
+        if output_dir is None:
+            self.output_dir = self.fetch_dir()
+        else:
+            self.output_dir = output_dir
 
 
-    def flare_model(self, amp, t0, rise, decay,
+
+    def flare_model(self, amp, t0, rise, fall,
                     uptime=10, statistic='mean'):
         """
         Generates a simple flare model with a Gaussian rise
@@ -81,7 +87,7 @@ class SimulateLightCurves(object):
                              np.nanmax(self.time) + dt,
                              self.time.size*uptime)
 
-        up_t0 = timeup[ np.where(timeip >= self.time[t0])[0][0] ]
+        up_t0 = timeup[ np.where(timeup >= self.time[t0])[0][0] ]
         growth  = np.where(timeup <= up_t0)[0]
         decay   = np.where(timeup >  up_t0)[0]
 
@@ -89,15 +95,14 @@ class SimulateLightCurves(object):
         fall_model = exp_decay( timeup[decay],  amp, up_t0 , fall)
 
         model = np.append(rise_model, fall_model)
-        
-        return binned_statistic(timeup, model, statistic=statistic,
-                                bins=len(self.time))[0]
+        flare =  binned_statistic(timeup, model, statistic=statistic,
+                                  bins=len(self.time))[0]
+        dur = len(np.where(flare != 0.0)[0])
+        return flare, dur
 
 
-    def sine_wave(self, amplitude=np.random.uniform(0.02, 0.15, self.sample_size), 
-                  frequency=1.0/np.random.uniform(3456, 21600, self.sample_size), 
-                  phase=np.random.uniform(0, 2*np.pi, self.sample_size),
-                  noise=[0.01, 0.04]):
+    def sine_wave(self, amplitude=[0.02,0.15], frequency=[300,10000],
+                  noise=[0.02, 0.045]):
         """
         Creates a sine wave to simulate stellar activity
         with Gaussian noise.
@@ -105,14 +110,13 @@ class SimulateLightCurves(object):
         Parameters
         ----------
         amplitude : np.ndarray, optional
-             An array of different amplitudes for each light curve.
-             Default = np.random.uniform(0.02, 0.15, sample_size).
+             List of minimum and maximum amplitude to use for a uniform
+             distribution to draw from.
+             Default = [0.02, 0.15].
         frequency : np.ndarray, optional
-             An array of frequencies for each light curve.
-             Default = 1 / np.random.uniform(3456, 21600, sample_size).
-        phase : np.ndarray, optional
-             An array of phases for each light curve.
-             Default = np.random.uniform(0, 2*np.pi, sample_size).
+             List of minimum and maximum frequencies to use for a uniform
+             distribution to draw from.
+             Default = [300, 10000].
         noise : np.ndarray, optional
              List of minimum and maximum noise levels to use for a uniform
              distribution to draw from.
@@ -124,21 +128,25 @@ class SimulateLightCurves(object):
              An array of simulated fluxes of shape (sample_size, len(time)).
         """
 
+        amplitude = np.random.uniform(amplitude[0], amplitude[1], self.sample_size)
+        frequency = 1.0/np.random.uniform(frequency[0], frequency[1], self.sample_size)
+        phase     = np.random.uniform(0, 2*np.pi, self.sample_size)
+
         def model(time, amp, freq, phase):
             return amp * np.sin( 2*np.pi*freq*time + phase )
 
-        fluxes = np.zeros( (self.sample_size, self.time) )
+        fluxes = np.zeros( (self.sample_size, len(self.time) ))
 
         for i in range(self.sample_size):
             noise_lvl = np.random.uniform(noise[0], noise[1], 1)
-            noise     = np.random.normal(0, noise_lvl, len(self.time))
+            noise     = np.random.normal(0, np.abs(noise_lvl), len(self.time))
             fluxes[i] = model(self.time, amplitude[i], frequency[i], phase[i]) + noise
 
         self.fluxes = fluxes
         
 
-    def inject_flare(self, number_per=np.random.randint(0,20,self.sample_size),
-                     amplitudes=[1.2,0.1], decays=[0.05,0.15],
+    def inject_flares(self, number_per=[0,20],
+                     amplitudes=[1.0,0.1], decays=[0.05,0.15],
                      rises=[0.001,0.006], window_length=101):
         """
         Injects flares of given parameters into a light curve.
@@ -146,16 +154,17 @@ class SimulateLightCurves(object):
         Parameters
         ----------
         number_per : np.ndarray, optional
-             The number of injected flares per each light curve.
-             Default = np.random.randint(0,20).
+             List of minimum and maximum number of flares to inject into a 
+             single light curve.
+             Default = [0, 20].
         amplitudes : list, optional
-             The mean and std of flare amplitudes to draw from a 
-             normal distritbution. Default = [1.2, 0.1].
+             List of mean and std of flare amplitudes to draw from a 
+             normal distritbution. Default = [1.0, 0.1].
         decays : list, optional
-             The minimum and maximum exponential decay rate to draw from a 
+             List of minimum and maximum exponential decay rate to draw from a 
              uniform distribution. Default = [0.05, 0.15].
         rises : list, optional
-             The minimum and maximum Gaussian rise rate to draw from a 
+             List of minimum and maximum Gaussian rise rate to draw from a 
              uniform distribution. Default = [0.001, 0.006]
         window_length : int, optional
              The window length to use in the Savitsky-Golay filter to detrend
@@ -174,6 +183,8 @@ class SimulateLightCurves(object):
         labels : np.ndarray
              An array of labels for each flare-injected flux.
         """
+
+        number_per = np.random.randint(number_per[0], number_per[1], self.sample_size)
         self.total_flares = np.sum(number_per)
 
         self.flare_amps  = np.random.normal(amplitudes[0], amplitudes[1], self.total_flares)
@@ -194,7 +205,7 @@ class SimulateLightCurves(object):
                 flare_fluxes[i] = self.fluxes[i]
                 
             else:
-                for n in number_per[i]:
+                for n in range(number_per[i]):
                     flare, dur = self.flare_model(self.flare_amps[loc],
                                                   self.flare_t0s[loc],
                                                   self.flare_rises[loc],
@@ -229,15 +240,12 @@ class SimulateLightCurves(object):
 
         Parameters
         ------- 
-        output_fn : str, optional
+        output_fn_format : str, optional
              The naming convention used for saving the simulated light curves to.
              Default = 'sim{0:04d}.npy'.format(simulation_number).
         """
 
         self.output_fn_format = output_fn_format
-
-        if self.output_dir is None:
-            self.fetch_dir()
 
         for i in tqdm(range(len(self.flare_fluxes))):
             path = os.path.join(self.output_dir, self.output_fn_format.format(i))
