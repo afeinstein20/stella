@@ -22,7 +22,7 @@ class SimulateLightCurves(object):
              Default = 8000.
         output_dir : str, optional
              Path to location where to save the simulated flares.
-             Default = '~/.stella/training_set/'.'
+             Default = '~/.stella/'.'
 
         Attributes
         ----------
@@ -38,7 +38,7 @@ class SimulateLightCurves(object):
         self.time = np.arange(0,8000,1)
 
         if output_dir is None:
-            self.output_dir = self.fetch_dir()
+            self.fetch_dir()
         else:
             self.output_dir = output_dir
 
@@ -146,7 +146,7 @@ class SimulateLightCurves(object):
         
 
     def inject_flares(self, number_per=[0,20],
-                     amplitudes=[1.0,0.1], decays=[0.05,0.15],
+                     amplitudes=[0.8,0.1], decays=[0.05,0.15],
                      rises=[0.001,0.006], window_length=101):
         """
         Injects flares of given parameters into a light curve.
@@ -159,7 +159,7 @@ class SimulateLightCurves(object):
              Default = [0, 20].
         amplitudes : list, optional
              List of mean and std of flare amplitudes to draw from a 
-             normal distritbution. Default = [1.0, 0.1].
+             normal distritbution. Default = [0.8, 0.1].
         decays : list, optional
              List of minimum and maximum exponential decay rate to draw from a 
              uniform distribution. Default = [0.05, 0.15].
@@ -267,19 +267,20 @@ class SimulateLightCurves(object):
             Path to location of where simulated light curves will be saved to.
         """
 
-        output_dir    = os.path.join(os.path.expanduser('~'), '.stella/training_set')
-        if os.path.isdir(output_dir):
-            return output_dir
+        default_path    = os.path.join(os.path.expanduser('~'), '.stella')
+        if os.path.isdir(default_path):
+            self.output_dir = default_path
         else:
             # if it doesn't exist, make a new cache directory
             try:
-                os.mkdir(output_dir)
+                os.mkdir(default_path)
+                self.output_dir = default_path
             # downloads locally if OS error occurs
             except OSError:
                 output_dir = '.'
                 warnings.warn('Warning: unable to create {}. '
                               'Saving simulated light curves to '
-                              'working directory instead.'.format(output_dir))
+                              'working directory instead.'.format(default_path))
 
-        self.output_dir = output_dir
+                self.output_dir = '.'
         
