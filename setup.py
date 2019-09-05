@@ -13,8 +13,7 @@ from version import __version__
 
 long_description = \
     """
-stella is a python package to characterize flares for stars in the 
-TESS Full Frame Images.
+stella is a python package to find and characterize flares using a neural network.
 """
 
 
@@ -29,7 +28,7 @@ setup(
         ],
     include_package_data=True,
     url='http://github.com/afeinstein20/stella',
-    description='For characterizing flares in the TESS FFIs',
+    description='For finding flares with a neural network',
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={'': ['README.md', 'LICENSE']},
