@@ -11,22 +11,15 @@ __all__ = ['NeuralNetwork']
 
 class NeuralNetwork(object):
 
-    def __init__(self, training_dir=None, training_size=None, cadences=None):
+    def __init__(self, training_dir=None, training_size=3000, cadences=128):
 
         if training_dir is None:
             self.training_dir = os.path.join(stella.__path__[0], 'training_set')
         else:
             self.training_dir = training_dir
 
-        if training_size is None:
-            self.training_size = 3000
-        else:
-            self.training_size = training_size
-
-        if cadences is None:
-            self.cadences = 128
-        else:
-            self.cadences = cadences
+        self.training_size = training_size
+        self.cadences = cadences
 
         self.training_files()
         self.training_set()
@@ -123,6 +116,9 @@ class NeuralNetwork(object):
         # Uses the simulated flare labels
         flare_inds = np.where(self.training_labels == 1)[0]
         flares     = ranges(flare_inds)
+
+        print("** FLARES **")
+        print(len(flares))
 
         # Centers the flare in each chunk of data to be fed into the network
         for i in range(len(flares)):
