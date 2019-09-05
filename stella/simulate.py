@@ -200,11 +200,14 @@ class SimulateLightCurves(object):
 
         loc = 0
         for i in tqdm(range(self.sample_size)):
+            flare_label = np.zeros(len(self.fluxes[i]))
+
             # Loops through each injected flare per light curve
             if number_per[i] == 0:
                 flare_fluxes[i] = self.fluxes[i]
-                
+
             else:
+                flare_label = np.zeros(len(self.fluxes[i]))
                 for n in range(number_per[i]):
                     flare, dur = self.flare_model(self.flare_amps[loc],
                                                   self.flare_t0s[loc],
@@ -212,16 +215,22 @@ class SimulateLightCurves(object):
                                                   self.flare_decays[loc])
                     durations[loc] = dur
 
+                    where_flare = np.where(flare > 0.0)[0]
+                    flare_label[where_flare] = 1
+
                     if n == 0:
                         flare_flux = self.fluxes[i] + flare
+                        flare_tracker = flare
                     else:
                         flare_flux += flare
+                        flare_tracker += flare
 
                     loc += 1
 
-            q = flare_flux > (np.nanmedian(flare_flux)+(0.001*np.std(flare_flux)) )
+                where_flare = np.where(flare_tracker > 0.0)[0]
+                flare_label[where_flare] = 1
 
-            labels[i] = q*1
+            labels[i] = flare_label
             flare_fluxes[i] = flare_flux + 1
             flare_fluxes_detrended[i] = LC(self.time, flare_fluxes[i]).flatten(window_length=
                                                                               window_length).flux
