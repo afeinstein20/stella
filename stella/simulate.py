@@ -2,6 +2,7 @@ import os
 import warnings
 import numpy as np
 from tqdm import tqdm
+from astropy.table import Table, Row
 from scipy.stats import binned_statistic
 from lightkurve.lightcurve import LightCurve as LC
 
@@ -35,7 +36,7 @@ class SimulateLightCurves(object):
         """
 
         self.sample_size = sample_size
-        self.time = np.arange(0,8000,1)
+        self.time = np.arange(0, 27, 2.0/1440.0)
 
         if output_dir is None:
             self.fetch_dir()
@@ -43,9 +44,7 @@ class SimulateLightCurves(object):
             self.output_dir = output_dir
 
 
-
-    def flare_model(self, amp, t0, rise, fall,
-                    uptime=10, statistic='mean'):
+    def flare_model(self, amp, t0, rise, fall, statistic='mean'):
         """
         Generates a simple flare model with a Gaussian rise
         and an exponential decay.
@@ -58,10 +57,8 @@ class SimulateLightCurves(object):
              The index in the time array where the flare will occur.
         rise : float
              The Gaussian rise of the flare.
-        decay : float
+        fall : float
              The exponential decay of the flare.
-        uptime : int, optional
-             The number of points to bin. Default = 10.
         statistic : str, optional
              How to bin the points. Default = 'mean'.
              For more options, see 
@@ -72,7 +69,7 @@ class SimulateLightCurves(object):
         flare model : np.ndarray
              A light curve of 0s with an injected flare of given parameters.
         dur : float
-             The duration of the flare.
+             The duration of the flare given in minutes.
         """
         
         def gauss_rise(time, amp, t0, rise):
@@ -81,28 +78,24 @@ class SimulateLightCurves(object):
         def exp_decay(time, amp, t0, decay):
             return amp * np.exp( -(time - t0) / decay )
 
+        growth = np.where(self.time <= self.time[t0])[0]
+        decay  = np.where(self.time >  self.time[t0])[0]
 
-        dt = np.nanmedian(np.diff(self.time))
-        timeup = np.linspace(np.nanmin(self.time) - dt,
-                             np.nanmax(self.time) + dt,
-                             self.time.size*uptime)
+        rise_model  = gauss_rise(self.time[growth], amp, self.time[t0], rise)
+        decay_model = exp_decay(self.time[decay],   amp, self.time[t0], fall)
 
-        up_t0 = timeup[ np.where(timeup >= self.time[t0])[0][0] ]
-        growth  = np.where(timeup <= up_t0)[0]
-        decay   = np.where(timeup >  up_t0)[0]
+        model = np.append(rise_model, decay_model)
 
-        rise_model = gauss_rise(timeup[growth], amp, up_t0, rise)
-        fall_model = exp_decay( timeup[decay],  amp, up_t0 , fall)
+        f = np.where( (model <= amp) & 
+                      (model >= amp/np.exp(1)) )[0]
 
-        model = np.append(rise_model, fall_model)
-        flare =  binned_statistic(timeup, model, statistic=statistic,
-                                  bins=len(self.time))[0]
-        dur = len(np.where(flare != 0.0)[0])
-        return flare, dur
+        duration = np.nanmax(self.time[f]) - np.nanmin(self.time[f])
+
+        return model, duration*1440.
 
 
-    def sine_wave(self, amplitude=[0.02,0.15], frequency=[300,10000],
-                  noise=[0.02, 0.045]):
+    def sine_wave(self, amplitude=[0.02,0.1], frequency=[1,10],
+                  noise=[0.03, 0.05]):
         """
         Creates a sine wave to simulate stellar activity
         with Gaussian noise.
@@ -146,7 +139,7 @@ class SimulateLightCurves(object):
         
 
     def inject_flares(self, number_per=[0,20],
-                     amplitudes=[0.8,0.1], decays=[0.05,0.15],
+                     amplitudes=[0.008,0.08], decays=[0.005,0.018],
                      rises=[0.001,0.006], window_length=101):
         """
         Injects flares of given parameters into a light curve.
@@ -184,6 +177,11 @@ class SimulateLightCurves(object):
              An array of labels for each flare-injected flux.
         """
 
+        flare_table = Table(names=['simulated_flare_number', 'flare', 'amplitude',
+                                   't0', 'rise_factor', 'decay_factor', 'duration'],
+                            dtype=[np.int, np.int, np.float32, 
+                                   np.float32, np.float32, np.float32, np.float64])
+
         number_per = np.random.randint(number_per[0], number_per[1], self.sample_size)
         self.total_flares = np.sum(number_per)
 
@@ -209,7 +207,7 @@ class SimulateLightCurves(object):
             else:
                 flare_label = np.zeros(len(self.fluxes[i]))
                 for n in range(number_per[i]):
-                    flare, dur = self.flare_model(self.flare_amps[loc],
+                    flare, dur = self.flare_model(np.abs(self.flare_amps[loc]),
                                                   self.flare_t0s[loc],
                                                   self.flare_rises[loc],
                                                   self.flare_decays[loc])
@@ -224,6 +222,11 @@ class SimulateLightCurves(object):
                     else:
                         flare_flux += flare
                         flare_tracker += flare
+
+                    row = [int(i), int(n+1), np.abs(self.flare_amps[loc]), self.flare_t0s[loc],
+                           self.flare_rises[loc], self.flare_decays[loc],
+                           dur]
+                    flare_table.add_row(row)
 
                     loc += 1
 
@@ -240,7 +243,7 @@ class SimulateLightCurves(object):
         self.labels       = labels
         self.flare_durs   = durations
         self.flare_fluxes_detrended = flare_fluxes_detrended
-
+        self.flare_table = flare_table
 
     def save(self, output_fn_format='sim{0:04d}.npy'):
         """
@@ -260,6 +263,12 @@ class SimulateLightCurves(object):
             path = os.path.join(self.output_dir, self.output_fn_format.format(i))
             data = [self.time, self.flare_fluxes[i], self.flare_fluxes_detrended[i], self.labels[i]]
             np.save(path, data)
+
+    def save_table(self, output_name="simulated_flare_table.txt"):
+        """
+        Saves a table of simulated data information.
+        """
+        self.flare_table.write(output_name, format='ascii')
 
 
     def fetch_dir(self):
