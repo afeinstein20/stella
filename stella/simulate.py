@@ -95,7 +95,7 @@ class SimulateLightCurves(object):
 
 
     def sine_wave(self, amplitude=[0.02,0.1], frequency=[1,10],
-                  noise=[0.03, 0.05]):
+                  noise=[0.015, 0.045]):
         """
         Creates a sine wave to simulate stellar activity
         with Gaussian noise.
@@ -213,8 +213,7 @@ class SimulateLightCurves(object):
                                                   self.flare_decays[loc])
                     durations[loc] = dur
 
-                    where_flare = np.where(flare > 0.0)[0]
-                    flare_label[where_flare] = 1
+                    flare_label[self.flare_t0s[loc]] = 1
 
                     if n == 0:
                         flare_flux = self.fluxes[i] + flare
@@ -223,15 +222,13 @@ class SimulateLightCurves(object):
                         flare_flux += flare
                         flare_tracker += flare
 
-                    row = [int(i), int(n+1), np.abs(self.flare_amps[loc]), self.flare_t0s[loc],
+                    row = [int(i), int(n+1), np.abs(self.flare_amps[loc]), self.time[int(self.flare_t0s[loc])],
                            self.flare_rises[loc], self.flare_decays[loc],
                            dur]
                     flare_table.add_row(row)
 
                     loc += 1
 
-                where_flare = np.where(flare_tracker > 0.0)[0]
-                flare_label[where_flare] = 1
 
             labels[i] = flare_label
             flare_fluxes[i] = flare_flux + 1
