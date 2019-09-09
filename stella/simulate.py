@@ -262,9 +262,11 @@ class SimulateLightCurves(object):
                     t   += 1
                     t = add_non_flare(self.time, self.fluxes[i], t)
 
-        self.flare_fluxes = flare_fluxes 
-        self.labels       = labels
-        self.flare_fluxes_detrended = flare_fluxes_detrended
+
+        leftover = np.arange(t, len(flare_fluxes), 1)
+        self.flare_fluxes = np.delete(flare_fluxes, leftover, axis=0)
+        self.labels       = np.delete(labels      , leftover, axis=0)
+        self.flare_fluxes_detrended = np.delete(flare_fluxes_detrended, leftover, axis=0)
         self.flare_table = flare_table
 
     def save(self, output_fn_format='sim{0:04d}.npy'):
