@@ -100,7 +100,7 @@ class SimulateLightCurves(object):
 
 
     def sine_wave(self, amplitude=[0.02,0.1], frequency=[1,10],
-                  noise=[0.015, 0.045]):
+                  noise=[0.001, 0.01]):
         """
         Creates a sine wave to simulate stellar activity
         with Gaussian noise.
@@ -136,15 +136,14 @@ class SimulateLightCurves(object):
         fluxes = np.zeros( (self.sample_size, len(self.time) ))
 
         for i in range(self.sample_size):
-            noise_lvl = np.random.uniform(noise[0], noise[1], 1)
-            noise     = np.random.normal(0, np.abs(noise_lvl), len(self.time))
-            fluxes[i] = model(self.time, amplitude[i], frequency[i], phase[i]) + noise
-
+            noise_lvl = np.random.uniform(noise[0], noise[1], 1)[0]
+            add_noise = np.random.normal(0, np.abs(noise_lvl), len(self.time))
+            fluxes[i] = model(self.time, amplitude[i], frequency[i], phase[i]) + add_noise
         self.fluxes = fluxes
         
 
     def inject_flares(self, number_per=[0,20],
-                     amplitudes=[0.01,0.08], decays=[0.005,0.018],
+                     amplitudes=[0.01,0.05], decays=[0.005,0.018],
                      rises=[0.001,0.006], window_length=101, ratio=3):
         """
         Injects flares of given parameters into a light curve.
