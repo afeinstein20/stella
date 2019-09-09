@@ -70,7 +70,7 @@ class NeuralNetwork(object):
         self.model = model
         
 
-    def train_data(self, epochs=15, detrended=False):
+    def train_data(self, epochs=15, detrended=False, training_region=None):
         """
         Trains the neural network on simulated data or inputted data files.
 
@@ -82,15 +82,20 @@ class NeuralNetwork(object):
         detrended : bool, optional
              Gives the user the option to train on detrended simulated data.
              Default = False.
+        training_region : np.ndarray, optional
+             Allows the user to define a subset of the stella.SimulatedLightCurve.flare_fluxes
+             used for training. Default = entire set.
         """
+        if training_region is None:
+            training_region = [0, len(self.slc.flare_fluxes)+1]
 
         if detrended is True:
             training_set = self.slc.flare_fluxes_detrended
         else:
             training_set = self.slc.flare_fluxes
 
-        self.model.fit(training_set,
-                       self.slc.labels,
+        self.model.fit(training_set[training_region[0]:training_region[1]],
+                       self.slc.labels[training_region[0]:training_region[1]],
                        epochs=epochs)
 
 
@@ -120,5 +125,6 @@ class NeuralNetwork(object):
         """
         Assigns a probability to each data point in the set.
         """
+        return
 
             
