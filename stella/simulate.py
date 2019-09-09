@@ -14,7 +14,7 @@ class SimulateLightCurves(object):
     network training.
     """
 
-    def __init__(self, sample_size=8000, output_dir=None):
+    def __init__(self, sample_size=8000, output_dir=None, cadences=128):
         """
         Parameters
         ----------
@@ -24,6 +24,9 @@ class SimulateLightCurves(object):
         output_dir : str, optional
              Path to location where to save the simulated flares.
              Default = '~/.stella/'.'
+        cadences : int, optional
+             The numnber of cadences used in each training set.
+             Default = 128.
 
         Attributes
         ----------
@@ -36,6 +39,8 @@ class SimulateLightCurves(object):
         """
 
         self.sample_size = sample_size
+        self.cadences    = cadences
+
         self.time = np.arange(0, 27, 2.0/1440.0)
 
         if output_dir is None:
@@ -139,8 +144,8 @@ class SimulateLightCurves(object):
         
 
     def inject_flares(self, number_per=[0,20],
-                     amplitudes=[0.008,0.08], decays=[0.005,0.018],
-                     rises=[0.001,0.006], window_length=101):
+                     amplitudes=[0.01,0.08], decays=[0.005,0.018],
+                     rises=[0.001,0.006], window_length=101, ratio=3):
         """
         Injects flares of given parameters into a light curve.
 
@@ -152,7 +157,7 @@ class SimulateLightCurves(object):
              Default = [0, 20].
         amplitudes : list, optional
              List of mean and std of flare amplitudes to draw from a 
-             normal distritbution. Default = [0.8, 0.1].
+             normal distritbution. Default = [0.01, 0.08].
         decays : list, optional
              List of minimum and maximum exponential decay rate to draw from a 
              uniform distribution. Default = [0.05, 0.15].
@@ -162,6 +167,9 @@ class SimulateLightCurves(object):
         window_length : int, optional
              The window length to use in the Savitsky-Golay filter to detrend
              simulated light curves. Default = 101.
+        ratio : int, optional
+             The ratio of non-flares to flares in the training data set. 
+             Default = 3.
 
         Attributes
         ----------
@@ -176,6 +184,23 @@ class SimulateLightCurves(object):
         labels : np.ndarray
              An array of labels for each flare-injected flux.
         """
+        def add_non_flare(time, flux, t):
+            nonlocal flare_fluxes, flare_fluxes_detrended, labels, ratio
+            # Finds a random region of light curve without a flare to add
+            # to the training set
+            regions = np.random.randint(self.cadences/2,
+                                        len(flux)-self.cadences/2,
+                                        ratio)
+            for r in regions:
+                flare_fluxes[t]           = flux[int(r-self.cadences/2):int(r+self.cadences/2)] + 1
+                flare_fluxes_detrended[t] = LC(time[int(r-self.cadences/2):int(r+self.cadences/2)],
+                                               flare_fluxes[t]).flatten(window_length=
+                                                                 window_length).flux
+                labels[t] = 0
+                t += 1
+            return t
+
+
 
         flare_table = Table(names=['simulated_flare_number', 'flare', 'amplitude',
                                    't0', 'rise_factor', 'decay_factor', 'duration'],
@@ -183,62 +208,62 @@ class SimulateLightCurves(object):
                                    np.float32, np.float32, np.float32, np.float64])
 
         number_per = np.random.randint(number_per[0], number_per[1], self.sample_size)
+
         self.total_flares = np.sum(number_per)
+        total_sample      = len(np.where(number_per==0)[0])+self.total_flares
 
         self.flare_amps  = np.random.normal(amplitudes[0], amplitudes[1], self.total_flares)
         self.flare_decays= np.random.uniform(decays[0]   , decays[1]    , self.total_flares)
         self.flare_rises = np.random.uniform(rises[0]    , rises[1]     , self.total_flares)
-        self.flare_t0s   = np.random.randint(0, len(self.time)          , self.total_flares)
+        self.flare_t0s   = np.random.randint(self.cadences/2, len(self.time)-self.cadences/2, self.total_flares)
 
-        flare_fluxes = np.zeros( (self.sample_size, len(self.time) ))
-        flare_fluxes_detrended = np.zeros( (self.sample_size, len(self.time) ))
-        labels = np.zeros( (self.sample_size, len(self.time) ), dtype=int)
+        flare_fluxes           = np.zeros( (total_sample*(ratio+1), self.cadences ))
+        flare_fluxes_detrended = np.zeros( (total_sample*(ratio+1), self.cadences ))
+        labels                 = np.zeros(  total_sample*(ratio+1), dtype=int)
 
         durations = np.zeros(self.total_flares)
 
+        # Tracks the sample size of flares
         loc = 0
-        for i in tqdm(range(self.sample_size)):
-            flare_label = np.zeros(len(self.fluxes[i]))
+        # Tracks the location in the total flare_fluxes array
+        t   = 0
 
-            # Loops through each injected flare per light curve
+        for i in tqdm(range(len(self.fluxes))):
+
+            # Handles if the light curve doesn't get any injected flares
             if number_per[i] == 0:
-                flare_fluxes[i] = self.fluxes[i]
-
+                # Generates a random number to pull the non-flare data from in the light curve
+                t = add_non_flare(self.time, self.fluxes[i], t)
+                
             else:
-                flare_label = np.zeros(len(self.fluxes[i]))
+                # Loops through each injected flare per light curve
                 for n in range(number_per[i]):
                     flare, dur = self.flare_model(np.abs(self.flare_amps[loc]),
                                                   self.flare_t0s[loc],
                                                   self.flare_rises[loc],
                                                   self.flare_decays[loc])
-                    durations[loc] = dur
+                    
+                    flare_flux = self.fluxes[i] + flare
 
-                    flare_label[self.flare_t0s[loc]] = 1
+                    t0_ind = int(self.flare_t0s[loc])
+                    region = [int(t0_ind-self.cadences/2), int(t0_ind+self.cadences/2)]
 
-                    if n == 0:
-                        flare_flux = self.fluxes[i] + flare
-                        flare_tracker = flare
-                    else:
-                        flare_flux += flare
-                        flare_tracker += flare
+                    flare_fluxes[t] = flare_flux[region[0]:region[1]] + 1
+                    flare_fluxes_detrended[t] = LC(self.time[region[0]:region[1]], flare_fluxes[t]).flatten(window_length=
+                                                                                       window_length).flux
+                    labels[t] = 1
 
-                    row = [int(i), int(n+1), np.abs(self.flare_amps[loc]), self.time[int(self.flare_t0s[loc])],
+                    row = [int(i), int(n+1), np.abs(self.flare_amps[loc]), self.time[t0_ind],
                            self.flare_rises[loc], self.flare_decays[loc],
                            dur]
                     flare_table.add_row(row)
 
                     loc += 1
-
-
-            labels[i] = flare_label
-            flare_fluxes[i] = flare_flux + 1
-            flare_fluxes_detrended[i] = LC(self.time, flare_fluxes[i]).flatten(window_length=
-                                                                              window_length).flux
-            
+                    t   += 1
+                    t = add_non_flare(self.time, self.fluxes[i], t)
 
         self.flare_fluxes = flare_fluxes 
         self.labels       = labels
-        self.flare_durs   = durations
         self.flare_fluxes_detrended = flare_fluxes_detrended
         self.flare_table = flare_table
 
