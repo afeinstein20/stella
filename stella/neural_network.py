@@ -115,16 +115,35 @@ class NeuralNetwork(object):
              Index 0 = Junk; Index 1 = Flare.
         """
         input_data = np.array(input_data)
-        data_shape = input_data.shape
+        cadences   = self.slc.cadences
 
-        predictions = self.model.predict(input_data)
-        self.predictions=predictions
+        for lc in input_data:
+            # Centers each point in the input light curve and pads
+            # with same number of cadences as used in the training set
+            reshaped_data = np.zeros((len(lc),cadences))
+            padding       = np.nanmedian(lc)
+            cadence_pad   = int(cadences/2)
+
+            for i in range(len(lc)):
+                if i < cadences/2:
+                    flux_array = lc[0:int(i+cadence_pad)]
+                    reshaped_data[i] = np.pad(flux_array, pad_width=(int(cadence_pad-i),0),
+                                            mode='constant', constant_values=(padding,0))
+                elif i > (len(lc)-cadence_pad):
+                    loc = [int(len(lc)-cadence_pad), int(len(lc)+1)]
+                    flux_array = lc[loc[0]:loc[1]]
+                    flux_array = np.pad(flux_array, pad_width=(0, int(i-cadence_pad)),
+                                        mode='constant', constant_values=(0,padding))
+                else:
+                    loc = [int(i-cadence_pad), int(i+cadence_pad)]
+                    reshaped_data[i] = lc[loc[0]:loc[1]+1]
+                    
+            prediction = self.model.predict(reshaped_data)
+            self.predictions=prediction
+            self.reshaped_data = reshaped_data
+#        predictions = self.model.predict(input_data)
+#        self.predictions=predictions
 
 
-    def data_slider(self):
-        """
-        Assigns a probability to each data point in the set.
-        """
-        return
 
             
