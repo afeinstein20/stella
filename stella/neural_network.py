@@ -132,7 +132,13 @@ class NeuralNetwork(object):
         if detrending is True:
             flux = self.gp_detrending()
 
-        for lc in tqdm(flux):
+        # Handles 1D arrays
+        try:
+            flux.shape[1]
+        except:
+            self.flux = np.array([flux])
+
+        for lc in tqdm(self.flux):
             # Centers each point in the input light curve and pads
             # with same number of cadences as used in the training set
             reshaped_data = np.zeros((len(lc),cadences))
