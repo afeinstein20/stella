@@ -8,6 +8,7 @@ from lightkurve.lightcurve import LightCurve as LC
 
 __all__ = ['SimulateLightCurves']
 
+
 class SimulateLightCurves(object):
     """
     A class to create simulated flares for neural
@@ -49,7 +50,7 @@ class SimulateLightCurves(object):
             self.output_dir = output_dir
 
 
-    def flare_model(self, amp, t0, rise, fall, statistic='mean'):
+    def flare_lightcurve(self, amp, t0, rise, fall, statistic='mean'):
         """
         Generates a simple flare model with a Gaussian rise
         and an exponential decay.
@@ -91,10 +92,7 @@ class SimulateLightCurves(object):
 
         model = np.append(rise_model, decay_model)
 
-        f = np.where( (model <= amp) & 
-                      (model >= amp/np.exp(1)) )[0]
-
-        duration = np.nanmax(self.time[f]) - np.nanmin(self.time[f])
+        duration = np.abs( np.sum(model[:-1] * np.diff(self.time) ))
 
         return model, duration*1440.
 
@@ -237,10 +235,10 @@ class SimulateLightCurves(object):
             else:
                 # Loops through each injected flare per light curve
                 for n in range(number_per[i]):
-                    flare, dur = self.flare_model(np.abs(self.flare_amps[loc]),
-                                                  self.flare_t0s[loc],
-                                                  self.flare_rises[loc],
-                                                  self.flare_decays[loc])
+                    flare, dur = self.flare_lightcurve(np.abs(self.flare_amps[loc]),
+                                                       self.flare_t0s[loc],
+                                                       self.flare_rises[loc],
+                                                       self.flare_decays[loc])
                     
                     flare_flux = self.fluxes[i] + flare
 
