@@ -1,5 +1,7 @@
 import os 
 import numpy as np
+from tqdm import tqdm
+import exoplanet as xo
 import tensorflow as tf
 from tensorflow import keras
 from lightkurve.lightcurve import LightCurve as LC
@@ -26,7 +28,7 @@ class NeuralNetwork(object):
         slc : stella.SimulatedLightCurve
         """
         self.slc = slc
-        
+        self.input_data = None
 
     def network_model(self, layers=2, density=[32,128],optimizer='adam',
                       metrics=['accuracy'], loss='sparse_categorical_crossentropy'):
@@ -99,14 +101,18 @@ class NeuralNetwork(object):
                        epochs=epochs)
 
 
-    def predict(self, input_data):
+    def predict(self, input_data, detrending=False):
         """
-        Ues the trained neural network to predict data.
+        Assigns a probability of being a flare to each point in the 
+        input data set.
 
         Parameters
         ---------- 
         input_data : np.ndarray
              The data you want to predict using the neural network.
+        detrending : bool, optional
+             Setting detrending to True creates a GP model to remove
+             stellar rotation. Default = False.
 
         Attributes
         ---------- 
@@ -114,36 +120,56 @@ class NeuralNetwork(object):
              A 2D array of probabilities for each data set put in.
              Index 0 = Junk; Index 1 = Flare.
         """
-        input_data = np.array(input_data)
-        cadences   = self.slc.cadences
+        cadences    = self.slc.cadences
+        predictions = []
 
-        for lc in input_data:
+        self.input_data = input_data
+        if detrending is True:
+            input_data = self.gp_detrending()
+
+        for lc in tqdm(input_data):
             # Centers each point in the input light curve and pads
             # with same number of cadences as used in the training set
             reshaped_data = np.zeros((len(lc),cadences))
             padding       = np.nanmedian(lc)
+            std           = np.std(lc)
             cadence_pad   = int(cadences/2)
 
             for i in range(len(lc)):
-                if i < cadences/2:
-                    flux_array = lc[0:int(i+cadence_pad)]
-                    reshaped_data[i] = np.pad(flux_array, pad_width=(int(cadence_pad-i),0),
-                                            mode='constant', constant_values=(padding,0))
-                elif i > (len(lc)-cadence_pad):
-                    loc = [int(len(lc)-cadence_pad), int(len(lc)+1)]
-                    flux_array = lc[loc[0]:loc[1]]
-                    flux_array = np.pad(flux_array, pad_width=(0, int(i-cadence_pad)),
-                                        mode='constant', constant_values=(0,padding))
+                if i <= cadences/2:
+                    fill_length   = int(cadence_pad-i)
+                    padding_array = np.full( (fill_length,), padding ) + np.random.normal(0, std, fill_length)
+                    reshaped_data[i] = np.append(padding_array, lc[0:int(i+cadence_pad)])
+
+                elif i >= (len(lc)-cadence_pad):
+                    loc = [int(i-cadence_pad), int(len(lc))]
+                    fill_length   = int(np.abs(cadences - len(lc[loc[0]:loc[1]])))
+                    padding_array = np.full( (fill_length,), padding ) + np.random.normal(0, std, fill_length)
+                    reshaped_data[i] = np.append(lc[loc[0]:loc[1]], padding_array)
+
                 else:
                     loc = [int(i-cadence_pad), int(i+cadence_pad)]
-                    reshaped_data[i] = lc[loc[0]:loc[1]+1]
+                    reshaped_data[i] = lc[loc[0]:loc[1]]
                     
-            prediction = self.model.predict(reshaped_data)
-            self.predictions=prediction
-            self.reshaped_data = reshaped_data
-#        predictions = self.model.predict(input_data)
-#        self.predictions=predictions
+            predictions.append(self.model.predict(reshaped_data))
+
+        self.predictions=np.array(predictions)
 
 
+    def gp_detrending(self, window_length=101):
+        """
+        Uses a Gaussian process to detrend the rotation period of the star.
+        First it flattens using a Savitsky-Golay filter to complete a sigma clipping.
+        Then it fits a GP to the sigma clipped flux.
 
-            
+        Parameters
+        ----------  
+        window_length : int, optional
+             The window length applied to a Savitsky-Golay filter.
+             Default = 101.
+        """
+        
+        if self.input_data is None:
+            raise ValueError("Please input data into stella.NeuralNetwork.predict and set detrending=True.")
+
+        
