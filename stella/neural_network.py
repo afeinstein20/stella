@@ -28,7 +28,8 @@ class NeuralNetwork(object):
         slc : stella.SimulatedLightCurve
         """
         self.slc = slc
-        self.input_data = None
+        self.flux        = None
+        self.predictions = None
 
     def network_model(self, layers=2, density=[32,128],optimizer='adam',
                       metrics=['accuracy'], loss='sparse_categorical_crossentropy'):
@@ -101,15 +102,18 @@ class NeuralNetwork(object):
                        epochs=epochs)
 
 
-    def predict(self, input_data, detrending=False):
+    def predict(self, time, flux, detrending=False):
         """
         Assigns a probability of being a flare to each point in the 
         input data set.
 
         Parameters
         ---------- 
-        input_data : np.ndarray
-             The data you want to predict using the neural network.
+        time : np.ndarray
+             A time array for the data you want to predict.
+        flux : np.ndarray
+             An array of the data you want to predict using the 
+             neural network.
         detrending : bool, optional
              Setting detrending to True creates a GP model to remove
              stellar rotation. Default = False.
@@ -123,11 +127,12 @@ class NeuralNetwork(object):
         cadences    = self.slc.cadences
         predictions = []
 
-        self.input_data = input_data
+        self.time = time
+        self.flux = flux
         if detrending is True:
-            input_data = self.gp_detrending()
+            flux = self.gp_detrending()
 
-        for lc in tqdm(input_data):
+        for lc in tqdm(flux):
             # Centers each point in the input light curve and pads
             # with same number of cadences as used in the training set
             reshaped_data = np.zeros((len(lc),cadences))
@@ -169,7 +174,7 @@ class NeuralNetwork(object):
              Default = 101.
         """
         
-        if self.input_data is None:
+        if self.flux is None:
             raise ValueError("Please input data into stella.NeuralNetwork.predict and set detrending=True.")
 
-        
+        return detrended_data
