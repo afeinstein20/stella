@@ -64,17 +64,24 @@ class FlareCharacterization(object):
         flare_table : astropy.Table
              A table of flare parameters.
         """
-        t = Table(names=["Duration", "Amplitude", "Peak [time]"])
+        t = Table(names=["ed", "ed_err", "amp", "amp_err", "Peak [time]"])
 
         for i in tqdm(range(len(self.flux))):
-            flux = self.flux[i] - np.nanmedian(self.flux[i])
-            peak = np.argmax(flux)
+            peak = np.argmax(self.flux[i])
             if self.labels[i][:,1][peak] > prob_accept:
                 t0  = self.time[i][peak]
-                amp = np.nanmax(flux)
-                f = np.where( (flux <= amp) & 
-                              (flux >= amp/np.exp(1)) )[0]
-                duration = np.nanmax(self.time[i][f]) - np.nanmin(self.time[i][f])
-                t.add_row([duration, amp, t0])
+
+                amp = np.nanmax(self.flux[i])
+                random_flux = np.zeros((len(self.flux[i]),200))
+                for j in range(len(self.flux[i])):
+                    random_flux[i] = np.random.normal(self.flux[i][j], self.flux_err[i][j], 200)
+                amp_err = np.std(np.nanmax(random_flux, axis=1))
+
+                dur     = np.abs(np.sum(self.flux[i][:-1]    * np.diff(self.time[i]) ))
+                dur_err = np.abs(np.sum(self.flux_err[i][:-1]* np.diff(self.time[i]) ))
+
+                t.add_row([dur, dur_err, amp, amp_err, t0])
 
         self.flare_table = t
+
+
