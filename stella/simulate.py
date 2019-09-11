@@ -291,7 +291,7 @@ class SimulateLightCurves(object):
         """
         Saves a table of simulated data information.
         """
-        self.flare_table.write(output_name, format='ascii')
+        self.flare_table.write(os.path.join(self.output_dir,output_name), format='ascii')
 
 
     def fetch_dir(self):
