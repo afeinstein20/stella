@@ -10,7 +10,7 @@ class FlareCharacterization(object):
     A class that classifies flares in a given data set.
     """
 
-    def __init__(self, nn=None, time=None, flux=None, labels=None):
+    def __init__(self, nn=None, time=None, flux=None, flux_err=None, labels=None):
         """
         Parameters
         ---------- 
@@ -31,20 +31,22 @@ class FlareCharacterization(object):
             if nn.predictions is None:
                 raise ValueError("Please call stella.NeuralNetwork.predict first.")
             else:
-                time   = nn.time
-                flux   = nn.flux
-                labels = nn.predictions
+                time     = nn.time
+                flux     = nn.flux
+                flux_err = nn.flux_err
+                labels   = nn.predictions
 
         try:
             time.shape[1]
-            self.time   = time
-            self.flux   = flux
-            self.labels = labels
+            self.time     = time
+            self.flux     = flux
+            self.labels   = labels
+            self.flux_err = flux_err
         except:
-            self.time   = np.array([time])
-            self.flux   = np.array([flux])
-            self.labels = np.array([labels])
-
+            self.time     = np.array([time])
+            self.flux     = np.array([flux])
+            self.labels   = np.array([labels])
+            self.flux_err = np.array([flux_err])
 
     def flares(self, prob_accept=0.75):
         """
