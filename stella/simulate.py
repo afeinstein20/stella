@@ -6,6 +6,8 @@ from astropy.table import Table, Row
 from scipy.stats import binned_statistic
 from lightkurve.lightcurve import LightCurve as LC
 
+from .utils import *
+
 __all__ = ['SimulateLightCurves']
 
 
@@ -48,53 +50,6 @@ class SimulateLightCurves(object):
             self.fetch_dir()
         else:
             self.output_dir = output_dir
-
-
-    def flare_lightcurve(self, amp, t0, rise, fall, statistic='mean'):
-        """
-        Generates a simple flare model with a Gaussian rise
-        and an exponential decay.
-
-        Parameters
-        ----------
-        amp : float
-             The amplitude of the flare.
-        t0 : int
-             The index in the time array where the flare will occur.
-        rise : float
-             The Gaussian rise of the flare.
-        fall : float
-             The exponential decay of the flare.
-        statistic : str, optional
-             How to bin the points. Default = 'mean'.
-             For more options, see 
-             https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.binned_statistic.html.
-
-        Returns
-        ----------
-        flare model : np.ndarray
-             A light curve of 0s with an injected flare of given parameters.
-        dur : float
-             The duration of the flare given in minutes.
-        """
-        
-        def gauss_rise(time, amp, t0, rise):
-            return amp * np.exp( -(time - t0)**2.0 / (2.0*rise**2.0) )
-        
-        def exp_decay(time, amp, t0, decay):
-            return amp * np.exp( -(time - t0) / decay )
-
-        growth = np.where(self.time <= self.time[t0])[0]
-        decay  = np.where(self.time >  self.time[t0])[0]
-
-        rise_model  = gauss_rise(self.time[growth], amp, self.time[t0], rise)
-        decay_model = exp_decay(self.time[decay],   amp, self.time[t0], fall)
-
-        model = np.append(rise_model, decay_model)
-
-        duration = np.abs( np.sum(model[:-1] * np.diff(self.time) ))
-
-        return model, duration*1440.
 
 
     def sine_wave(self, amplitude=[0.02,0.1], frequency=[1,10],
@@ -199,8 +154,8 @@ class SimulateLightCurves(object):
 
 
 
-        flare_table = Table(names=['simulated_flare_number', 'flare', 'amplitude',
-                                   't0', 'rise_factor', 'decay_factor', 'duration'],
+        flare_table = Table(names=['simulated_flare_number', 'flare', 't0', 'amplitude',
+                                   'duration', 'rise_factor', 'decay_factor'],
                             dtype=[np.int, np.int, np.float32, 
                                    np.float32, np.float32, np.float32, np.float64])
 
@@ -209,16 +164,17 @@ class SimulateLightCurves(object):
         self.total_flares = np.sum(number_per)
         total_sample      = len(np.where(number_per==0)[0])+self.total_flares
 
-        self.flare_amps  = np.random.normal(amplitudes[0], amplitudes[1], self.total_flares)
-        self.flare_decays= np.random.uniform(decays[0]   , decays[1]    , self.total_flares)
-        self.flare_rises = np.random.uniform(rises[0]    , rises[1]     , self.total_flares)
-        self.flare_t0s   = np.random.randint(self.cadences/2, len(self.time)-self.cadences/2, self.total_flares)
+        distribution = flare_parameters(self.total_flares, len(self.time), self.cadences,
+                                        amplitudes, rises, decays)
+
+        self.flare_t0s   = distribution[0]
+        self.flare_amps  = distribution[1]
+        self.flare_rises = distribution[2]
+        self.flare_decays= distribution[3]
 
         flare_fluxes           = np.zeros( (total_sample*(ratio+1), self.cadences ))
         flare_fluxes_detrended = np.zeros( (total_sample*(ratio+1), self.cadences ))
         labels                 = np.zeros(  total_sample*(ratio+1), dtype=int)
-
-        durations = np.zeros(self.total_flares)
 
         # Tracks the sample size of flares
         loc = 0
@@ -235,10 +191,11 @@ class SimulateLightCurves(object):
             else:
                 # Loops through each injected flare per light curve
                 for n in range(number_per[i]):
-                    flare, dur = self.flare_lightcurve(np.abs(self.flare_amps[loc]),
-                                                       self.flare_t0s[loc],
-                                                       self.flare_rises[loc],
-                                                       self.flare_decays[loc])
+                    flare, row = flare_lightcurve(self.time, 
+                                                  np.abs(self.flare_amps[loc]),
+                                                  self.flare_t0s[loc],
+                                                  self.flare_rises[loc],
+                                                  self.flare_decays[loc])
                     
                     flare_flux = self.fluxes[i] + flare
 
@@ -250,9 +207,7 @@ class SimulateLightCurves(object):
                                                                                        window_length).flux
                     labels[t] = 1
 
-                    row = [int(i), int(n+1), np.abs(self.flare_amps[loc]), self.time[t0_ind],
-                           self.flare_rises[loc], self.flare_decays[loc],
-                           dur]
+                    row = np.append([i, n], row)
                     flare_table.add_row(row)
 
                     loc += 1

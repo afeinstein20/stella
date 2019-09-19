@@ -102,7 +102,8 @@ class NeuralNetwork(object):
                        epochs=epochs)
 
 
-    def predict(self, time, flux, flux_err, detrending=False):
+    def predict(self, time, flux, flux_err, 
+                detrending=False, injection=False):
         """
         Assigns a probability of being a flare to each point in the 
         input data set.
@@ -119,6 +120,9 @@ class NeuralNetwork(object):
         detrending : bool, optional
              Setting detrending to True creates a GP model to remove
              stellar rotation. Default = False.
+        injection : bool, optional
+             If injection == True, return the predictions instead of 
+             overwriting self.predictions. Default = False.
 
         Attributes
         ---------- 
@@ -167,7 +171,11 @@ class NeuralNetwork(object):
                     
             predictions.append(self.model.predict(reshaped_data))
 
-        self.predictions=np.array(predictions)
+
+        if injection is False:
+            self.predictions=np.array(predictions)
+        else:
+            return np.array(predictions)
 
 
     def gp_detrending(self, window_length=101):
