@@ -1,6 +1,9 @@
 import numpy as np
 from tqdm import tqdm
+import more_itertools as mit
 from astropy.table import Table
+from scipy.optimize import minimize
+from astropy.stats import sigma_clip
 
 from .utils import *
 
@@ -11,7 +14,8 @@ class FlareCharacterization(object):
     A class that classifies flares in a given data set.
     """
 
-    def __init__(self, nn=None, time=None, flux=None, flux_err=None, labels=None):
+    def __init__(self, nn=None, time=None, flux=None, flux_err=None, labels=None,
+                 prob_accept=0.75):
         """
         Parameters
         ---------- 
@@ -26,6 +30,9 @@ class FlareCharacterization(object):
              An array of same shape as time and flux that consists of values
              between 0 and 1, as probabilities that data point is part of 
              a flare.
+        prob_accept : float, optional
+             The acceptance probability that something is a flare. Must be 
+             between 0 and 1. Default = 0.75.
         """
 
         if nn is not None:
@@ -42,133 +49,100 @@ class FlareCharacterization(object):
         self.flux     = flux
         self.labels   = labels
         self.flux_err = flux_err
+        self.prob_accept = prob_accept
+
+        self.find_flares()
+        self.fit_flares()
 
 
-    def section_by_flare(self, time, flux, flux_err, labels, region_size):
+    def find_flares(self):
         """
-        Splits the data into just the regions around the flare event.
-
-        Parameters
-        ---------- 
-        region_size : int
-             The number of cadences to be taken on both sides of the 
-             peak of the flare.
-        """
-        flare = np.where(labels[:,1]>prob_accept)[0]
-        flare_regions = np.where(np.diff(flares)>1)[0]
-
-        time_peaks, flux_peaks = [], []
-        flux_err_peaks = []
-
-        for i in range(len(flare_regions)):
-            if i == 0:
-                r = (flares <= flares[flare_regions[i]])
-            else:
-                r = ((flares > flares[flare_regions[i-1]]) & (flares <= flares[flare_regions[i]]))
-
-            median_ind = np.argsort(flares[r])[len(flares[r])//2]
-            peak       = flares[r][median_ind]
-            time_peaks.append( time[int((peak-region_size/1.5)): int(peak+region_size)] )
-            flux_peaks.append( flux[int((peak-region_size/1.5)): int(peak+region_size)] )
-            flux_err_peaks.append( flux_err[int((peak-region_size/1.5)): int(peak+region_size)] )
-
-        return np.array(time_peaks), np.array(flux_peaks), np.array(flux_err_peaks)
-
-
-
-    def flares(self, prob_accept=0.75, region_size=16):
-        """
-        Uses labels to identify flares and recover the following parameters:
-        equivalent duration, amplitude, time of flare peak.
-
-        Parameters
-        ----------
-        prob_accept : float, optional
-             The label probability for which to find flares
-             above this threshold. Default = 0.75.
-        region_size : int
-             The number of cadences to be taken on both sides of the
-             peak of the flare.    
+        Finds the time of flare peak for each flare above
+        the accepted flare probability.
 
         Attributes
-        ----------
-        flare_table : astropy.Table
-             A table of flare parameters.
+        ---------- 
+        all_flux_flares : np.ndarray
+             An array of consecutive indices where flares occur.
+        flare_t0s : np.ndarray
+             The peak of each flare.
+        flare_amps : np.ndarray
+             The amplitude of each flare.
         """
-        t = Table(names=["ed", "ed_err", "amp", "amp_err", "Peak [time]"])
 
-        try:
-            self.flux.shape[1]
-            for i in range(len(self.flux)):
-                tp, fp, fep = self.section_by_flare(self.time[i], self.flux[i],
-                                                    self.flux_err[i],
-                                                    self.labels[i], region_size)
-        except:
-            time_section, flux_section, flux_err_section = self.section_by_flare(self.time,
-                                                                                 self.flux,
-                                                                                 self.flux_err,
-                                                                                 self.labels,
-                                                                                 region_size)
+        all_flux_flares = []
+        t0s, amps = [], []
 
+        for i in range(len(self.flux)):
+            where = np.argwhere(self.labels[i][:,1] > self.prob_accept)
+            l_int = np.array([], dtype=int)
+            for w in where:
+                l_int = np.append(l_int, w)
+            flares = [list(group) for group in mit.consecutive_groups(l_int)]
+            
+            sub_t0, sub_amp = [], []
 
-        for i in tqdm(range(len(time_section))):
-            peak = np.argmax(flux_section[i])
+            for f in flares:
+                peak = np.argmax(self.flux[i][f])
+                sub_t0.append(self.time[i][f][peak])
+                sub_amp.append(self.flux[i][f][peak])
 
-            if self.labels[i][:,1][peak] > prob_accept:
+            all_flux_flares.append(flares)
+            t0s.append(sub_t0)
+            amps.append(sub_amp)
 
-                t0  = self.time[i][peak]
+        self.all_flux_flares = all_flux_flares
+        self.flare_t0s = t0s
+        self.flare_amps=amps
+                
 
-                amp = np.nanmax(flux_section[i])
-                random_flux = np.zeros((len(self.flux[i]),200))
-                for j in range(len(self.flux[i])):
-                    random_flux[i] = np.random.normal(self.flux[i][j], self.flux_err[i][j], 200)
-                amp_err = np.std(np.nanmax(random_flux, axis=1))
-
-                dur     = np.abs(np.sum(self.flux[i][:-1]    * np.diff(self.time[i]) ))
-                dur_err = np.abs(np.sum(self.flux_err[i][:-1]* np.diff(self.time[i]) ))
-
-                t.add_row([dur, dur_err, amp, amp_err, t0])
-
-        self.flare_table = t
-
-
-    def completeness(self, trials=100, amplitudes=[0.01,0.08],
-                     decays=[0.05,0.15], rises=[0.001,0.005]):
+    def fit_flares(self):
         """
-        Injection and recovery of fake flares into your input data. 
-
-        Parameters
-        ----------
-        trials : int, optional
-             The number of injections completed. Default = 100.
-        amplitudes : list, optional 
-             List of mean and std of flare amplitudes to draw from a
-             normal distritbution. Default = [0.01, 0.08].
-        decays : list, optional
-             List of minimum and maximum exponential decay rate to draw from a
-             uniform distribution. Default = [0.05, 0.15].
-        rises : list, optional
-             List of minimum and maximum Gaussian rise rate to draw from a
-             uniform distribution. Default = [0.001, 0.006] 
+        Fits a a model of stellar activity and flare around each
+        peak idenitfied in the light curve.
         """
+
+        tab = Table(names=["t0", "amp", "rise", "decay", "amp_fit"])
+        
+        def chisquare(var, x, y, yerr):
+            # Fits the flare and an underlying polynomial to extract
+            # flare parameters.
+            amp, t0, rise, fall = var
+
+            sig_mask = sigma_clip(y, sigma=2.5).mask
+            
+            poly_fit = np.polyfit(x[~sig_mask], y[~sig_mask], deg=2)
+            poly_model = np.poly1d(poly_fit)
+
+            m = flare_lightcurve(x, amp, int(t0), rise, fall, y=poly_model(x))[0]+np.nanmedian(y)
+            return np.sum( (y-m)**2/yerr**2 )
+
+
         models = []
-        t = Table(names=['flare', 't0', 'amplitude',
-                            'duration', 'rise', 'decay'])
+        for i in range(len(self.flux)):
+            submodels = []
 
-        for i in range(self.time.shape[0]):
-            flare_params = flare_parameters(trials, len(self.time[i]),
-                                            128, amplitudes, rises, decays)
-            models = []
-            for j in range(trials):
-                m, row = flare_lightcurve(self.time[i], np.abs(flare_params[1][j]), 
-                                          flare_params[0][j],
-                                          flare_params[2][j], 
-                                          flare_params[3][j])
-                row = np.append([j], row)
-                t.add_row(row)
+            for t in range(len(self.flare_t0s[i])):
 
-                pred = self.nn.predict(self.time[i], m+self.flux[i], 
-                                       self.flux_err[i], injection=True)
+                # amplitude, t0, rise, decay, order fit
+                init_guess = [np.abs(self.flare_amps[i][t]-1),
+                              int(self.flare_t0s[i][t]),
+                              0.005, 0.008]
 
-                models.append(pred)
-        return t, models
+                mini = minimize(chisquare, x0=init_guess,
+                                args=(self.time[i], self.flux[i]-np.nanmedian(self.flux[i]),
+                                      self.flux_err[i]),
+                                method='l-bfgs-b') # try different minimizers, what is best for discrete
+
+                if mini.success is True:
+                    row = [self.flare_t0s[i][t], self.flare_amps[i][t]-1, mini.x[2], 
+                           mini.x[3], mini.x[0]]
+                    tab.add_row(row)
+
+                model = flare_lightcurve(self.time[i], mini.x[0], int(mini.x[1]),
+                                         mini.x[2], mini.x[3])[0] + np.nanmedian(self.flux[i])
+                submodels.append(model)
+            models.append(submodels)
+            
+        self.models = models
+        self.parameters = tab
