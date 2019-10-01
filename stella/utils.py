@@ -1,6 +1,7 @@
 import numpy as np
+from scipy.optimize import minimize
 
-def flare_lightcurve(time, amp, t0, rise, fall):
+def flare_lightcurve(time, amp, t0, rise, fall, y=None):
     """
     Generates a simple flare model with a Gaussian rise and an 
     exponential decay.
@@ -17,6 +18,8 @@ def flare_lightcurve(time, amp, t0, rise, fall):
          The Gaussian rise of the flare.
     fall : float
          The exponential decay of the flare.
+    y : np.ndarray, optional
+         Underlying stellar activity. Default if None.
 
     Returns
     ----------
@@ -26,17 +29,20 @@ def flare_lightcurve(time, amp, t0, rise, fall):
          The parameters of the injected flare. Returns - 
          [t0, amplitude, duration, gauss_rise, exp_decay].
     """
-    def gauss_rise(time, amp, t0, rise):
-        return amp * np.exp( -(time - t0)**2.0 / (2.0*rise**2.0) )
+    def gauss_rise(time, flux, amp, t0, rise):
+        return amp * np.exp( -(time - t0)**2.0 / (2.0*rise**2.0) ) + flux
     
-    def exp_decay(time, amp, t0, fall):
-        return amp * np.exp( -(time - t0) / fall )
+    def exp_decay(time, flux, amp, t0, fall):
+        return amp * np.exp( -(time - t0) / fall ) + flux
 
     growth = np.where(time <= time[t0])[0]
     decay  = np.where(time >  time[t0])[0]
 
-    growth_model = gauss_rise(time[growth], amp, time[t0], rise)
-    decay_model  = exp_decay(time[decay]  , amp, time[t0], fall)
+    if y is None:
+        y = np.zeros(len(time))
+
+    growth_model = gauss_rise(time[growth], y[growth], amp, time[t0], rise)
+    decay_model  = exp_decay(time[decay]  , y[decay] , amp, time[t0], fall)
 
     model = np.append(growth_model, decay_model)
     dur = np.abs(np.sum(model[:-1] * np.diff(time) ))
