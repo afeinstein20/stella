@@ -109,7 +109,7 @@ class NeuralNetwork(object):
         input data set.
 
         Parameters
-        ---------- 
+        ----------  
         time : np.ndarray
              A time array for the data you want to predict.
         flux : np.ndarray
@@ -136,14 +136,14 @@ class NeuralNetwork(object):
         self.time = time
         self.flux = flux
         self.flux_err = flux_err
+
         if detrending is True:
             flux = self.gp_detrending()
 
         # Handles 1D arrays
-        try:
-            flux.shape[1]
-        except:
-            self.flux = np.array([flux])
+        if type(self.time[0]) != np.ndarray or type(self.time[0]) != list:
+            self.time = np.array(self.time)
+            self.flux = np.array(self.flux)
 
         for lc in tqdm(self.flux):
             # Centers each point in the input light curve and pads
