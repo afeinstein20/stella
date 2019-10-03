@@ -2,9 +2,9 @@ import numpy as np
 from tqdm import tqdm
 import more_itertools as mit
 from scipy import interpolate
-from astropy.table import Table
 from scipy.optimize import minimize
 from astropy.stats import sigma_clip
+from astropy.table import Table, Column
 
 from .utils import *
 
@@ -56,7 +56,7 @@ class FlareCharacterization(object):
         self.fit_flares()
 
 
-    def find_flares(self, injection=False):
+    def find_flares(self):
         """
         Finds the time of flare peak for each flare above
         the accepted flare probability.
@@ -81,8 +81,12 @@ class FlareCharacterization(object):
         all_flux_flares = []
         t0s, amps = [], []
 
-        for i in range(len(self.flux)):
-            where = np.argwhere(self.labels[i][:,1] > self.prob_accept)
+        time   = self.time
+        flux   = self.flux
+        labels = self.labels
+        
+        for i in range(len(flux)):
+            where = np.argwhere(labels[i][:,1] > self.prob_accept)
             l_int = np.array([], dtype=int)
             for w in where:
                 l_int = np.append(l_int, w)
@@ -91,21 +95,18 @@ class FlareCharacterization(object):
             sub_t0, sub_amp = [], []
 
             for f in flares:
-                peak = np.argmax(self.flux[i][f])
-                sub_t0.append(self.time[i][f][peak])
-                sub_amp.append(self.flux[i][f][peak])
+                peak = np.argmax(flux[i][f])
+                sub_t0.append(time[i][f][peak])
+                sub_amp.append(flux[i][f][peak])
 
             all_flux_flares.append(flares)
             t0s.append(sub_t0)
             amps.append(sub_amp)
 
-        if injection is False:
-            self.all_flux_flares = all_flux_flares
-            self.flare_t0s = t0s
-            self.flare_amps=amps
+        self.all_flux_flares = all_flux_flares
+        self.flare_t0s = t0s
+        self.flare_amps=amps
                 
-        else:
-            return all_flux_flares, t0s, amps
 
 
     def fit_flares(self):
@@ -168,7 +169,13 @@ class FlareCharacterization(object):
         ----------
         n : int, optional
              The number of flares you wish to inject. Default is 100.
+
+        Attributes
+        ---------- 
+        injection_results : astropy.Table
         """
+
+        tab = Table()
 
         for i in range(len(self.flux)):
             p = []
@@ -185,15 +192,46 @@ class FlareCharacterization(object):
                                                         [0.0001, 0.002],
                                                         [0.0001, 0.008])
 
+            tab.add_column(Column(self.time[i][t0s], name="inj_t0"))
+            tab.add_column(Column(np.abs(amps), name="inj_amp"))
+            
+            amps = np.abs(amps)
+            rec_t0s, rec_amps = [], []
+            rec = []
+
+            # This works, but it's super slow....
             for j in range(len(t0s)):
                 m = flare_lightcurve(self.time[i],
-                                     np.abs(amps[j]),
+                                     amps[j],
                                      t0s[j],
                                      rises[j],
                                      decays[j])[0]
 
-                preds = self.nn.predict(self.time[i], cleaned_flux+m,
-                                        self.flux_err[i], injection=True)
+                new_flux = cleaned_flux+m
+
+                det_flux, preds = self.nn.predict(self.time[i], new_flux,
+                                                  self.flux_err[i], injection=True,
+                                                  detrend_method=self.nn.detrend_method,
+                                                  window_length=self.nn.window_length)
+
+                r = ( (self.time[i] >= self.time[i][int(t0s[j]-15)]) &
+                      (self.time[i] <= self.time[i][int(t0s[j]+15)]) &
+                      (preds[0][:,1]   >= self.prob_accept) ) 
+
+                if len(det_flux[0][r]) > 0:
+                    peak = np.argmax(det_flux[0][r])
+                    rec_t0s.append(self.time[i][r][peak])
+                    rec_amps.append(det_flux[0][r][peak])
+                else:
+                    rec_t0s.append(np.nan)
+                    rec_amps.append(np.nan)
+                
+                
                 p.append(preds)                   
+
+        tab.add_column(Column(rec_t0s , name="rec_t0"))
+        tab.add_column(Column(rec_amps, name="rec_amp"))
+
+        self.injection_results = tab
 
         return p, cleaned_flux+m, cleaned_flux, m
