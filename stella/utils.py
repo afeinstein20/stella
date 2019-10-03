@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.optimize import minimize
 
 def flare_lightcurve(time, amp, t0, rise, fall, y=None):
     """
