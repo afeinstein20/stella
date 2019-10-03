@@ -89,6 +89,7 @@ class SimulateLightCurves(object):
         fluxes = np.zeros( (self.sample_size, len(self.time) ))
 
         for i in range(self.sample_size):
+            np.random.seed(18)
             noise_lvl = np.random.uniform(noise[0], noise[1], 1)[0]
             add_noise = np.random.normal(0, np.abs(noise_lvl), len(self.time))
             fluxes[i] = model(self.time, amplitude[i], frequency[i], phase[i]) + add_noise
