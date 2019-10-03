@@ -102,8 +102,8 @@ class NeuralNetwork(object):
                        epochs=epochs)
 
 
-    def predict(self, time, flux, flux_err, 
-                detrending=False, injection=False):
+    def predict(self, time, flux, flux_err, detrending=True,
+                injection=False, detrend_method='sg-filter', window_length=21):
         """
         Assigns a probability of being a flare to each point in the 
         input data set.
@@ -118,11 +118,17 @@ class NeuralNetwork(object):
         flux_err : np.ndarray
              An array of errors on the flux.
         detrending : bool, optional
-             Setting detrending to True creates a GP model to remove
-             stellar rotation. Default = False.
+             Allows the user to specify if they want the light curve
+             detrended before identifying flares. Default is True.
         injection : bool, optional
              If injection == True, return the predictions instead of 
              overwriting self.predictions. Default = False.
+        detrend_method : str, optional
+             The type of detrending to use on the light curve. Default
+             is applying a Savitsky-Golay filter, keyword = 'sg-filter'. 
+        window_length : str, optional
+             The window length to use with the Savitsky-Golay filter.
+             Default is 21.
 
         Attributes
         ---------- 
@@ -133,19 +139,19 @@ class NeuralNetwork(object):
         cadences    = self.slc.cadences
         predictions = []
 
-        self.time = time
-        self.flux = flux
-        self.flux_err = flux_err
+        detrended_flux = []
 
-        if detrending is True:
-            flux = self.gp_detrending()
+        if type(flux[0]) != np.ndarray or type(flux[0]) != list:
+            flux = np.array([flux])
+            time = np.array([time])
+            flux_err = np.array([flux_err])
 
-        # Handles 1D arrays
-        if type(self.time[0]) != np.ndarray or type(self.time[0]) != list:
-            self.time = np.array(self.time)
-            self.flux = np.array(self.flux)
+        for lc in flux:
+            if detrending is True:
+                if detrend_method == 'sg-filter':
+                    lc = LC(time[0], lc).flatten(window_length=window_length).flux
+                    detrended_flux.append(lc)
 
-        for lc in tqdm(self.flux):
             # Centers each point in the input light curve and pads
             # with same number of cadences as used in the training set
             reshaped_data = np.zeros((len(lc),cadences))
@@ -173,7 +179,12 @@ class NeuralNetwork(object):
 
 
         if injection is False:
-            self.predictions=np.array(predictions)
+            self.predictions    = np.array(predictions)
+            self.time           = time
+            self.flux           = flux
+            self.flux_err       = flux_err
+            self.detrended_flux = np.array(detrended_flux)
+
         else:
             return np.array(predictions)
 
