@@ -149,7 +149,10 @@ class NeuralNetwork(object):
         for lc in flux:
             if detrending is True:
                 if detrend_method == 'sg-filter':
-                    lc = LC(time[0], lc).flatten(window_length=window_length).flux
+                    try:
+                        lc = LC(time[0], lc).flatten(window_length=window_length).flux
+                    except:
+                        lc = LC(time, lc).flatten(window_length=window_length).flux
                     detrended_flux.append(lc)
 
             # Centers each point in the input light curve and pads
