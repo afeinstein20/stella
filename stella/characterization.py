@@ -1,6 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 import more_itertools as mit
+from scipy import interpolate
 from astropy.table import Table
 from scipy.optimize import minimize
 from astropy.stats import sigma_clip
@@ -55,10 +56,17 @@ class FlareCharacterization(object):
         self.fit_flares()
 
 
-    def find_flares(self):
+    def find_flares(self, injection=False):
         """
         Finds the time of flare peak for each flare above
         the accepted flare probability.
+
+        Parameters
+        ----------
+        injection : bool, optional
+             For injection is True, returns values rather than
+             setting the attributes in the class. Default is 
+             False.
 
         Attributes
         ---------- 
@@ -91,10 +99,14 @@ class FlareCharacterization(object):
             t0s.append(sub_t0)
             amps.append(sub_amp)
 
-        self.all_flux_flares = all_flux_flares
-        self.flare_t0s = t0s
-        self.flare_amps=amps
+        if injection is False:
+            self.all_flux_flares = all_flux_flares
+            self.flare_t0s = t0s
+            self.flare_amps=amps
                 
+        else:
+            return all_flux_flares, t0s, amps
+
 
     def fit_flares(self):
         """
@@ -146,3 +158,42 @@ class FlareCharacterization(object):
             
         self.models = models
         self.parameters = tab
+
+
+    def injection_recovery(self, n=100):
+        """
+        Completes injection & recovery for each light curve.
+
+        Parameters
+        ----------
+        n : int, optional
+             The number of flares you wish to inject. Default is 100.
+        """
+
+        for i in range(len(self.flux)):
+            p = []
+            print("Injecting flares into flare {}".format(i))
+            q = self.labels[i][:,1] < self.prob_accept
+
+            interpolation = interpolate.interp1d(self.time[i][q], self.flux[i][q])
+            cleaned_flux  = interpolation(self.time[i])
+
+            t0s, amps, rises, decays = flare_parameters(n,
+                                                        len(self.time[i]),
+                                                        self.nn.slc.cadences,
+                                                        [0.001, 0.015],
+                                                        [0.0001, 0.002],
+                                                        [0.0001, 0.008])
+
+            for j in range(len(t0s)):
+                m = flare_lightcurve(self.time[i],
+                                     np.abs(amps[j]),
+                                     t0s[j],
+                                     rises[j],
+                                     decays[j])[0]
+
+                preds = self.nn.predict(self.time[i], cleaned_flux+m,
+                                        self.flux_err[i], injection=True)
+                p.append(preds)                   
+
+        return p, cleaned_flux+m, cleaned_flux, m
