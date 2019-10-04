@@ -141,6 +141,10 @@ class NeuralNetwork(object):
 
         detrended_flux = []
 
+        if injection is False:
+            self.detrend_method = detrend_method
+            self.window_length  = window_length
+
         if type(flux[0]) != np.ndarray or type(flux[0]) != list:
             flux = np.array([flux])
             time = np.array([time])
@@ -189,7 +193,7 @@ class NeuralNetwork(object):
             self.detrended_flux = np.array(detrended_flux)
 
         else:
-            return np.array(predictions)
+            return np.array(detrended_flux), np.array(predictions)
 
 
     def gp_detrending(self, window_length=101):

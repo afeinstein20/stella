@@ -53,7 +53,7 @@ class FlareCharacterization(object):
         self.prob_accept = prob_accept
 
         self.find_flares()
-        self.fit_flares()
+#        self.fit_flares()
 
 
     def find_flares(self):
@@ -185,6 +185,7 @@ class FlareCharacterization(object):
             interpolation = interpolate.interp1d(self.time[i][q], self.flux[i][q])
             cleaned_flux  = interpolation(self.time[i])
 
+            # Inject in logspace
             t0s, amps, rises, decays = flare_parameters(n,
                                                         len(self.time[i]),
                                                         self.nn.slc.cadences,
@@ -198,6 +199,7 @@ class FlareCharacterization(object):
             amps = np.abs(amps)
             rec_t0s, rec_amps = [], []
             rec = []
+            max_rec_prob = []
 
             # This works, but it's super slow....
             for j in range(len(t0s)):
@@ -206,6 +208,8 @@ class FlareCharacterization(object):
                                      t0s[j],
                                      rises[j],
                                      decays[j])[0]
+
+                # Probability at the injected time
 
                 new_flux = cleaned_flux+m
 

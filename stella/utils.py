@@ -64,7 +64,7 @@ def flare_parameters(size, time_length, cadences,
     cadences : int
          The number of cadences to scroll over.
     amps : list
-         List of mean and stf of flare amplitudes to draw from a 
+         List of minimum and maximum of flare amplitudes to draw from a 
          normal distribution. 
     rises : list
          List of minimum and maximum Gaussian rise rate to draw from
@@ -88,7 +88,7 @@ def flare_parameters(size, time_length, cadences,
     flare_t0s   = np.random.randint(cadences/2, 
                                     time_length-cadences/2,
                                     size)
-    flare_amps  = np.random.normal(amps[0],    amps[1],   size)
+    flare_amps  = np.random.normal(amps[0], amps[1], size)
     flare_decays= np.random.uniform(decays[0], decays[1], size)
     flare_rises = np.random.uniform(rises[0],  rises[1],  size)
 
