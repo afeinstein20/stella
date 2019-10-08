@@ -136,31 +136,24 @@ class NeuralNetwork(object):
              A 2D array of probabilities for each data set put in.
              Index 0 = Junk; Index 1 = Flare.
         """
+        def detrend_poly(x, y):
+            coefs = poly.polyfit(x, y, 2)
+            return poly.polyval(x, coefs)
+
         cadences    = self.slc.cadences
         predictions = []
 
-        detrended_flux = []
+        detrended_flux = np.copy(flux)
 
         if injection is False:
             self.detrend_method = detrend_method
             self.window_length  = window_length
 
-#        print(type(flux[0]))
-#        if type(flux[0]) != np.ndarray or type(flux[0]) != list:
-#            print("this is failing")
-#            flux = np.array([flux])
-#            time = np.array([time])
-#            flux_err = np.array([flux_err])
-
-#        print(flux.shape)
-        for lc in flux:
+        for i, lc in enumerate(flux):
+            detrend = np.array([])
             if detrending is True:
-                if detrend_method == 'sg-filter':
-                    try:
-                        lc = LC(time[0], lc).flatten(window_length=window_length).flux
-                    except:
-                        lc = LC(time, lc).flatten(window_length=window_length).flux
-                    detrended_flux.append(lc)
+                detrend = LC(self.time[i], lc).flatten(window_length=window_length).flux
+                detrended_flux[i] = detrend
 
             # Centers each point in the input light curve and pads
             # with same number of cadences as used in the training set
@@ -173,13 +166,6 @@ class NeuralNetwork(object):
                 if i <= cadences/2:
                     fill_length   = int(cadence_pad-i)
                     padding_array = np.full( (fill_length,), padding ) + np.random.normal(0, std, fill_length)
-
-#                    print(i)
-#                    print(fill_length)
-#                    print(cadence_pad)
-#                    print(lc[0:int(i+cadence_pad)])
-#                    print(padding_array)
-
                     reshaped_data[i] = np.append(padding_array, lc[0:int(i+cadence_pad)])
 
                 elif i >= (len(lc)-cadence_pad):

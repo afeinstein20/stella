@@ -16,7 +16,7 @@ class SimulateLightCurves(object):
 
     def __init__(self, sample_size=3000, output_dir=None, cadences=128,
                  activity=True, activity_amp=[0.1,0.8],
-                 activity_freq=[10,100], noise=[0.001, 0.01],
+                 activity_freq=[10,100], noise=[0.001, 0.003],
                  flare_amp=[0.01, 0.08], ratio=3):
         """
         Parameters 
@@ -62,7 +62,7 @@ class SimulateLightCurves(object):
         self.cadences = cadences
         self.sample_size = sample_size
 
-        time = np.arange(0, 10000, 2.0/1440.0)
+        time = np.full((self.sample_size, self.cadences), np.linspace(0, 2.0/1440.0*self.cadences, self.cadences))
         remove = np.arange(self.sample_size*self.cadences, len(time), 1)
         time = np.delete(time, remove)
         self.time = np.reshape(time, (self.sample_size, self.cadences))
@@ -161,13 +161,13 @@ class SimulateLightCurves(object):
                                               np.abs(dist[3][r]))
                 flare_flux = self.fluxes[i] + flare
 
-                cads  = np.delete(np.arange(0,self.cadences,1),
-                                  np.arange(62,71,1,dtype=int))
+#                cads  = np.delete(np.arange(0,self.cadences,1),
+#                                  np.arange(62,71,1,dtype=int))
 
-                add_noise = np.random.normal(0, np.abs(noise_lvl), 
-                                             len(cads))
+#                add_noise = np.random.normal(0, np.abs(noise_lvl), 
+#                                             len(cads))
 
-                flare_flux[cads] += add_noise
+#                flare_flux[cads] += add_noise
                 self.fluxes[i] = flare_flux
 
                 row = np.append(i, row)
@@ -177,14 +177,15 @@ class SimulateLightCurves(object):
                 
             else:
                 if i % 2 == 0:
-                    length = np.random.uniform(3,10,1)[0]
+                    length = np.random.uniform(4,10,1)[0]
                     amp    = np.random.randint(0, len(dist[1]), 1)[0]
                     tophat = np.arange(63-length/2, 63+length/2, 1, dtype=int)
                     self.fluxes[i][tophat] += np.abs(dist[1][amp])
                                        
-                add_noise = np.random.normal(0, np.abs(noise_lvl), self.cadences)
-                self.fluxes[i] += add_noise
-                
+            add_noise = np.random.normal(0, np.abs(noise_lvl), self.cadences)
+            self.fluxes[i] += add_noise
+            
+            self.fluxes[i] = self.fluxes[i] - np.nanmedian(self.fluxes[i]) + 1
 
             inreg = np.arange(60,70,1,dtype=int)
             outof = np.delete(np.arange(0,len(self.time[i]),1,dtype=int),
