@@ -2,6 +2,11 @@
   <img width = "500" src="./figures/stella_logo.png"/>
 </p>
 
+<p align="center">
+  <a href="https://travis-ci.org/afeinstein20/stella/"><img src="https://img.shields.io/travis/afeinstein20/stella/master.svg?"/></a>
+  <a href="https://afeinstein20.github.io/stella/"><img src="https://img.shields.io/badge/read-the_docs-4D827F.svg?style=flat"/></a>
+</p>
+
 </p>
 stella is a Python package to create and train a neural network to identify stellar flares.
 Within stella, users can simulate flares as a training set, run a neural network, and feed
