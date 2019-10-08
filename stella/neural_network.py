@@ -86,16 +86,16 @@ class NeuralNetwork(object):
              Gives the user the option to train on detrended simulated data.
              Default = False.
         training_region : np.ndarray, optional
-             Allows the user to define a subset of the stella.SimulatedLightCurve.flare_fluxes
+             Allows the user to define a subset of the stella.SimulatedLightCurve.fluxes
              used for training. Default = entire set.
         """
         if training_region is None:
-            training_region = [0, len(self.slc.flare_fluxes)+1]
+            training_region = [0, len(self.slc.fluxes)+1]
 
         if detrended is True:
-            training_set = self.slc.flare_fluxes_detrended
+            training_set = self.slc.detrended
         else:
-            training_set = self.slc.flare_fluxes
+            training_set = self.slc.fluxes
 
         self.model.fit(training_set[training_region[0]:training_region[1]],
                        self.slc.labels[training_region[0]:training_region[1]],
@@ -145,11 +145,14 @@ class NeuralNetwork(object):
             self.detrend_method = detrend_method
             self.window_length  = window_length
 
-        if type(flux[0]) != np.ndarray or type(flux[0]) != list:
-            flux = np.array([flux])
-            time = np.array([time])
-            flux_err = np.array([flux_err])
+#        print(type(flux[0]))
+#        if type(flux[0]) != np.ndarray or type(flux[0]) != list:
+#            print("this is failing")
+#            flux = np.array([flux])
+#            time = np.array([time])
+#            flux_err = np.array([flux_err])
 
+#        print(flux.shape)
         for lc in flux:
             if detrending is True:
                 if detrend_method == 'sg-filter':
@@ -170,6 +173,13 @@ class NeuralNetwork(object):
                 if i <= cadences/2:
                     fill_length   = int(cadence_pad-i)
                     padding_array = np.full( (fill_length,), padding ) + np.random.normal(0, std, fill_length)
+
+#                    print(i)
+#                    print(fill_length)
+#                    print(cadence_pad)
+#                    print(lc[0:int(i+cadence_pad)])
+#                    print(padding_array)
+
                     reshaped_data[i] = np.append(padding_array, lc[0:int(i+cadence_pad)])
 
                 elif i >= (len(lc)-cadence_pad):
