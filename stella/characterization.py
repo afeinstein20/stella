@@ -137,9 +137,12 @@ class FlareCharacterization(object):
 
             for t in range(len(self.flare_t0s[i])):
 
+                where = np.where( (self.time[i] >= self.flare_t0s[i][t]) & 
+                                  (self.time[i] <= self.flare_t0s[i][t]) )[0][0]
+
                 # amplitude, t0, rise, decay, order fit
                 init_guess = [np.abs(self.flare_amps[i][t]-1),
-                              int(self.flare_t0s[i][t]),
+                              int(where),
                               0.005, 0.008]
 
                 mini = minimize(chisquare, x0=init_guess,
