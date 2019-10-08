@@ -3,6 +3,7 @@ import warnings
 import numpy as np
 from tqdm import tqdm
 from astropy.table import Table, Row
+import numpy.polynomial.polynomial as poly
 
 from .utils import *
 
@@ -105,7 +106,9 @@ class SimulateLightCurves(object):
 
         for i in range(self.sample_size):
             fluxes[i] = amps[i] * np.sin( 2*np.pi*freqs[i]*self.time[i] + phase[i] )
+
         self.fluxes = fluxes
+        self.detrended = np.zeros((self.sample_size, self.cadences))
         return
 
 
@@ -173,10 +176,24 @@ class SimulateLightCurves(object):
                 r += 1
                 
             else:
+                if i % 2 == 0:
+                    length = np.random.uniform(3,10,1)[0]
+                    amp    = np.random.randint(0, len(dist[1]), 1)[0]
+                    tophat = np.arange(63-length/2, 63+length/2, 1, dtype=int)
+                    self.fluxes[i][tophat] += np.abs(dist[1][amp])
+                                       
                 add_noise = np.random.normal(0, np.abs(noise_lvl), self.cadences)
                 self.fluxes[i] += add_noise
-        
+                
 
+            inreg = np.arange(60,70,1,dtype=int)
+            outof = np.delete(np.arange(0,len(self.time[i]),1,dtype=int),
+                              np.arange(60,70,1,dtype=int))
+
+            coefs = poly.polyfit(self.time[i][outof], self.fluxes[i][outof], 2)
+            ffit = poly.polyval(self.time[i], coefs)
+            self.detrended[i] = self.fluxes[i]-ffit + np.nanmedian(self.fluxes[i])
+            
         self.simulate_params = flare_table
 
         return
