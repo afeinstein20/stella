@@ -149,7 +149,7 @@ class SimulateLightCurves(object):
 
         r = 0
         # Adds the flare to the light curve
-        for i in range(self.sample_size):
+        for i in tqdm(range(self.sample_size)):
 
             noise_lvl = np.random.uniform(noise[0], noise[1], 1)[0]
 
