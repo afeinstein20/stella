@@ -49,8 +49,7 @@ def flare_lightcurve(time, amp, t0, rise, fall, y=None):
     return model, np.array([time[t0], amp, dur, rise, fall])
 
 
-def flare_parameters(size, time_length, cadences,
-                     amps, rises, decays):
+def flare_parameters(size, cadences, amps, rises):
     """
     Generates an array of random amplitudes at different times with
     different rise and decay properties.
@@ -59,8 +58,6 @@ def flare_parameters(size, time_length, cadences,
     ----------
     size : int
          The number of flares to generate.
-    time_length : int
-         The size of the time array.
     cadences : int
          The number of cadences to scroll over.
     amps : list
@@ -69,9 +66,6 @@ def flare_parameters(size, time_length, cadences,
     rises : list
          List of minimum and maximum Gaussian rise rate to draw from
          a uniform distribution. 
-    decays : list
-         List of minimum and maximum exponential decay rate to draw
-         from a normal distribution.
     
     Returns
     ----------
@@ -85,11 +79,11 @@ def flare_parameters(size, time_length, cadences,
          The distribution of flare decays rates.
     """
 
-    flare_t0s   = np.random.randint(cadences/2, 
-                                    time_length-cadences/2,
-                                    size)
+    flare_t0s   = np.full(size, cadences/2)
     flare_amps  = np.random.normal(amps[0], amps[1], size)
-    flare_decays= np.random.uniform(decays[0], decays[1], size)
     flare_rises = np.random.uniform(rises[0],  rises[1],  size)
+
+    # Relation between amplitude and decay time
+    flare_decays = 0.05*flare_amps + 0.07*flare_amps**2
 
     return flare_t0s, flare_amps, flare_rises, flare_decays

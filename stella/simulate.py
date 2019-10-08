@@ -3,249 +3,210 @@ import warnings
 import numpy as np
 from tqdm import tqdm
 from astropy.table import Table, Row
-from scipy.stats import binned_statistic
-from lightkurve.lightcurve import LightCurve as LC
 
 from .utils import *
 
 __all__ = ['SimulateLightCurves']
 
-
 class SimulateLightCurves(object):
     """
-    A class to create simulated flares for neural
-    network training.
+    A class to create simulated flares for neural network training.
     """
 
-    def __init__(self, sample_size=8000, output_dir=None, cadences=128):
+    def __init__(self, sample_size=3000, output_dir=None, cadences=128,
+                 activity=True, activity_amp=[0.1,0.8],
+                 activity_freq=[10,100], noise=[0.001, 0.01],
+                 flare_amp=[0.01, 0.08], ratio=3):
         """
-        Parameters
-        ----------
+        Parameters 
+        ---------- 
         sample_size : int, optional
              The number of light curves to generate.
              Default = 8000.
         output_dir : str, optional
-             Path to location where to save the simulated flares.
-             Default = '~/.stella/'.'
+             Path to location where to save the simulated
+             flares. Default = '~/.stella'.
         cadences : int, optional
-             The numnber of cadences used in each training set.
+             The number of cadences used in each training set.
              Default = 128.
+        activity : bool, optional
+             Whether or not to include sinusoidal modulation
+             in the training set. Default = True.
+        activity_amp : list, optional
+             The minimum and maximum amplitude of sinusoidal 
+             modulation. Default = [0.1, 0.8].
+        activity_freq : list, optional
+             The minimum and maximum frequency of sinusoidal 
+             modulation. Default = [100,10000].
+        noise : list, optional
+             The minimum and maximum noise to add on top of the 
+             light curve. Noise is drawn from a Gaussian. Defaul = 
+             [0.001, 0.01].
+        flare_amp : list, optional
+             The minimum and maximum flare amplitudes to inject.
+             Default = [0.01, 0.08].
+        ratio : int, optional
+             The ratio of non-flares to flares to create the training
+             set out of. Default = 3.
 
         Attributes
         ----------
-        sample_size : int
-             The number of light curves to generate.
         time : np.ndarray
-             An array of time.
-        output_dir : str
-             Path to location where to save the simulated light curves to.
+             A simulated time array.
+        sample_size : int
+             The number of light curves in the simulated set.
+        cadences : int
+             The number of cadences in each simulated light curve.
         """
-
+        self.cadences = cadences
         self.sample_size = sample_size
-        self.cadences    = cadences
 
-        self.time = np.arange(0, 27, 2.0/1440.0)
+        time = np.arange(0, 1000, 2.0/1440.0)
+        remove = np.arange(self.sample_size*self.cadences, len(time), 1)
+        time = np.delete(time, remove)
+        self.time = np.reshape(time, (self.sample_size, self.cadences))
 
         if output_dir is None:
             self.fetch_dir()
         else:
             self.output_dir = output_dir
 
+        if activity is True:
+            self.induce_activity(activity_amp, activity_freq)
+        
+        self.inject_flares(flare_amp, ratio, noise)
 
-    def sine_wave(self, amplitude=[0.1,0.8], frequency=[10,300],#,10000],
-                  noise=[0.001, 0.01]):
+
+    def induce_activity(self, activity_amp, activity_freq):
         """
-        Creates a sine wave to simulate stellar activity
-        with Gaussian noise.
-
+        Puts in stellar activity modulation to the training set.
+        
         Parameters
         ----------
-        amplitude : np.ndarray, optional
-             List of minimum and maximum amplitude to use for a uniform
-             distribution to draw from.
-             Default = [0.02, 0.15].
-        frequency : np.ndarray, optional
-             List of minimum and maximum frequencies to use for a uniform
-             distribution to draw from.
-             Default = [300, 10000].
-        noise : np.ndarray, optional
-             List of minimum and maximum noise levels to use for a uniform
-             distribution to draw from.
-             Default = [0.01, 0.04].
+        activity_amp : list
+             The minimum and maximum amplitude of sinusoidal
+             modulation. 
+        activity_freq : list
+             The minimum and maximum frequency of sinusoidal 
+             modulation.
 
-        Attributes
-        ----------
+        Attribute
+        ---------- 
         fluxes : np.ndarray
-             An array of simulated fluxes of shape (sample_size, len(time)).
         """
 
-        amplitude = np.random.uniform(amplitude[0], amplitude[1], self.sample_size)
-        frequency = 1.0/np.random.uniform(frequency[0], frequency[1], self.sample_size)
-        phase     = np.random.uniform(0, 2*np.pi, self.sample_size)
+        amps  = np.random.uniform(activity_amp[0], activity_amp[1],
+                                 self.sample_size)
+        freqs = 1/np.random.uniform(activity_freq[0], activity_freq[1],
+                                    self.sample_size)
+        phase = np.random.uniform(0, 2*np.pi, self.sample_size)
 
-        def model(time, amp, freq, phase):
-            return amp * np.sin( 2*np.pi*freq*time + phase )
-
-        fluxes = np.zeros( (self.sample_size, len(self.time) ))
+        fluxes = np.zeros((self.sample_size, self.cadences))
 
         for i in range(self.sample_size):
-#            np.random.seed(18)
-            noise_lvl = np.random.uniform(noise[0], noise[1], 1)[0]
-            add_noise = np.random.normal(0, np.abs(noise_lvl), len(self.time))
-            fluxes[i] = model(self.time, amplitude[i], frequency[i], phase[i]) + add_noise
+            fluxes[i] = amps[i] * np.sin( 2*np.pi*freqs[i]*self.time[i] + phase[i] )
         self.fluxes = fluxes
-        
+        return
 
-    def inject_flares(self, number_per=[0,20],
-                     amplitudes=[0.01, 0.08], decays=[0.0005,0.008],
-                     rises=[0.001,0.006], window_length=101, ratio=3):
+
+    def inject_flares(self, flare_amp, ratio, noise):
         """
-        Injects flares of given parameters into a light curve.
+        Injects flares into the light curves.
 
         Parameters
         ----------
-        number_per : np.ndarray, optional
-             List of minimum and maximum number of flares to inject into a 
-             single light curve.
-             Default = [0, 20].
-        amplitudes : list, optional
-             List of mean and std of flare amplitudes to draw from a 
-             normal distritbution. Default = [0.01, 0.08].
-        decays : list, optional
-             List of minimum and maximum exponential decay rate to draw from a 
-             uniform distribution. Default = [0.05, 0.15].
-        rises : list, optional
-             List of minimum and maximum Gaussian rise rate to draw from a 
-             uniform distribution. Default = [0.001, 0.006]
-        window_length : int, optional
-             The window length to use in the Savitsky-Golay filter to detrend
-             simulated light curves. Default = 101.
-        ratio : int, optional
-             The ratio of non-flares to flares in the training data set. 
-             Default = 3.
+        flare_amp : list
+             The minimum and maximum flare amplitudes to inject.
+        ratio : int
+             The ratio of non-flares to flares to create the training
+             set out of.
+        noise : list
+             The minimum and maximum noise to add on top of the 
+             light curve. Noise is drawn from a Gaussian.
 
         Attributes
-        ----------
-        total_flares : int
-             The total number of injected flares.
-        flare_fluxes : np.ndarray
-             An array of simulated fluxes with injected flares.
-        flare_fluxes_detrended : np.ndarray
-             An array of detrended simulated fluxes with injected flares.
-        flare_durs : np.ndarray
-             An array of the durations of the injected flares.
-        labels : np.ndarray
-             An array of labels for each flare-injected flux.
+        ---------- 
+        simulate_params : astropy.Table
+
         """
-        def add_non_flare(time, flux, t):
-            nonlocal flare_fluxes, flare_fluxes_detrended, labels, ratio
-            # Finds a random region of light curve without a flare to add
-            # to the training set
-            regions = np.random.randint(self.cadences/2,
-                                        len(flux)-self.cadences/2,
-                                        ratio)
-            for r in regions:
-                flare_fluxes[t]           = flux[int(r-self.cadences/2):int(r+self.cadences/2)] + 1
-                flare_fluxes_detrended[t] = LC(time[int(r-self.cadences/2):int(r+self.cadences/2)],
-                                               flare_fluxes[t]).flatten(window_length=
-                                                                 window_length).flux
-                labels[t] = 0
-                t += 1
-            return t
+        flare_table = Table(names=["flare_number", "t0", "amp", "dur",
+                                   "rise", "decay"])
 
+        num  = int(self.sample_size/ratio)
+        rand = np.random.randint(0, self.sample_size, num)
 
+        # Sets the labels for each flare
+        labels = np.zeros(self.sample_size)
+        labels[rand] = 1
+        self.labels = labels
+        
+        # Gets the distribution of flare parameters
+        dist = flare_parameters(len(rand), self.cadences,
+                                flare_amp, [0.00005, 0.0001])
 
-        flare_table = Table(names=['simulated_flare_number', 'flare', 't0', 'amplitude',
-                                   'duration', 'rise_factor', 'decay_factor'],
-                            dtype=[np.int, np.int, np.float32, 
-                                   np.float32, np.float32, np.float32, np.float64])
+        r = 0
+        # Adds the flare to the light curve
+        for i in range(self.sample_size):
 
-        number_per = np.random.randint(number_per[0], number_per[1], self.sample_size)
+            noise_lvl = np.random.uniform(noise[0], noise[1], 1)[0]
 
-        self.total_flares = np.sum(number_per)
-        total_sample      = len(np.where(number_per==0)[0])+self.total_flares
+            if i in rand:   
+                flare, row = flare_lightcurve(self.time[i],
+                                              np.abs(dist[1][r]),
+                                              int(dist[0][r]),
+                                              np.abs(dist[2][r]),
+                                              np.abs(dist[3][r]))
+                flare_flux = self.fluxes[i] + flare
 
-        distribution = flare_parameters(self.total_flares, len(self.time), self.cadences,
-                                        amplitudes, rises, decays)
+                cads  = np.delete(np.arange(0,self.cadences,1),
+                                  np.arange(62,71,1,dtype=int))
 
-        self.flare_t0s   = distribution[0]
-        self.flare_amps  = distribution[1]
-        self.flare_rises = distribution[2]
-        self.flare_decays= distribution[3]
+                add_noise = np.random.normal(0, np.abs(noise_lvl), 
+                                             len(cads))
 
-        flare_fluxes           = np.zeros( (total_sample*(ratio+1), self.cadences ))
-        flare_fluxes_detrended = np.zeros( (total_sample*(ratio+1), self.cadences ))
-        labels                 = np.zeros(  total_sample*(ratio+1), dtype=int)
+                flare_flux[cads] += add_noise
+                self.fluxes[i] = flare_flux
 
-        # Tracks the sample size of flares
-        loc = 0
-        # Tracks the location in the total flare_fluxes array
-        t   = 0
-
-        for i in tqdm(range(len(self.fluxes))):
-
-            # Handles if the light curve doesn't get any injected flares
-            if number_per[i] == 0:
-                # Generates a random number to pull the non-flare data from in the light curve
-                t = add_non_flare(self.time, self.fluxes[i], t)
+                row = np.append(i, row)
+                flare_table.add_row(row)
+                
+                r += 1
                 
             else:
-                # Loops through each injected flare per light curve
-                for n in range(number_per[i]):
-                    flare, row = flare_lightcurve(self.time, 
-                                                  np.abs(self.flare_amps[loc]),
-                                                  self.flare_t0s[loc],
-                                                  self.flare_rises[loc],
-                                                  self.flare_decays[loc])
-                    
-                    flare_flux = self.fluxes[i] + flare
+                add_noise = np.random.normal(0, np.abs(noise_lvl), self.cadences)
+                self.fluxes[i] += add_noise
+        
 
-                    t0_ind = int(self.flare_t0s[loc])
-                    region = [int(t0_ind-self.cadences/2), int(t0_ind+self.cadences/2)]
+        self.simulate_params = flare_table
 
-                    flare_fluxes[t] = flare_flux[region[0]:region[1]] + 1
-                    flare_fluxes_detrended[t] = LC(self.time[region[0]:region[1]], flare_fluxes[t]).flatten(window_length=
-                                                                                       window_length).flux
-                    labels[t] = 1
-
-                    row = np.append([i, n], row)
-                    flare_table.add_row(row)
-
-                    loc += 1
-                    t   += 1
-                    t = add_non_flare(self.time, self.fluxes[i], t)
+        return
 
 
-        leftover = np.arange(t, len(flare_fluxes), 1)
-        self.flare_fluxes = np.delete(flare_fluxes, leftover, axis=0)
-        self.labels       = np.delete(labels      , leftover, axis=0)
-        self.flare_fluxes_detrended = np.delete(flare_fluxes_detrended, leftover, axis=0)
-        self.flare_table = flare_table
-
-    def save(self, output_fn_format='sim{0:04d}.npy'):
+    def save_training_set(self, output_format='sim{0:04d}.npy'):
         """
-        A function that allows the user to save the simulated light curves.
-        Saves as .npy files in the given output directory.
+        Saves the simulated light curves to npy files. The files are
+        saved to the given (or default) output directory.
 
         Parameters
-        ------- 
-        output_fn_format : str, optional
-             The naming convention used for saving the simulated light curves to.
+        ---------- 
+        output_format : str, optional
+             The naming convention for saving the simulated light curves.
              Default = 'sim{0:04d}.npy'.format(simulation_number).
         """
-
-        self.output_fn_format = output_fn_format
-
-        for i in tqdm(range(len(self.flare_fluxes))):
-            path = os.path.join(self.output_dir, self.output_fn_format.format(i))
-            data = [self.time, self.flare_fluxes[i], self.flare_fluxes_detrended[i], self.labels[i]]
+        for i in tqdm(self.sample_size):
+            path = os.path.join(self.output_dir, output_format.format(i))
+            data = [self.time[i], self.fluxes[i], self.labels[i]]
             np.save(path, data)
+        return
 
-    def save_table(self, output_name="simulated_flare_table.txt"):
+
+    def save_table(self, output_name="simulate_flare_table.txt"):
         """
         Saves a table of simulated data information.
         """
-        self.flare_table.write(os.path.join(self.output_dir,output_name), format='ascii')
+        self.simulate_params.write(os.path.join(self.output_dir, output_name),
+                                   format="ascii")
+        return
 
 
     def fetch_dir(self):
@@ -278,4 +239,3 @@ class SimulateLightCurves(object):
                               'working directory instead.'.format(default_path))
 
                 self.output_dir = '.'
-        
