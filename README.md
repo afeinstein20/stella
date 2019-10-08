@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <a href="https://travis-ci.org/afeinstein20/stella/"><img src="https://img.shields.io/travis/afeinstein20/stella/master.svg?"/></a>
-  <a href="https://afeinstein20.github.io/stella/"><img src="https://img.shields.io/badge/read-the_docs-4D827F.svg?style=flat"/></a>
+  <a href="https://travis-ci.org/afeinstein20/stella/"><img src="https://img.shields.io/travis/afeinstein20/stella/master.svg?colorB=D35968"/></a>
+  <a href="https://afeinstein20.github.io/stella/"><img src="https://img.shields.io/badge/read-the_docs-3C1370.svg?style=flat"/></a>
 </p>
 
 </p>
