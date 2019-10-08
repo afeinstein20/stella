@@ -62,7 +62,7 @@ class SimulateLightCurves(object):
         self.cadences = cadences
         self.sample_size = sample_size
 
-        time = np.arange(0, 1000, 2.0/1440.0)
+        time = np.arange(0, 10000, 2.0/1440.0)
         remove = np.arange(self.sample_size*self.cadences, len(time), 1)
         time = np.delete(time, remove)
         self.time = np.reshape(time, (self.sample_size, self.cadences))
