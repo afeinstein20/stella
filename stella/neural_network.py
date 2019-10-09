@@ -1,7 +1,6 @@
 import os 
 import numpy as np
 from tqdm import tqdm
-import exoplanet as xo
 import tensorflow as tf
 from tensorflow import keras
 from lightkurve.lightcurve import LightCurve as LC
