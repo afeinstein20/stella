@@ -33,9 +33,9 @@
         <link rel="index" title="Index"
               href="../genindex.html"/>
         <link rel="search" title="Search" href="../search.html"/>
-    <link rel="top" title="eleanor 0.2.1 documentation" href="../index.html"/>
+    <link rel="top" title="stella 0.0.3 documentation" href="../index.html"/>
         <link rel="next" title="Installation" href="installation.html"/>
-        <link rel="prev" title="eleanor: simple light curve extraction from TESS FFIs" href="../index.html"/> 
+        <link rel="prev" title="stella" href="../index.html"/> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
@@ -53,7 +53,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> eleanor
+            <a href="../index.html" class="icon icon-home"> stella
           
 
           
@@ -82,15 +82,11 @@
             
                 <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">About eleanor</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#summary-of-eleanor-functionality">Summary of eleanor Functionality</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#summary-of-data-products">Summary of Data Products</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">About stella</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#summary-of-stella-functionality">Summary of stella Functionality</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Quickstart Tutorial</a></li>
-<li class="toctree-l1"><a class="reference internal" href="vis_crossmatch.html">Visualizing &amp; Crossmatching your Light Curve</a></li>
-<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Documentation</span></p>
 <ul>
@@ -108,7 +104,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../index.html">eleanor</a>
+        <a href="../index.html">stella</a>
       </nav>
 
 
@@ -123,10 +119,10 @@
 
 <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href="../index.html">eleanor</a> &raquo;</li>
+    <li><a href="../index.html">stella</a> &raquo;</li>
       
     
-      <li>About eleanor</li>
+      <li>About stella</li>
     
       <li class="wy-breadcrumbs-aside">
         
@@ -163,44 +159,11 @@
     text-align: unset;
 }
 </style>
-<div class="section" id="about-eleanor">
-<span id="overview"></span><h1>About eleanor<a class="headerlink" href="#about-eleanor" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="summary-of-eleanor-functionality">
-<h2>Summary of eleanor Functionality<a class="headerlink" href="#summary-of-eleanor-functionality" title="Permalink to this headline">¶</a></h2>
-<p>The purpose of eleanor is to go from TESS Full Frame Images (FFIs) to extracted and systematics-corrected light curves for any given star observed by TESS.
-In its simplest form, eleanor takes a TIC ID, a Gaia source ID, or (RA, Dec) coordinates of a star observed by TESS and returns, as a single object, a light curve and accompanying target pixel data.
-There’s plenty of customizability along the way, though: you can examine intermediate data products, change the aperture used for light curve extraction, and much more.
-The <a class="reference internal" href="tutorial.html#Quickstart-Tutorial"><span class="std std-ref">quickstart tutorial</span></a> goes through these procedures in more detail.</p>
-</div>
-<div class="section" id="summary-of-data-products">
-<h2>Summary of Data Products<a class="headerlink" href="#summary-of-data-products" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li><dl class="simple">
-<dt>Postcards</dt><dd><p>The TESS Full Frame Images are delivered to MAST as .FITS files for a given camera/CCD chip combination, one for every cadence.
-For each cadence there are then 16 FFIs, and data for a given target for a sector is spread across approximately 1300 FFIs.
-To reduce the burden of downloading and interacting with 1300 separate files to understand the light curve of one object, eleanor provides
-“postcards” which contain a smaller region of the detector, stacked for all cadences in a sector.
-These postcards then have the potential to contain many postage stamps, in order to analyze data from multiple targets simultaneously to better
-understand systematic effects in the data.
-When a request is submitted to eleanor to get data for a target, it downloads a postcard rather than every FFI, cuts the requested pixels
-that a target falls on, and produces a postage stamp and light curve from these data.
-An example postcard is shown below.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt>TargetData objects</dt><dd><p>The primary data product, that the typical user analyzing a single point source will likely interact with the most, is a <cite>TargetData</cite> object.
-This is the equivalent of a Kepler Target Pixel File and Light Curve all rolled into one. Saving this object records a FITS file.
-In the 0th extension, the pixel-level data is stored. Users might find this extension similar to a Kepler “target pixel” file.
-In the 1st extension is the light curve for eleanor’s estimate of the optimal aperture for the target, both with and without accounting for instrumental systematics.
-Users might find this extension similar to a Kepler “light curve” file.
-The results found with other apertures are stored in additional extensions.
-If a target is observed for multiple sectors, eleanor will produce a  target pixel file and light curve for the star for every sector that it is observed.
-Alternatively, the user can request data for only a specific sector.</p>
-</dd>
-</dl>
-</li>
-</ul>
+<div class="section" id="about-stella">
+<span id="overview"></span><h1>About stella<a class="headerlink" href="#about-stella" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="summary-of-stella-functionality">
+<h2>Summary of stella Functionality<a class="headerlink" href="#summary-of-stella-functionality" title="Permalink to this headline">¶</a></h2>
+<p>The purpose of stella is to train a neural network to identify stellar flares.</p>
 </div>
 </div>
 
@@ -214,7 +177,7 @@ Alternatively, the user can request data for only a specific sector.</p>
         <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="../index.html" class="btn btn-neutral" title="eleanor: simple light curve extraction from TESS FFIs" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="../index.html" class="btn btn-neutral" title="stella" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -223,7 +186,7 @@ Alternatively, the user can request data for only a specific sector.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018-2019, Adina D. Feinstein.
+        &copy; Copyright 2019-2020, Adina D. Feinstein.
 
     </p>
   </div>
@@ -245,7 +208,7 @@ Alternatively, the user can request data for only a specific sector.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'0.2.1',
+            VERSION:'0.0.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
@@ -255,9 +218,6 @@ Alternatively, the user can request data for only a specific sector.</p>
       <script type="text/javascript" src="../_static/underscore.js"></script>
       <script type="text/javascript" src="../_static/doctools.js"></script>
       <script type="text/javascript" src="../_static/language_data.js"></script>
-      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-      <script type="text/javascript" src="../None"></script>
 
   
 
