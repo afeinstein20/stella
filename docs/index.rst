@@ -35,5 +35,5 @@ Index
 -----
 * :ref:`genindex`
 
-.. _GitHub: http://github.com/afeinstein20/eleanor
-.. _Git Issues: http://github.com/afeinstein20/eleanor/issues
+.. _GitHub: http://github.com/afeinstein20/stella
+.. _Git Issues: http://github.com/afeinstein20/stella/issues
