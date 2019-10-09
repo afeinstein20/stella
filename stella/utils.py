@@ -78,12 +78,12 @@ def flare_parameters(size, cadences, amps, rises):
     flare_decays : np.ndarray
          The distribution of flare decays rates.
     """
-
     flare_t0s   = np.full(size, cadences/2)
     flare_amps  = np.random.normal(amps[0], amps[1], size)
     flare_rises = np.random.uniform(rises[0],  rises[1],  size)
 
     # Relation between amplitude and decay time
-    flare_decays = 0.05*flare_amps + 0.07*flare_amps**2
+#    flare_decays = 0.07*flare_amps + 0.08*flare_amps**2
+    flare_decays = np.random.uniform(0.0005, 0.008, size)
 
     return flare_t0s, flare_amps, flare_rises, flare_decays

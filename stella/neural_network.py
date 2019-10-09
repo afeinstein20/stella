@@ -152,7 +152,7 @@ class NeuralNetwork(object):
         for i, lc in enumerate(flux):
             detrend = np.array([])
             if detrending is True:
-                detrend = LC(self.time[i], lc).flatten(window_length=window_length).flux
+                detrend = LC(time[i], lc).flatten(window_length=window_length).flux
                 detrended_flux[i] = detrend
 
             # Centers each point in the input light curve and pads

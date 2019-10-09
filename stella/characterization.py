@@ -96,8 +96,10 @@ class FlareCharacterization(object):
 
             for f in flares:
                 peak = np.argmax(flux[i][f])
-                sub_t0.append(time[i][f][peak])
-                sub_amp.append(flux[i][f][peak])
+
+                if flux[i][f][peak] >= (np.nanmedian(flux[i])+np.std(flux[i])):
+                    sub_t0.append(time[i][f][peak])
+                    sub_amp.append(flux[i][f][peak])
 
             all_flux_flares.append(flares)
             t0s.append(sub_t0)
