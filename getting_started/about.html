@@ -1,0 +1,279 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>About stella &mdash; stella 0.0.3 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="eleanor 0.2.1 documentation" href="../index.html"/>
+        <link rel="next" title="Installation" href="installation.html"/>
+        <link rel="prev" title="eleanor: simple light curve extraction from TESS FFIs" href="../index.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> eleanor
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">About eleanor</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#summary-of-eleanor-functionality">Summary of eleanor Functionality</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary-of-data-products">Summary of Data Products</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Quickstart Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vis_crossmatch.html">Visualizing &amp; Crossmatching your Light Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">eleanor</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">eleanor</a> &raquo;</li>
+      
+    
+      <li>About eleanor</li>
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="about-eleanor">
+<span id="overview"></span><h1>About eleanor<a class="headerlink" href="#about-eleanor" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="summary-of-eleanor-functionality">
+<h2>Summary of eleanor Functionality<a class="headerlink" href="#summary-of-eleanor-functionality" title="Permalink to this headline">¶</a></h2>
+<p>The purpose of eleanor is to go from TESS Full Frame Images (FFIs) to extracted and systematics-corrected light curves for any given star observed by TESS.
+In its simplest form, eleanor takes a TIC ID, a Gaia source ID, or (RA, Dec) coordinates of a star observed by TESS and returns, as a single object, a light curve and accompanying target pixel data.
+There’s plenty of customizability along the way, though: you can examine intermediate data products, change the aperture used for light curve extraction, and much more.
+The <a class="reference internal" href="tutorial.html#Quickstart-Tutorial"><span class="std std-ref">quickstart tutorial</span></a> goes through these procedures in more detail.</p>
+</div>
+<div class="section" id="summary-of-data-products">
+<h2>Summary of Data Products<a class="headerlink" href="#summary-of-data-products" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Postcards</dt><dd><p>The TESS Full Frame Images are delivered to MAST as .FITS files for a given camera/CCD chip combination, one for every cadence.
+For each cadence there are then 16 FFIs, and data for a given target for a sector is spread across approximately 1300 FFIs.
+To reduce the burden of downloading and interacting with 1300 separate files to understand the light curve of one object, eleanor provides
+“postcards” which contain a smaller region of the detector, stacked for all cadences in a sector.
+These postcards then have the potential to contain many postage stamps, in order to analyze data from multiple targets simultaneously to better
+understand systematic effects in the data.
+When a request is submitted to eleanor to get data for a target, it downloads a postcard rather than every FFI, cuts the requested pixels
+that a target falls on, and produces a postage stamp and light curve from these data.
+An example postcard is shown below.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>TargetData objects</dt><dd><p>The primary data product, that the typical user analyzing a single point source will likely interact with the most, is a <cite>TargetData</cite> object.
+This is the equivalent of a Kepler Target Pixel File and Light Curve all rolled into one. Saving this object records a FITS file.
+In the 0th extension, the pixel-level data is stored. Users might find this extension similar to a Kepler “target pixel” file.
+In the 1st extension is the light curve for eleanor’s estimate of the optimal aperture for the target, both with and without accounting for instrumental systematics.
+Users might find this extension similar to a Kepler “light curve” file.
+The results found with other apertures are stored in additional extensions.
+If a target is observed for multiple sectors, eleanor will produce a  target pixel file and light curve for the star for every sector that it is observed.
+Alternatively, the user can request data for only a specific sector.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../index.html" class="btn btn-neutral" title="eleanor: simple light curve extraction from TESS FFIs" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018-2019, Adina D. Feinstein.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.2.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="../_static/language_data.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" src="../None"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
