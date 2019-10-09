@@ -91,7 +91,7 @@ class SimulateLightCurves(object):
              The minimum and maximum frequency of sinusoidal 
              modulation.
 
-        Attribute
+        Attributes
         ---------- 
         fluxes : np.ndarray
         """
