@@ -13,6 +13,10 @@ addons:
 
 cache: pip
 
+env:
+  global:
+    - secure: "c4Ai8lZcRV3Q8wCjBLaaYKWN9Q11iAwFq7EItAXfCGZBcja61qK8M7HHuY2aButNQZ5Phc1yutjPUoGagUkfBH+AWD6JPoDNQeNv7bBW5+ybFd7dzfodq4n2/OYK+VXfJmB55ymlDdsnjrQxauYLtXmOsJYL+Mb3UfJPfsRHvlrhEJBxI5uZwT7166zft1d4PfSD7Dt+aUdqdnPOeFfAukj96kMgfnI52nbSYmN9ncQZkPmGv4TcY7nO7+SD47/i7k3BrKY0CYcAwj+1K7RgtRPwa76v0oITg9omYFX1EbQ2k5nhDHAxUy5TUUXMcaacgQ3/enLSak2iMkpELFbxldfjEDiJ6EoLROEaTHHPf+GKKUvwHSTgtdqE8YWGxUuMCuLnmw16gLim39/63lKHHxHrvpew09VYLyztgVWyqSuNcw0IcRxDYtOHj8Pu4BMi/KrtdDRNsStsvsC+Ap5b5EQsfXGkElpZGf8tbsklMzFssp3Qxatvj37YTWitlXdCHYT4Pb6lFReNqFKVsJ7TOXtABrls36ghA/H6hzkULVceIvryP01DmDrYL5eB9UcQ8Rz7P/Kxfs4uF8lmZcWEYREBUpSyT3JYoUeFcMqaXWf5P2X8YGOekjQfWf9yBFM782ximPPej3S+qMQjIopxP3NoZZfcZGSBzGH7LWLtopc="
+
 before_install:
   - sudo apt-get install python3-pip
   - sudo pip3 install requests
@@ -41,5 +45,3 @@ script:
 after_success:
   - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
   - codecov
-
-secure: "c4Ai8lZcRV3Q8wCjBLaaYKWN9Q11iAwFq7EItAXfCGZBcja61qK8M7HHuY2aButNQZ5Phc1yutjPUoGagUkfBH+AWD6JPoDNQeNv7bBW5+ybFd7dzfodq4n2/OYK+VXfJmB55ymlDdsnjrQxauYLtXmOsJYL+Mb3UfJPfsRHvlrhEJBxI5uZwT7166zft1d4PfSD7Dt+aUdqdnPOeFfAukj96kMgfnI52nbSYmN9ncQZkPmGv4TcY7nO7+SD47/i7k3BrKY0CYcAwj+1K7RgtRPwa76v0oITg9omYFX1EbQ2k5nhDHAxUy5TUUXMcaacgQ3/enLSak2iMkpELFbxldfjEDiJ6EoLROEaTHHPf+GKKUvwHSTgtdqE8YWGxUuMCuLnmw16gLim39/63lKHHxHrvpew09VYLyztgVWyqSuNcw0IcRxDYtOHj8Pu4BMi/KrtdDRNsStsvsC+Ap5b5EQsfXGkElpZGf8tbsklMzFssp3Qxatvj37YTWitlXdCHYT4Pb6lFReNqFKVsJ7TOXtABrls36ghA/H6hzkULVceIvryP01DmDrYL5eB9UcQ8Rz7P/Kxfs4uF8lmZcWEYREBUpSyT3JYoUeFcMqaXWf5P2X8YGOekjQfWf9yBFM782ximPPej3S+qMQjIopxP3NoZZfcZGSBzGH7LWLtopc="
