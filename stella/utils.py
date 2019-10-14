@@ -1,6 +1,8 @@
 import numpy as np
+from scipy.stats import binned_statistic
 
-def flare_lightcurve(time, amp, t0, rise, fall, y=None):
+def flare_lightcurve(time, amp, t0, rise, fall, y=None, binned=False,
+                     bins=32, statistic='mean'):
     """
     Generates a simple flare model with a Gaussian rise and an 
     exponential decay.
@@ -19,6 +21,14 @@ def flare_lightcurve(time, amp, t0, rise, fall, y=None):
          The exponential decay of the flare.
     y : np.ndarray, optional
          Underlying stellar activity. Default if None.
+    binned : bool, optional
+         Bins the flare to a lower resolution. Default is False.
+    bins : int, optional
+         The number of bins if binned = True. Default is 16.
+    statistic : str, optional
+         The metric on which to bin the data. Default is True. 
+         For more statistic options, see 
+         https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.binned_statistic.html.
 
     Returns
     ----------
@@ -46,7 +56,17 @@ def flare_lightcurve(time, amp, t0, rise, fall, y=None):
     model = np.append(growth_model, decay_model)
     dur = np.abs(np.sum(model[:-1] * np.diff(time) ))
 
-    return model, np.array([time[t0], amp, dur, rise, fall])
+    if binned is False:
+        return model, np.array([time[t0], amp, dur, rise, fall])
+
+    else:
+        mid = int(len(time)/2)
+        bin_means = binned_statistic(time, model,
+                                     bins=bins, statistic=statistic)[0]
+        peak = np.argmax(bin_means)
+        flux = np.zeros(len(time))
+        flux[mid-peak:mid+bins-peak] = bin_means
+        return flux, np.array([time[mid], bin_means[peak], dur, rise, fall])
 
 
 def flare_parameters(size, cadences, amps, rises):
@@ -84,6 +104,6 @@ def flare_parameters(size, cadences, amps, rises):
 
     # Relation between amplitude and decay time
 #    flare_decays = 0.07*flare_amps + 0.08*flare_amps**2
-    flare_decays = np.random.uniform(0.0005, 0.01, size)
+    flare_decays = np.random.uniform(0.005, 0.018, size)
 
     return flare_t0s, flare_amps, flare_rises, flare_decays

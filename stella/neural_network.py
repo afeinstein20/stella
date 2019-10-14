@@ -3,6 +3,7 @@ import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
 from tensorflow import keras
+from astropy.stats import sigma_clip
 from lightkurve.lightcurve import LightCurve as LC
 
 __all__ = ['NeuralNetwork']
@@ -72,7 +73,7 @@ class NeuralNetwork(object):
         self.model = model
         
 
-    def train_data(self, epochs=15, detrended=False, training_region=None):
+    def train_data(self, epochs=15, detrended=False):
         """
         Trains the neural network on simulated data or inputted data files.
 
@@ -84,20 +85,14 @@ class NeuralNetwork(object):
         detrended : bool, optional
              Gives the user the option to train on detrended simulated data.
              Default = False.
-        training_region : np.ndarray, optional
-             Allows the user to define a subset of the stella.SimulatedLightCurve.fluxes
-             used for training. Default = entire set.
         """
-        if training_region is None:
-            training_region = [0, len(self.slc.fluxes)+1]
-
         if detrended is True:
             training_set = self.slc.detrended
         else:
             training_set = self.slc.fluxes
 
-        self.model.fit(training_set[training_region[0]:training_region[1]],
-                       self.slc.labels[training_region[0]:training_region[1]],
+        self.model.fit(training_set,
+                       self.slc.labels,
                        epochs=epochs)
 
 
@@ -153,6 +148,7 @@ class NeuralNetwork(object):
             if detrending is True:
                 detrend = LC(time[i], lc).flatten(window_length=window_length).flux
                 detrended_flux[i] = detrend
+                lc = detrend
 
             # Centers each point in the input light curve and pads
             # with same number of cadences as used in the training set
