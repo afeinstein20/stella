@@ -1,4 +1,5 @@
 import os 
+import wotan
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
@@ -97,7 +98,9 @@ class NeuralNetwork(object):
 
 
     def predict(self, time, flux, flux_err, detrending=True,
-                injection=False, detrend_method='sg-filter', window_length=21):
+                injection=False, detrend_method='biweight', window_length=0.1,
+                polyorder=2, edge_cutoff=0.5, break_tolerance=0.5, cval=5.0,
+                sigma=6, niters=5):
         """
         Assigns a probability of being a flare to each point in the 
         input data set.
@@ -119,10 +122,30 @@ class NeuralNetwork(object):
              overwriting self.predictions. Default = False.
         detrend_method : str, optional
              The type of detrending to use on the light curve. Default
-             is applying a Savitsky-Golay filter, keyword = 'sg-filter'. 
+             is 'biweight'. Other options include: 'savgol'.
         window_length : str, optional
-             The window length to use with the Savitsky-Golay filter.
-             Default is 21.
+             The window length used for the robust estimator. Default = 0.1.
+             For the biweight filter, window_length is given in unit days.
+             For the savgol filter, window_length is given in unit cadences.
+        polyorder : int, optional
+             The order of the polynomial used to fit the samples. 
+             Default = 2.
+        sigma : float, optional
+             Number of sigma above which to remove outliers during detrending.
+             Default = 6.
+        niters : int, optional
+             Number of iterations to iteratively sigma clip and flatten. Default = 5.
+        edge_cutoff : float, optional
+             Trims data near the edges of the light curve. Default = 0.5. 
+             Only available for the following detrend_methods: biweight.
+        break_tolerance : float, optional
+             Breaks the light curve into segments to help alleviate gap issues.
+             Default = 0.5.
+             Only available for the following detrend_methods: biweight.  
+        cval : float, optional
+             Tuning parameter for robust M-estimators. Defined as multiples in units
+             of median absolute deviation from central location. Default = 5.0.
+             Only available for the following detrend_methods: biweight.  
 
         Attributes
         ---------- 
@@ -146,7 +169,16 @@ class NeuralNetwork(object):
         for i, lc in enumerate(flux):
             detrend = np.array([])
             if detrending is True:
-                detrend = LC(time[i], lc).flatten(window_length=window_length).flux
+                if detrend_method == 'savgol':
+                    detrend = LC(time[i], lc).flatten(window_length=window_length,
+                                                      polyorder=polyorder,
+                                                      sigma=sigma,
+                                                      niters=niters).flux
+                if detrend_method == 'biweight':
+                    detrend = wotan.flatten(time[i], lc, window_length=window_length,
+                                            method=detrend_method, edge_cutoff=edge_cutoff,
+                                            break_tolerance=break_tolerance, cval=cval)
+
                 detrended_flux[i] = detrend
                 lc = detrend
 
