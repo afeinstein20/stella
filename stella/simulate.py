@@ -16,7 +16,7 @@ class SimulateLightCurves(object):
 
     def __init__(self, sample_size=3000, output_dir=None, cadences=128,
                  activity=True, activity_amp=[0.02,0.1],
-                 activity_freq=[1,10], noise=[0.001, 0.005],
+                 activity_freq=[1,10], noise=[0.001, 0.025],
                  flare_amp=[0.003, 0.09], ratio=3):
         """
         Parameters 
@@ -133,7 +133,7 @@ class SimulateLightCurves(object):
 
         """
         flare_table = Table(names=["flare_number", "t0", "amp", "dur",
-                                   "rise", "decay"])
+                                   "rise", "decay", "noise_lvl"])
 
         num  = int(self.sample_size/ratio)
         rand = np.random.randint(0, self.sample_size, num)
@@ -158,7 +158,7 @@ class SimulateLightCurves(object):
 
             if i in rand:   
                 amp = np.abs(dist[1][r])
-                if amp <= np.max(add_noise):
+                if amp <= 4*np.std(add_noise):
                     amp += np.max(add_noise)*2
                     amp += 0.02
 
@@ -177,6 +177,7 @@ class SimulateLightCurves(object):
                 self.fluxes[i] = flare_flux
 
                 row = np.append(i, row)
+                row = np.append(row, noise_lvl)
                 flare_table.add_row(row)
                 r += 1
                 
