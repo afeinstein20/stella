@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import binned_statistic
 
 def flare_lightcurve(time, amp, t0, rise, fall, y=None, binned=False,
-                     bins=32, statistic='mean'):
+                     bins=16, statistic='mean'):
     """
     Generates a simple flare model with a Gaussian rise and an 
     exponential decay.
