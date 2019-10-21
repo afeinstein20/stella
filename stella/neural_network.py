@@ -16,19 +16,55 @@ class NeuralNetwork(object):
     stella.SimulateLightCurves or from a directory of files.
     """
 
-    def __init__(self, slc):
+    def __init__(self, slc=None, training_dir=None):
         """
         Parameters
         ----------
         slc : stella.SimulatedLightCurve
              The simulated light curve data set to 
              train the neural network on.
+        training_dir : path
+             If the training set has been saved in
+             .npy files, this will load in the set.
 
         Attributes
         ---------- 
-        slc : stella.SimulatedLightCurve
+        cadences : np.ndarray
+        training_time : np.ndarray
+        training_fluxes : np.ndarray
+        training_labels : np.ndarray
+        training_detrended : np.ndarray
         """
-        self.slc = slc
+        if slc is not None:
+            self.training_time   = slc.time
+            self.training_fluxes = slc.fluxes
+            self.training_detrended = slc.detrended
+            self.training_labels = slc.labels
+
+        else:
+            if training_dir is None:
+                raise ValueError("Please initialize with either Stella.Simulate() or with training_set directory.")
+            files = os.listdir(training_dir)
+            files = [os.path.join(training_dir, i) for i in files if i.endswith('.npy')]
+            
+            for i in tqdm(range(len(files))):
+                d = np.load(files[i], allow_pickle=True)
+                if i == 0:
+                    training_time   = np.zeros((len(files), len(d[0])))
+                    training_fluxes = np.zeros((len(files), len(d[0])))
+                    training_labels = np.zeros((len(files), ))
+                    training_detrended = np.zeros((len(files), len(d[0])))
+                training_time[i] = d[0]
+                training_fluxes[i] = d[1]
+                training_detrended[i] = d[2]
+                training_labels[i] = d[3]
+
+            self.training_time = training_time
+            self.training_fluxes = training_fluxes
+            self.training_labels = training_labels
+            self.training_detrended = training_detrended
+                
+                                               
         self.flux        = None
         self.predictions = None
 
@@ -88,12 +124,12 @@ class NeuralNetwork(object):
              Default = False.
         """
         if detrended is True:
-            training_set = self.slc.detrended
+            training_set = self.training_detrended
         else:
-            training_set = self.slc.fluxes
+            training_set = self.training_fluxes
 
         self.model.fit(training_set,
-                       self.slc.labels,
+                       self.training_labels,
                        epochs=epochs)
 
 
@@ -157,7 +193,7 @@ class NeuralNetwork(object):
             coefs = poly.polyfit(x, y, 2)
             return poly.polyval(x, coefs)
 
-        cadences    = self.slc.cadences
+        cadences    = len(self.training_fluxes)
         predictions = []
 
         detrended_flux = np.copy(flux)

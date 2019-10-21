@@ -219,9 +219,9 @@ class SimulateLightCurves(object):
              The naming convention for saving the simulated light curves.
              Default = 'sim{0:04d}.npy'.format(simulation_number).
         """
-        for i in tqdm(self.sample_size):
+        for i in tqdm(range(len(self.fluxes))):
             path = os.path.join(self.output_dir, output_format.format(i))
-            data = [self.time[i], self.fluxes[i], self.labels[i]]
+            data = [self.time[i], self.fluxes[i], self.detrended[i], self.labels[i]]
             np.save(path, data)
         return
 
