@@ -2,6 +2,7 @@ import os
 import warnings
 import numpy as np
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 from astropy.table import Table, Row
 import numpy.polynomial.polynomial as poly
 
@@ -14,16 +15,20 @@ class SimulateLightCurves(object):
     A class to create simulated flares for neural network training.
     """
 
-    def __init__(self, sample_size=3000, output_dir=None, cadences=128,
+    def __init__(self, sample_size=3000, other=1000,
+                 output_dir=None, cadences=128,
                  activity=True, activity_amp=[0.02,0.1],
-                 activity_freq=[1,10], noise=[0.001, 0.025],
-                 flare_amp=[0.003, 0.09], ratio=3):
+                 activity_freq=[1,10], noise=[0.001, 0.03],
+                 flare_amp=[0.005, 0.09], ratio=3):
         """
         Parameters 
         ---------- 
         sample_size : int, optional
              The number of light curves to generate.
-             Default = 8000.
+             Default = 3000.
+        other : int, optional
+             The number of light curves from the sample set
+             with random systematics. Default = 1000.
         output_dir : str, optional
              Path to location where to save the simulated
              flares. Default = '~/.stella'.
@@ -61,6 +66,7 @@ class SimulateLightCurves(object):
         """
         self.cadences = cadences
         self.sample_size = sample_size
+        self.other = other
 
         time = np.full((self.sample_size, self.cadences), np.linspace(0, 2.0/1440.0*self.cadences, self.cadences))
         remove = np.arange(self.sample_size*self.cadences, len(time), 1)
@@ -109,7 +115,6 @@ class SimulateLightCurves(object):
 
         self.fluxes = fluxes
         self.detrended = np.zeros((self.sample_size, self.cadences))
-        return
 
 
     def inject_flares(self, flare_amp, ratio, noise):
@@ -139,15 +144,13 @@ class SimulateLightCurves(object):
         rand = np.random.randint(0, self.sample_size, num)
 
         # Sets the labels for each flare
-        labels = np.zeros(self.sample_size, dtype=int)
-        labels[rand] = 1
-        self.labels = labels
+        self.labels = np.zeros(self.sample_size, dtype=int)
         
         # Gets the distribution of flare parameters
         dist = flare_parameters(len(rand), self.cadences,
-                                flare_amp, [0.001, 0.006])
+                                flare_amp, [0.0001, 0.001])
 
-        r = 0
+        r, n = 0, 0
         models = np.zeros((len(rand), self.cadences))
 
         # Adds the flare to the light curve
@@ -161,46 +164,71 @@ class SimulateLightCurves(object):
                 if amp <= 4*np.std(add_noise):
                     amp += np.max(add_noise)*2
                     amp += 0.02
-
                 flare, row = flare_lightcurve(self.time[i],
                                               amp,
                                               int(dist[0][r]),
                                               np.abs(dist[2][r]),
                                               np.abs(dist[3][r]),
-                                              binned=True)
+                                              binned=False)
                 flare_flux = self.fluxes[i] + flare
 
-                q = np.round(flare,3) < 0
+                if i % 3 == 0:
+                    diff = np.random.uniform(0.5, 1.5, 1)[0]
+                    loc  = np.random.randint(10, 40, 1)[0]
+                    flare1, row = flare_lightcurve(self.time[i],
+                                                   amp*diff,
+                                                   loc,
+                                                   np.abs(dist[2][r]),
+                                                   np.abs(dist[3][r])*diff,
+                                                   binned=False)
+                    flare_flux += flare1
+                    flare += flare1
+
+#                if amp >= 0.02:
+                q = np.round(flare,1) <= 0
                 flare_flux[q] += add_noise[q]
+#                else:
+#                    flare_flux += add_noise
 
                 models[r]  = flare
                 self.fluxes[i] = flare_flux
+                self.labels[i] = 1
 
                 row = np.append(i, row)
                 row = np.append(row, noise_lvl)
                 flare_table.add_row(row)
                 r += 1
                 
-#            else:
-                # remove tophat
-                # remove amplitude relation
-#                if i % 2 == 0:
-#                    length = np.random.uniform(4,10,1)[0]
-#                    amp    = np.random.randint(0, len(dist[1]), 1)[0]
-#                    tophat = np.arange(63-length/2, 63+length/2, 1, dtype=int)
-#                    self.fluxes[i][tophat] += np.abs(dist[1][amp])
-                                       
-            self.fluxes[i] += add_noise
+            elif n < self.other:
+                if n % 3 == 0:
+                # Adds in high frequency sin waves with lots of noise
+#                else:
+                    amp  = np.random.uniform(0.1, 0.4, 1)[0]
+                    freq = np.random.uniform(30, 60, 1)[0]
+                    phase= np.random.uniform(0, 2*np.pi, 1)[0]
+                    sin  = amp * np.sin( 2*np.pi*freq*self.time[i] + phase )
+                    self.fluxes[i] =  sin+add_noise+2*add_noise
+                    
+                else:
+                    ind1   = np.random.randint(0, self.cadences/3, 1)[0]
+                    ind2   = np.random.randint(2*self.cadences/3, self.cadences, 1)[0]
+                    rand1  = np.random.uniform(0, 0.03, 2)
+                    noise1 = np.random.normal(noise_lvl, rand1[0], int(self.cadences))
+                    noise2 = np.random.normal(noise_lvl, rand1[1],  int(ind2-ind1))
+
+                    noise1[ind1:ind2] = noise2
+
+                    self.fluxes[i] += noise1
+
+                n += 1
+                self.labels[i] = 0
+
+            else:                      
+                self.fluxes[i] += add_noise
+                self.labels[i] = 0
             
             self.fluxes[i] = self.fluxes[i] - np.nanmedian(self.fluxes[i]) + 1
-
-            inreg = np.arange(60,70,1,dtype=int)
-            outof = np.delete(np.arange(0,len(self.time[i]),1,dtype=int),
-                              np.arange(60,70,1,dtype=int))
-
-            coefs = poly.polyfit(self.time[i][outof], self.fluxes[i][outof], 2)
-            ffit = poly.polyval(self.time[i], coefs)
-            self.detrended[i] = self.fluxes[i]-ffit + np.nanmedian(self.fluxes[i])
+            self.detrended[i] = wotan_detrend(self.time[i], self.fluxes[i])
             
         self.simulate_params = flare_table
         self.models = models

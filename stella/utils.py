@@ -1,3 +1,4 @@
+import wotan
 import numpy as np
 from scipy.stats import binned_statistic
 
@@ -60,7 +61,7 @@ def flare_lightcurve(time, amp, t0, rise, fall, y=None, binned=False,
         return model, np.array([time[t0], amp, dur, rise, fall])
 
     else:
-        mid = int(len(time)/2)
+        mid = t0#int(len(time)/2)
         bin_means = binned_statistic(time, model,
                                      bins=bins, statistic=statistic)[0]
         peak = np.argmax(bin_means)
@@ -103,7 +104,43 @@ def flare_parameters(size, cadences, amps, rises):
     flare_rises = np.random.uniform(rises[0],  rises[1],  size)
 
     # Relation between amplitude and decay time
-#    flare_decays = 0.07*flare_amps + 0.08*flare_amps**2
-    flare_decays = np.random.uniform(0.005, 0.018, size)
+    flare_decays = np.random.uniform(0.003, 0.01, size)
 
     return flare_t0s, flare_amps, flare_rises, flare_decays
+
+
+def wotan_detrend(time, flux, window_length=0.1, 
+                  method='biweight', edge_cutoff=0.5,
+                  break_tolerance=0.5, cval=5.0):
+    """
+    Detrends the light curve using methods in wotan.flatten().
+
+    Parameters
+    ----------
+    time : np.ndarray
+    flux : np.ndarray
+    window_length : str, optional                                                                 
+         The window length used for the robust estimator. Default = 0.1.
+         For the biweight filter, window_length is given in unit days.
+         For the savgol filter, window_length is given in unit cadences.
+    method : str, optional.
+         The type of detrending to use on the light curve. Default is 'biweight'.
+    edge_cutoff: float, optional
+         Trims data near the edges of the light curve. Default = 0.5. Only available
+         for the biweight detrending method.
+    break_tolerance : float, optional
+         Breaks the light curve into segments to help alleviate gap issues. 
+         Default = 0.5.
+    cval : float, optional
+         Tuning parameter for robust M-estimators. Defined as multiples in units
+         of median absolute deviation from central location. Default = 5.0.
+         Only available for the biweight detrending method.
+
+    Returns
+    ----------
+    detrend : detranded flux
+    """
+    detrend = wotan.flatten(time, flux, window_length=window_length,
+                            method=method, edge_cutoff=edge_cutoff,
+                            break_tolerance=break_tolerance, cval=cval)
+    return detrend

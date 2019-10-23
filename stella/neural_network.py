@@ -40,6 +40,7 @@ class NeuralNetwork(object):
             self.training_fluxes = slc.fluxes
             self.training_detrended = slc.detrended
             self.training_labels = slc.labels
+            self.cadences = slc.cadences
 
         else:
             if training_dir is None:
@@ -63,7 +64,7 @@ class NeuralNetwork(object):
             self.training_fluxes = training_fluxes
             self.training_labels = training_labels
             self.training_detrended = training_detrended
-                
+            self.cadences = len(training_time[0])
                                                
         self.flux        = None
         self.predictions = None
@@ -193,7 +194,7 @@ class NeuralNetwork(object):
             coefs = poly.polyfit(x, y, 2)
             return poly.polyval(x, coefs)
 
-        cadences    = len(self.training_fluxes)
+        cadences    = self.cadences
         predictions = []
 
         detrended_flux = np.copy(flux)
@@ -255,7 +256,7 @@ class NeuralNetwork(object):
             return np.array(detrended_flux), np.array(predictions)
 
 
-    def gp_detrending(self, window_length=101):
+    def p_detrending(self, window_length=101):
         """
         Uses a Gaussian process to detrend the rotation period of the star.
         First it flattens using a Savitsky-Golay filter to complete a sigma clipping.
