@@ -1,4 +1,5 @@
 import wotan
+import batman
 import numpy as np
 from scipy.stats import binned_statistic
 
@@ -144,3 +145,34 @@ def wotan_detrend(time, flux, window_length=0.1,
                             method=method, edge_cutoff=edge_cutoff,
                             break_tolerance=break_tolerance, cval=cval)
     return detrend
+
+
+def batman_model(time, p):
+    """
+    Creates a batman transit model to inject into the data
+    as not-a-flare noise.
+
+    Parameters
+    ----------    
+    time : np.ndarray
+    params : parameters for the batman model. params is an 
+         array of [t0, period, rp/r_star, a/r_star].
+
+    Returns
+    ----------    
+    flux : batman modeled flux with transit injected.
+    """
+    params = batman.TransitParams()
+    params.t0 = p[0]
+    params.per = p[1]
+    params.rp = p[2]
+    params.a = p[3]
+    params.inc = 90.
+    params.ecc = 0.
+    params.w = 90.                       
+    params.u = [0.1, 0.3]                
+    params.limb_dark = "quadratic" 
+    
+    m = batman.TransitModel(params, time)
+    flux = m.light_curve(params)  
+    return flux
