@@ -44,6 +44,7 @@ class ConvNN(object):
         epochs : int
         training_matrix : stella.TrainingData.training_matrix
         labels : stella.TrainingData.labels
+        image_fmt : stella.TrainingData.image_fmt
         """
         self.layers = layers
         self.optimizer = optimizer
@@ -52,6 +53,7 @@ class ConvNN(object):
         self.epochs = epochs
         self.training_matrix = TD.training_matrix
         self.labels = TD.labels
+        self.image_fmt = TD.image_fmt
 
         self.create_model()
         self.train_model()
@@ -94,6 +96,78 @@ class ConvNN(object):
         """
         Trains the model using the training set from stella.TrainingData.
         """
-
         self.model.fit(self.training_matrix,
                        self.labels, epochs=self.epochs)
+
+
+    def predict(self, times, fluxes):
+        """
+        Takes in arrays of time and flux and predicts where the flares
+        are based on the keras model created and trained. This function
+        also reshapes the data into a way for the model to understand.
+
+        Parameters
+        ----------
+        times : np.ndarray
+             Array of times to predict flares in.
+        fluxes : np.ndarray
+             Array of fluxes to predict flares in.
+
+        Attributes
+        ----------
+        time_data : time
+        flux_data : flux
+        predictions : np.nparray
+             Predicted labels for the light curves.
+        """
+        predictions = []
+
+        bins = self.image_fmt
+        cadences = self.image_fmt[0]
+
+        for j in tqdm(range(len(times))):
+            time = times[j]
+            lc   = fluxes[j]
+    
+            reshaped_data = np.zeros((len(lc), bins[1], bins[0]))
+            padding       = np.nanmedian(lc)
+            std           = np.std(lc)
+            cadence_pad   = int(cadences/2)
+    
+            for i in range(len(lc)):
+                if i <= cadences/2:
+                    fill_length   = int(cadence_pad-i)
+                    padding_array = np.zeros( (fill_length,))
+                    f = np.append(padding_array, lc[0:int(i+cadence_pad)])
+            
+                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
+                    tstep_padding = np.flip(time[i] - tsteps)
+                    t = np.append(tstep_padding, time[0:int(i+cadence_pad)])
+                    
+                elif i >= (len(lc)-cadence_pad):
+                    loc = [int(i-cadence_pad), int(len(lc))]
+                    fill_length   = int(np.abs(cadences - len(lc[loc[0]:loc[1]])))
+                    padding_array = np.zeros( (fill_length,))
+                    f = np.append(lc[loc[0]:loc[1]], padding_array)
+                    
+                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
+                    tstep_padding = time[i] - tsteps
+                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
+                    
+                else:
+                    loc = [int(i-cadence_pad), int(i+cadence_pad)]
+                    f = lc[loc[0]:loc[1]]
+                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
+            
+                data = np.histogram2d(t, (f - np.nanmax(f)) / np.nanstd(f), bins=bins)
+                data = np.rot90(data[0])
+                
+                reshaped_data[i] = data
+
+            preds = self.model.predict(reshaped_data)
+            predictions.append(preds)
+
+        self.time_data   = times
+        self.flux_data   = fluxes
+        self.predictions = np.array(predictions)
+                                  
