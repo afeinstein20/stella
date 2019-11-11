@@ -256,7 +256,7 @@ class NeuralNetwork(object):
             return np.array(detrended_flux), np.array(predictions)
 
 
-    def p_detrending(self, window_length=101):
+    def gp_detrending(self, window_length=101):
         """
         Uses a Gaussian process to detrend the rotation period of the star.
         First it flattens using a Savitsky-Golay filter to complete a sigma clipping.
