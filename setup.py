@@ -34,11 +34,9 @@ setup(
     package_data={'': ['README.md', 'LICENSE']},
     install_requires=[
         'tqdm', 'lightkurve', 'astropy',
-        'astroquery',  'eleanor',
-        'setuptools>=41.0.0', 'wotan',
-        'tensorflow', 'vaneska', 'beautifulsoup4>=4.6.0', 'tess-point<=0.3.1'],
-
-
+        'astroquery',  
+        'setuptools>=41.0.0', 
+        'tensorflow', 'vaneska', 'beautifulsoup4>=4.6.0'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
