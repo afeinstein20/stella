@@ -128,8 +128,9 @@ class ConvNN(object):
         for j in tqdm(range(len(times))):
             time = times[j]
             lc   = fluxes[j]
-    
+            
             reshaped_data = np.zeros((len(lc), bins[1], bins[0]))
+            start_time = []
             padding       = np.nanmedian(lc)
             std           = np.std(lc)
             cadence_pad   = int(cadences/2)
@@ -162,6 +163,7 @@ class ConvNN(object):
                 data = np.histogram2d(t, (f - np.nanmax(f)) / np.nanstd(f), bins=bins)
                 data = np.rot90(data[0])
                 
+                start_time.append( [np.min(t), np.max(t)])
                 reshaped_data[i] = data
 
             preds = self.model.predict(reshaped_data)
@@ -170,4 +172,5 @@ class ConvNN(object):
         self.time_data   = times
         self.flux_data   = fluxes
         self.predictions = np.array(predictions)
-                                  
+        self.reshaped_data = reshaped_data
+        self.image_times   = np.array(start_time)

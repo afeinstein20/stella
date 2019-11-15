@@ -2,7 +2,11 @@ import numpy as np
 from tqdm import tqdm
 from astropy.table import Table
 from scipy.signal import find_peaks
+from scipy.optimize import minimize
+from astropy.stats import sigma_clip
+from lightkurve.lightcurve import LightCurve as LC
 
+from .utils import *
 
 __all__ = ['FlareCharacterization']
 
@@ -72,48 +76,92 @@ class FlareCharacterization(object):
             return res
 
         flare_t0s = []
+        flare_flux = []
 
         for i in tqdm(range(len(self.time))):
-            q = self.predictions[i][:,1] > 0.3
+            q = self.predictions[i][:,1] > self.prob_accept
             inds = np.where(q==True)[0]
             
             t0s = np.array([])
+            flare_fluxes  = []
+            flare_detrend = []
+            flare_times   = []
 
             if len(inds) > 0:
                 grp  = group_sequence(inds)
             
                 for g in grp:
                     if len(g) > 2:
-                        padding = int((self.cadences - len(g))/2)
+                        padding = 50#int((self.cadences - len(g))/2)
                         g = np.append(np.arange(g[0]-padding, g[0], 1, dtype=int), g)
                         g = np.append(g, np.arange(g[-1], g[-1]+padding, 1, dtype=int))
-                        
-                        temp_peak = np.argmax(self.flux[i][g])
-                        
-                        if (temp_peak < len(g)-1) and (temp_peak >= 1):
+
+                        # Local detrending
+                        poly  = np.polyfit(self.time[i][g], self.flux[i][g], 6)
+                        fit   = np.poly1d(poly)
+                        model = fit(self.time[i][g])
+                        detrended_flux = self.flux[i][g]/model
+
+                        lk, trend = LC(self.time[i][g], self.flux[i][g]).flatten(window_length=21,
+                                                                                 return_trend=True)
+                        detrended_flux = self.flux[i][g]/trend.flux
+
+                        med = np.nanmedian(detrended_flux)
+                        std = np.nanstd(detrended_flux)
+
+                        # Flare signal finding
+                        signal, _ = find_peaks(detrended_flux,
+                                               height=(med+1.0*std, med+100*std))
+
+                        for peak in signal:
                             # Makes sure the peak is at least 1.5 sigma above the local noise
-                            if self.flux[i][g][temp_peak] > (np.nanmean(self.flux[i][g]) + 1.5*np.std(self.flux[i][g])):
-                                diff_pre  = self.flux[i][g][temp_peak] - self.flux[i][g][int(temp_peak-4):temp_peak]
-                                diff_post = np.diff(self.flux[i][g][temp_peak:int(temp_peak+4)])
+                            if detrended_flux[peak] > (med + 1.3*std):
+                                diff_pre  = detrended_flux[peak] - detrended_flux[int(peak-5):peak]
+                                diff_post = detrended_flux[peak] - detrended_flux[int(peak+1):int(peak+5)]
+
                                 # Makes sure the peak is greater than the points before it
                                 # Makes sure the peak is greater than the next 2 data points
-                                if (len(np.where(diff_post < 0)[0]) >= 2) and (len(np.where(diff_pre > 0)[0]) >= 2):
-                                
-                                    # Local detrending
-                                    poly  = np.polyfit(self.time[i][g], self.flux[i][g], 3)
-                                    fit   = np.poly1d(poly)
-                                    model = fit(self.time[i][g])
+                                if (len(np.where(diff_post > 0)[0]) >= 3) and (len(np.where(diff_pre > 0)[0]) >= 2):
 
-                                    # Finding the actual flare, not just argmax
-                                    med = np.nanmedian(self.flux[i][g]/model)
-                                    std = np.nanstd(self.flux[i][g]/model)
+                                    flare_fluxes.append(self.flux[i][g])
+                                    flare_times.append(self.time[i][g])
+                                    flare_detrend.append(detrended_flux)
+                                    t0s = np.append(t0s, self.time[i][g][peak])
 
-                                    signal, _ = find_peaks(self.flux[i][g]/model,
-                                                           height=(med+2.0*std, med+100*std))
-                                    for sig in signal:
-                                        t0s = np.append(t0s, self.time[i][g][sig])
-                        
-            flare_t0s.append(t0s)
+            flare_t0s.append(np.unique(t0s))
 
         self.flare_t0s = np.array(flare_t0s)
+        self.flare_fluxes = np.array(flare_fluxes)
+        self.flare_times  = np.array(flare_times)
+        self.flare_detrend = np.array(flare_detrend)
+
+
+    def model_flares(self):
+        """
+        Models the stellar activity + flare in order to extract the
+        most accurate flare parameters.
+
+        Attributes
+        ---------- 
+        flare_table : astropy.table.Table
+             Parameters of identified and fitted flares.
+        """
+        
+        
+        def chiSquare(var, x, y, yerr):
+            # Fits the flare and an underlying polynomial
+            # to mimic stellar activity and find flare params.
+            amp, t0, rise, fall = var
+            
+            sig_mask = sigma_clip(y, sigma=1.5).mask
+            
+            fit = np.polyfit(x[~sig_mask], y[~sig_mask], deg=6)
+            model = np.poly1d(poly_fit)
+
+            m = flare_lightcurve(x, amp, int(t0), rise, fall,
+                                 y=model(x))[0] + np.nanmedian(y)
+
+            return np.sum( (y-m)**2/yerr**2 )
+            
+
         
