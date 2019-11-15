@@ -97,7 +97,8 @@ class ConvNN(object):
         Trains the model using the training set from stella.TrainingData.
         """
         self.model.fit(self.training_matrix,
-                       self.labels, epochs=self.epochs)
+                       self.labels, epochs=self.epochs,
+                       shuffle=True)
 
 
     def predict(self, times, fluxes):
