@@ -1,47 +1,40 @@
 dist: trusty
-
 language: python
 python: 3.6
-
 matrix:
-    include:
-        - os: linux
-
+  include:
+  - os: linux
 addons:
   apt_packages:
-    - pandoc
-
+  - pandoc
 cache: pip
-
 env:
   global:
-    - secure: "c4Ai8lZcRV3Q8wCjBLaaYKWN9Q11iAwFq7EItAXfCGZBcja61qK8M7HHuY2aButNQZ5Phc1yutjPUoGagUkfBH+AWD6JPoDNQeNv7bBW5+ybFd7dzfodq4n2/OYK+VXfJmB55ymlDdsnjrQxauYLtXmOsJYL+Mb3UfJPfsRHvlrhEJBxI5uZwT7166zft1d4PfSD7Dt+aUdqdnPOeFfAukj96kMgfnI52nbSYmN9ncQZkPmGv4TcY7nO7+SD47/i7k3BrKY0CYcAwj+1K7RgtRPwa76v0oITg9omYFX1EbQ2k5nhDHAxUy5TUUXMcaacgQ3/enLSak2iMkpELFbxldfjEDiJ6EoLROEaTHHPf+GKKUvwHSTgtdqE8YWGxUuMCuLnmw16gLim39/63lKHHxHrvpew09VYLyztgVWyqSuNcw0IcRxDYtOHj8Pu4BMi/KrtdDRNsStsvsC+Ap5b5EQsfXGkElpZGf8tbsklMzFssp3Qxatvj37YTWitlXdCHYT4Pb6lFReNqFKVsJ7TOXtABrls36ghA/H6hzkULVceIvryP01DmDrYL5eB9UcQ8Rz7P/Kxfs4uF8lmZcWEYREBUpSyT3JYoUeFcMqaXWf5P2X8YGOekjQfWf9yBFM782ximPPej3S+qMQjIopxP3NoZZfcZGSBzGH7LWLtopc="
-
+  - secure: c4Ai8lZcRV3Q8wCjBLaaYKWN9Q11iAwFq7EItAXfCGZBcja61qK8M7HHuY2aButNQZ5Phc1yutjPUoGagUkfBH+AWD6JPoDNQeNv7bBW5+ybFd7dzfodq4n2/OYK+VXfJmB55ymlDdsnjrQxauYLtXmOsJYL+Mb3UfJPfsRHvlrhEJBxI5uZwT7166zft1d4PfSD7Dt+aUdqdnPOeFfAukj96kMgfnI52nbSYmN9ncQZkPmGv4TcY7nO7+SD47/i7k3BrKY0CYcAwj+1K7RgtRPwa76v0oITg9omYFX1EbQ2k5nhDHAxUy5TUUXMcaacgQ3/enLSak2iMkpELFbxldfjEDiJ6EoLROEaTHHPf+GKKUvwHSTgtdqE8YWGxUuMCuLnmw16gLim39/63lKHHxHrvpew09VYLyztgVWyqSuNcw0IcRxDYtOHj8Pu4BMi/KrtdDRNsStsvsC+Ap5b5EQsfXGkElpZGf8tbsklMzFssp3Qxatvj37YTWitlXdCHYT4Pb6lFReNqFKVsJ7TOXtABrls36ghA/H6hzkULVceIvryP01DmDrYL5eB9UcQ8Rz7P/Kxfs4uF8lmZcWEYREBUpSyT3JYoUeFcMqaXWf5P2X8YGOekjQfWf9yBFM782ximPPej3S+qMQjIopxP3NoZZfcZGSBzGH7LWLtopc=
+  - secure: jiP9KoW+R9mg9Cj4L0+PLPj8EgS4khXlbeu8XHvmwW7S9yDe08G96qzLP2JrkCdGDW3vvWcVKgGDC8TjN62IpHf/oONEemM4SNKvUgI2IeY09dC7thWDW19amBArxo8AWbZ6chPZECWOqMACmUXdd1juXsIx1DSov0L0g20YK2+QdaW3birXuXvvO7DqlIKfIIp9jRWbClsvlN+zdxZE6NA5ccDiiRghvMWp/i+MDFm13o2z9i0rJDvDjPHo/mvcmAYNNEGWGO75b4VCf7VOd7eKxdOggc8T9kK4L8dt0zxwr6dkmATQWpkh/IFaE5gWNRFc5C1XPOz4ouJ7pPeh5J+koT/cBRawnQCQ3pgCl8Tn9nJDii970Ri10oBhUek1j/yxxBwsgFt595SdqM3/DSK6UpOcsYBy4fR70FOgWlF5Zy68gK8+aOTyCECMa11dgFRkSe8mtVlV/3mDeXZ77yKt8ij3MrxlY5XEwzohYtt6WWlG5JtmXWwryQgQbwWABVQotK6NQ8zEBn62Olx5vR6plCcokyPThaQzLTSoVMSVY2Y99gpimcsbex3IgBx4Juln2ug0smV+Uy6m5c/1e0x9FU237I7pUV5pvlLErmyxHCOndw0gS+eDAsMARzl5OLRGMZHkdSWEh24BtJCgkhX+RVCcaB7rU5BjIzcuYtI=
 before_install:
-  - sudo apt-get install python3-pip
-  - sudo pip3 install requests
-
+- sudo apt-get install python3-pip
+- sudo pip3 install requests
 install:
-  - pip install tornado==5.1.1
-  - pip install lightkurve
-  - pip install tensorflow
-  - pip install astropy
-  - pip install astroquery
-  - pip install tqdm
-  - pip install sphinx
-  - pip install nbsphinx
-  - pip install cython
-  - pip install codecov
-  - pip install coverage
-  - pip install pytest
-  - pip install pytest-cov
-  - pip install lxml
-  - pip install pybind11
-  - python setup.py install
-
+- pip install tornado==5.1.1
+- pip install lightkurve
+- pip install tensorflow
+- pip install astropy
+- pip install astroquery
+- pip install tqdm
+- pip install sphinx
+- pip install nbsphinx
+- pip install cython
+- pip install codecov
+- pip install coverage
+- pip install pytest
+- pip install pytest-cov
+- pip install lxml
+- pip install pybind11
+- python setup.py install
 script:
-  - pytest stella/tests/* --cov=stella/
-
+- pytest stella/tests/* --cov=stella/
 after_success:
-  - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
-  - codecov
+- if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source
+  .ci/build-docs.sh; fi
+- codecov
