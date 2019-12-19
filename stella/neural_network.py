@@ -163,7 +163,10 @@ class ConvNN(object):
         -------
         fig : matplotlib.figure.Figure
         """
-        epochs = len(self.history.history['loss'])
+        import matplotlib.pyplot as plt
+
+        epochs = np.arange(0,len(self.history.history['loss']),1)
+
         fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(14,4))
 
         ax1.plot(epochs, self.history.history['loss'], c='k',
