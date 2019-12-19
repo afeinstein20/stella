@@ -3,8 +3,7 @@ import batman
 import numpy as np
 from scipy.stats import binned_statistic
 
-def flare_lightcurve(time, amp, t0, rise, fall, y=None, binned=False,
-                     bins=16, statistic='mean'):
+def flare_lightcurve(time, amp, t0, rise, fall, y=None):
     """
     Generates a simple flare model with a Gaussian rise and an 
     exponential decay.
@@ -58,17 +57,8 @@ def flare_lightcurve(time, amp, t0, rise, fall, y=None, binned=False,
     model = np.append(growth_model, decay_model)
     dur = np.abs(np.sum(model[:-1] * np.diff(time) ))
 
-    if binned is False:
-        return model, np.array([time[t0], amp, dur, rise, fall])
+    return model, np.array([time[t0], amp, dur, rise, fall])
 
-    else:
-        mid = t0#int(len(time)/2)
-        bin_means = binned_statistic(time, model,
-                                     bins=bins, statistic=statistic)[0]
-        peak = np.argmax(bin_means)
-        flux = np.zeros(len(time))
-        flux[mid-peak:mid+bins-peak] = bin_means
-        return flux, np.array([time[mid], bin_means[peak], dur, rise, fall])
 
 
 def flare_parameters(size, cadences, amps, rises):
@@ -108,43 +98,6 @@ def flare_parameters(size, cadences, amps, rises):
     flare_decays = np.random.uniform(0.003, 0.01, size)
 
     return flare_t0s, flare_amps, flare_rises, flare_decays
-
-
-def wotan_detrend(time, flux, window_length=0.1, 
-                  method='biweight', edge_cutoff=0.5,
-                  break_tolerance=0.5, cval=5.0):
-    """
-    Detrends the light curve using methods in wotan.flatten().
-
-    Parameters
-    ----------
-    time : np.ndarray
-    flux : np.ndarray
-    window_length : str, optional                                                                 
-         The window length used for the robust estimator. Default = 0.1.
-         For the biweight filter, window_length is given in unit days.
-         For the savgol filter, window_length is given in unit cadences.
-    method : str, optional.
-         The type of detrending to use on the light curve. Default is 'biweight'.
-    edge_cutoff: float, optional
-         Trims data near the edges of the light curve. Default = 0.5. Only available
-         for the biweight detrending method.
-    break_tolerance : float, optional
-         Breaks the light curve into segments to help alleviate gap issues. 
-         Default = 0.5.
-    cval : float, optional
-         Tuning parameter for robust M-estimators. Defined as multiples in units
-         of median absolute deviation from central location. Default = 5.0.
-         Only available for the biweight detrending method.
-
-    Returns
-    ----------
-    detrend : detranded flux
-    """
-    detrend = wotan.flatten(time, flux, window_length=window_length,
-                            method=method, edge_cutoff=edge_cutoff,
-                            break_tolerance=break_tolerance, cval=cval)
-    return detrend
 
 
 def batman_model(time, p):
