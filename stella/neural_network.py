@@ -134,6 +134,11 @@ class ConvNN(object):
         Attributes
         ---------- 
         history : tensorflow.python.keras.callbacks.History
+        test_data : np.array
+             The remaining data in training_matrix that is used
+             for testing.
+        test_labels : np.array
+             The labels for the testing data set.
         """
         x_train = self.training_matrix[0:self.train_cutoff]
         y_train = self.labels[0:self.train_cutoff]
@@ -145,7 +150,11 @@ class ConvNN(object):
         y_test = self.labels[self.val_cutoff:]
 
         x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
-        x_val = x_val.reshape(x_val.shape[0], x_train.shape[1], 1)
+        x_val   = x_val.reshape(x_val.shape[0], x_train.shape[1], 1)
+        x_test  = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
+
+        self.test_data = x_test
+        self.test_labels = y_test
 
         history = self.model.fit(x_train, y_train, epochs=epochs, 
                                  batch_size=batch_size, shuffle=True, 
@@ -184,3 +193,75 @@ class ConvNN(object):
         ax2.set_ylabel('Accuracy')
 
         return fig
+
+
+    def predict(self, times, fluxes):
+        """
+        Takes in arrays of time and flux and predicts where the flares 
+        are based on the keras model created and trained.
+
+        Parameters
+        ----------
+        times : np.ndarray
+             Array of times to predict flares in.
+        fluxes : np.ndarray
+             Array of fluxes to predict flares in.
+             
+        Attributes
+        ----------
+        predict_times : np.ndarray
+             The input times array.
+        predict_fluxes : np.ndarray
+             The input fluxes array.
+        predictions : np.ndarray
+             An array of predictions from the model.
+        """
+        predictions = []
+
+        cadences = self.cadences
+
+        for j in tqdm(range(len(times))):
+            time = times[j]
+            lc   = fluxes[j]
+        
+            reshaped_data = np.zeros((len(lc), cadences))
+        
+            padding       = np.nanmedian(lc)
+            std           = np.std(lc)/3.
+            cadence_pad   = int(cadences/2)
+
+            for i in range(len(lc)):
+                if i <= cadences/2:
+                    fill_length   = int(cadence_pad-i)
+                    padding_array = np.zeros( (fill_length,))
+                    f = np.append(padding_array, lc[0:int(i+cadence_pad)])
+                    
+                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
+                    tstep_padding = np.flip(time[i] - tsteps)
+                    t = np.append(tstep_padding, time[0:int(i+cadence_pad)])
+                    
+                elif i >= (len(lc)-cadence_pad):
+                    loc = [int(i-cadence_pad), int(len(lc))]
+                    fill_length   = int(np.abs(cadences - len(lc[loc[0]:loc[1]])))
+                    padding_array = np.zeros( (fill_length,))
+                    f = np.append(lc[loc[0]:loc[1]], padding_array)
+                    
+                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
+                    tstep_padding = time[i] - tsteps
+                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
+                    
+                else:
+                    loc = [int(i-cadence_pad), int(i+cadence_pad)]
+                    f = lc[loc[0]:loc[1]]
+                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
+
+                reshaped_data[i] = f
+                
+            reshaped_data = reshaped_data.reshape(reshaped_data.shape[0], 
+                                                  reshaped_data.shape[1], 1)
+            preds = self.model.predict(reshaped_data)
+            predictions.append(preds)
+
+        self.predict_times = np.array(times)
+        self.predict_fluxes = np.array(fluxes)
+        self.predictions = np.array(predictions)
