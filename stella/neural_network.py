@@ -1,5 +1,6 @@
 import numpy as np
 from tqdm import tqdm
+import tensorflow as tf
 from tensorflow import keras
 
 __all__ = ['ConvNN']
@@ -10,9 +11,9 @@ class ConvNN(object):
     neural network.
     """
 
-    def __init__(self, TD, layers=None, optimizer='adam',
-                 loss='binary_crossentropy', metrics=['accuracy'],
-                 epochs=15):
+    def __init__(self, ts, training=0.80, validation=0.90,
+                 layers=None, optimizer='adam',
+                 loss='binary_crossentropy', metrics=['accuracy']):
         """
         Creates and trains a Tensorflow keras model
         with either layers that have been passed in
@@ -21,7 +22,13 @@ class ConvNN(object):
 
         Parameters
         ----------
-        TD : stella.TrainingData object
+        ts : stella.TrainingSet object
+        training : float, optional
+             Assigns the percentage of training set data for training.
+             Default is 80%.
+        validation : float, optional
+             Assigns the percentage of training set data for validation.
+             Default is 10%.
         layers : np.array, optional
              An array of keras.layers for the ConvNN.
         optimizer : str, optional
@@ -41,24 +48,24 @@ class ConvNN(object):
         optimizer : str
         loss : str
         metrics : np.array
-        epochs : int
-        training_matrix : stella.TrainingData.training_matrix
-        labels : stella.TrainingData.labels
-        image_fmt : stella.TrainingData.image_fmt
+        training_matrix : stella.TrainingSet.training_matrix
+        labels : stella.TrainingSet.labels
+        image_fmt : stella.TrainingSet.cadences
         """
         self.layers = layers
         self.optimizer = optimizer
         self.loss = loss
         self.metrics = metrics
-        self.epochs = epochs
-        self.training_matrix = TD.training_matrix
-        self.labels = TD.labels
-        self.image_fmt = TD.image_fmt
+        self.training_matrix = ts.training_matrix
+        self.labels = ts.labels
+        self.cadences = ts.cadences
+
+        self.train_cutoff = int(training * len(self.labels))
+        self.val_cutoff   = int(validation * len(self.labels))
 
         self.create_model()
-        self.train_model()
 
-        
+
     def create_model(self):
         """
         Creates the Tensorflow keras model with appropriate layers.
@@ -67,40 +74,116 @@ class ConvNN(object):
         ----------
         model : tensorflow.python.keras.engine.sequential.Sequential
         """
-        # Makes sure the backend is clean
+        # INITIALIZE CLEAN MODEL
         keras.backend.clear_session()
 
         model = keras.models.Sequential()
 
+        # DEFAULT NETWORK MODEL FROM FEINSTEIN ET AL. (in prep)
         if self.layers is None:
-            model.add(keras.layers.Conv1D(32, 3, activation='relu'))
-            model.add(keras.layers.MaxPooling1D((2)))
-            model.add(keras.layers.Conv1D(64, 3, activation='relu'))
+            filter1 = 16
+            filter2 = 64
+            dense   = 32
+            dropout = 0.1
 
-            model.add(keras.layers.Flatten())
-            model.add(keras.layers.Dense(64, activation='relu'))
-            model.add(keras.layers.Dense(2, activation='sigmoid'))
+            # CONVOLUTIONAL LAYERS
+            model.add(tf.keras.layers.Conv1D(filters=filter1, kernel_size=3, 
+                                             activation='relu', padding='same', 
+                                             input_shape=(self.cadences, 1)))
+            model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
+            model.add(tf.keras.layers.Dropout(dropout))
+            model.add(tf.keras.layers.Conv1D(filters=filter2, kernel_size=3, 
+                                             activation='relu', padding='same'))
+            model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
+            model.add(tf.keras.layers.Dropout(dropout))
+            
+            # DENSE LAYERS AND SOFTMAX OUTPUT
+            model.add(tf.keras.layers.Flatten())
+            model.add(tf.keras.layers.Dense(dense, activation='relu'))
+            model.add(tf.keras.layers.Dropout(dropout))
+            model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
             
         else:
             for l in self.layers:
                 model.add(l)
                 
+        # COMPILE MODEL AND SET OPTIMIZER, LOSS, METRICS
         model.compile(optimizer=self.optimizer,
                       loss=self.loss,
                       metrics=self.metrics)
 
         self.model = model
+        
+        # PRINTS THE MODEL SUMMARY FOR THE USER
+        model.summary()
 
 
-    def train_model(self):
+    def train_model(self, epochs=500, batch_size=64):
         """
         Trains the model using the training set from stella.TrainingData.
+
+        Parameters
+        ---------- 
+        epochs : int, optional 
+             The number of epochs to train for.
+             Default is 500.
+        batch_size : int, optional
+             The batch size fro training.
+             Default is 64.
+
+        Attributes
+        ---------- 
+        history : tensorflow.python.keras.callbacks.History
         """
-        self.model.fit(self.training_matrix,
-                       self.labels, epochs=self.epochs,
-                       shuffle=True)
+        x_train = self.training_matrix[0:self.train_cutoff]
+        y_train = self.labels[0:self.train_cutoff]
 
+        x_val = self.training_matrix[self.train_cutoff:self.val_cutoff]
+        y_val = self.labels[self.train_cutoff:self.val_cutoff]
 
+        x_test = self.training_matrix[self.val_cutoff:] 
+        y_test = self.labels[self.val_cutoff:]
+
+        x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
+        x_val = x_val.reshape(x_val.shape[0], x_train.shape[1], 1)
+
+        history = self.model.fit(x_train, y_train, epochs=epochs, 
+                                 batch_size=batch_size, shuffle=True, 
+                                 validation_data=(x_val, y_val))
+        self.history = history
+
+        
+    def loss_acc(self):
+        """
+        Plots the loss and accuracy for the training and validation 
+        data sets. Keyword accuracy will change based on what metrics
+        were used.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+        """
+        epochs = len(self.history.history['loss'])
+        fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(14,4))
+
+        ax1.plot(epochs, self.history.history['loss'], c='k',
+                 linewidth=2, label='Training')
+        ax1.plot(epochs, self.history.history['val_loss'], c='darkorange',
+                 linewidth=2, label='Validation')
+        ax1.set_xlabel('Epochs')
+        ax1.set_ylabel('Loss')
+
+        ax2.plot(epochs, self.history.history['acc'], c='k',
+                 linewidth=2)
+        ax2.plot(epochs, self.history.history['val_acc'], c='darkorange',
+                 linewidth=2)
+        ax2.set_xlabel('Epochs')
+        ax2.set_ylabel('Accuracy')
+
+        return fig
+                 
+
+        
     def predict(self, times, fluxes):
         """
         Takes in arrays of time and flux and predicts where the flares
