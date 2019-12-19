@@ -35,6 +35,9 @@ install:
 script:
 - pytest stella/tests/* --cov=stella/
 after_success:
+- git config credential.helper "store --file=.git/credentials"
+- echo "https://${GH_TOKEN}:@github.com" > .git/credentials
+- node ./node_modules/grunt-cli/bin/grunt release
 - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source
   .ci/build-docs.sh; fi
 - codecov
