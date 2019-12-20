@@ -3,7 +3,7 @@ import batman
 import numpy as np
 from scipy.stats import binned_statistic
 
-def flare_lightcurve(time, amp, t0, rise, fall, y=None):
+def flare_lightcurve(time, t0, amp, rise, fall, y=None):
     """
     Generates a simple flare model with a Gaussian rise and an 
     exponential decay.
@@ -22,14 +22,6 @@ def flare_lightcurve(time, amp, t0, rise, fall, y=None):
          The exponential decay of the flare.
     y : np.ndarray, optional
          Underlying stellar activity. Default if None.
-    binned : bool, optional
-         Bins the flare to a lower resolution. Default is False.
-    bins : int, optional
-         The number of bins if binned = True. Default is 16.
-    statistic : str, optional
-         The metric on which to bin the data. Default is True. 
-         For more statistic options, see 
-         https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.binned_statistic.html.
 
     Returns
     ----------
@@ -61,7 +53,7 @@ def flare_lightcurve(time, amp, t0, rise, fall, y=None):
 
 
 
-def flare_parameters(size, cadences, amps, rises):
+def flare_parameters(size, times, amps):
     """
     Generates an array of random amplitudes at different times with
     different rise and decay properties.
@@ -70,19 +62,17 @@ def flare_parameters(size, cadences, amps, rises):
     ----------
     size : int
          The number of flares to generate.
-    cadences : int
-         The number of cadences to scroll over.
+    times : np.array
+         Array of times where a random subset will be chosen for flare
+         injection. 
     amps : list
          List of minimum and maximum of flare amplitudes to draw from a 
          normal distribution. 
-    rises : list
-         List of minimum and maximum Gaussian rise rate to draw from
-         a uniform distribution. 
     
     Returns
     ----------
     flare_t0s : np.ndarray
-         The distribution of flare start times.
+         The distribution of flare start time indices.
     flare_amps : np.ndarray
          The distribution of flare amplitudes.
     flare_rises : np.ndarray
@@ -90,14 +80,14 @@ def flare_parameters(size, cadences, amps, rises):
     flare_decays : np.ndarray
          The distribution of flare decays rates.
     """
-    flare_t0s   = np.full(size, cadences/2)
+    randtimes   = np.random.randint(0, len(times), size)
     flare_amps  = np.random.uniform(amps[0], amps[1], size)
-    flare_rises = np.random.uniform(rises[0],  rises[1],  size)
+    flare_rises = np.random.uniform(0.00005,  0.0002,  size)
 
     # Relation between amplitude and decay time
-    flare_decays = np.random.uniform(0.003, 0.01, size)
+    flare_decays = np.random.uniform(0.0003, 0.01, size)
 
-    return flare_t0s, flare_amps, flare_rises, flare_decays
+    return randtimes, flare_amps, flare_rises, flare_decays
 
 
 def batman_model(time, p):
