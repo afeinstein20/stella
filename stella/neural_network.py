@@ -195,24 +195,35 @@ class ConvNN(object):
         return fig
 
 
-    def predict(self, times, fluxes):
+    def predict(self, ids, times, fluxes, flux_errs, injected=False):
         """
         Takes in arrays of time and flux and predicts where the flares 
         are based on the keras model created and trained.
 
         Parameters
         ----------
+        ids : np.array
+             Array of light curve identifiers (e.g. list of TICs).
         times : np.ndarray
              Array of times to predict flares in.
         fluxes : np.ndarray
              Array of fluxes to predict flares in.
+        flux_errs : np.ndarray
+             Array of flux errors for predicted flares.
+        injected : bool, optional
+             Returns predictions instead of setting attribute. Used
+             for injection-recovery. Default is False.
              
         Attributes
         ----------
+        predict_ids : np.array
+             The input target IDs.
         predict_times : np.ndarray
              The input times array.
         predict_fluxes : np.ndarray
              The input fluxes array.
+        predict_errs : np.ndarray
+             The input flux errors array.
         predictions : np.ndarray
              An array of predictions from the model.
         """
@@ -220,7 +231,13 @@ class ConvNN(object):
 
         cadences = self.cadences
 
-        for j in tqdm(range(len(times))):
+        # FOR THE LOADING BAR
+        if injected is True:
+            disable = True
+        else:
+            disable = False
+
+        for j in tqdm(range(len(times)), disable=disable):
             time = times[j]
             lc   = fluxes[j]
         
@@ -262,6 +279,11 @@ class ConvNN(object):
             preds = self.model.predict(reshaped_data)
             predictions.append(preds)
 
-        self.predict_times = np.array(times)
-        self.predict_fluxes = np.array(fluxes)
-        self.predictions = np.array(predictions)
+        if injected is False:
+            self.predict_ids = np.array(ids)
+            self.predict_times = np.array(times)
+            self.predict_fluxes = np.array(fluxes)
+            self.predict_errs = np.array(flux_errs)
+            self.predictions = np.array(predictions)
+        else:
+            return np.array(predictions)
