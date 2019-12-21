@@ -277,7 +277,7 @@ class ConvNN(object):
             reshaped_data = reshaped_data.reshape(reshaped_data.shape[0], 
                                                   reshaped_data.shape[1], 1)
             preds = self.model.predict(reshaped_data)
-            predictions.append(preds)
+            predictions.append(np.reshape(preds, len(preds)))
 
         if injected is False:
             self.predict_ids = np.array(ids)
