@@ -173,50 +173,69 @@ class FlareParameters(object):
              Table of injected flare parameters.
 
         """
-        inj_tab = Table(names=['ID', 'tpeak', 'amp', 'recovered', 'prob'])
+        inj_tab = Table(names=['ID', 'tpeak', 'amp', 'recovered', 'prob', 'rises', 'decays'])
 
         predictions = []
 
         for i in tqdm(range(len(self.times))):
 
             ids = np.full(iters, self.ids[i])
-            inj_time = self.times[i]
+            inj_time = self.times[i] + 0.0
             inj_err  = self.flux_errs[i]
 
+            injected_model = np.zeros( (iters, len(inj_time)) )
+            injected_preds = np.zeros( (iters, len(inj_time)) )
+
+            t0s, inj_amps, rises, decays = flare_parameters(size=int(iters*flares_per_inj),
+                                                            time=inj_time,
+                                                            amps=amps,
+                                                            cut_ends=self.cut_ends)
+            t0s = np.reshape(t0s, (iters, flares_per_inj))
+            inj_amps = np.reshape(inj_amps, (iters, flares_per_inj))
+            rises = np.reshape(rises, (iters, flares_per_inj))
+            decays = np.reshape(decays, (iters, flares_per_inj))
+
             # LOOPS THROUGH HOWEVER MANY ITERATIONS SPECIFIED
-            for n in range(iters):
-                inj_flux = self.fluxes[i]
-                t0s, inj_amps, rises, decays = flare_parameters(size=flares_per_inj,
-                                                                times=self.times[i][self.cut_ends:len(self.times[i])-self.cut_ends],
-                                                                amps=amps)
-                
+            for n in range(iters):                
                 for f in range(flares_per_inj):
-                    m, p = flare_lightcurve(self.times[i], t0s[f], inj_amps[f],
-                                            rises[f], decays[f])
-                    inj_flux += m
+                    m, p = flare_lightcurve(inj_time, t0s[n][f], inj_amps[n][f],
+                                            rises[n][f], decays[n][f])
+                    injected_model[n] += m
                 
                 # KEEPS A RUNNING LIST OF TPEAKS AND AMPLITUDES
-                inj_tpeaks = self.times[i][t0s]
+                import matplotlib.pyplot as plt
+                plt.plot(inj_time, injected_model[n] + self.fluxes[i], 'k')
+                plt.plot(inj_time, injected_model[n], 'r')
+                plt.show()
+                print(inj_time[t0s[n]])
+                print(inj_amps[n])
 
-                preds = self.model.predict([ids], [inj_time], [inj_flux],
+                injected_model[n] += self.fluxes[i]
+
+                preds = self.model.predict([ids], [inj_time], [injected_model[n]],
                                            [inj_err], injected=True)
+
+                injected_preds[n] = np.reshape(preds[0], preds.shape[1])
 
                 tab = self.identify_flare_peaks(injected=True, ids=ids,
                                                 times=[inj_time],
-                                                fluxes=[inj_flux],
+                                                fluxes=[injected_model[n]],
                                                 flux_errs=[inj_err],
                                                 predictions=preds)
 
-                for t in range(len(inj_tpeaks)):
-                    if len(tab[tab['tpeak'] == inj_tpeaks[t]]) > 0:
-                        peak_ind = np.where(inj_time == inj_tpeaks[t])[0]
-                        prob     = np.reshape(preds[0], preds.shape[1])[peak_ind]
-                        rec      = 1
+                med = np.nanmedian(np.diff(inj_time))
+
+                for t in range(flares_per_inj):
+                    if len(tab[tab['tpeak'] == inj_time[t0s[n][t]]]) > 0:
+                        rec = 1
                     else:
                         rec = 0
-                        prob = 0
+                    peak_ind = np.where(inj_time == inj_time[t0s[n][t]])[0]
+                    prob     = np.reshape(preds[0], preds.shape[1])[peak_ind]
 
-                    row = [self.ids[i], inj_tpeaks[t], inj_amps[t], rec, prob]
+                    row = [self.ids[i], inj_time[t0s[n][t]], inj_amps[n][t], rec, 
+                           prob, rises[n][t], decays[n][t]]
                     inj_tab.add_row(row)
                 
-        return inj_tab
+        self.inj_tab = inj_tab
+        return injected_model, injected_preds, inj_amps

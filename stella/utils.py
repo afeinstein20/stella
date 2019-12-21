@@ -53,7 +53,7 @@ def flare_lightcurve(time, t0, amp, rise, fall, y=None):
 
 
 
-def flare_parameters(size, times, amps):
+def flare_parameters(size, time, amps, cut_ends=30):
     """
     Generates an array of random amplitudes at different times with
     different rise and decay properties.
@@ -68,6 +68,9 @@ def flare_parameters(size, times, amps):
     amps : list
          List of minimum and maximum of flare amplitudes to draw from a 
          normal distribution. 
+    cut_ends : int, optional
+         Number of cadences to cut from the ends of the light curve.
+         Default is 30.
     
     Returns
     ----------
@@ -80,12 +83,12 @@ def flare_parameters(size, times, amps):
     flare_decays : np.ndarray
          The distribution of flare decays rates.
     """
-    randtimes   = np.random.randint(0, len(times), size)
+    randtimes   = np.random.randint(cut_ends, len(time)-cut_ends, size)
     flare_amps  = np.random.uniform(amps[0], amps[1], size)
     flare_rises = np.random.uniform(0.00005,  0.0002,  size)
 
     # Relation between amplitude and decay time
-    flare_decays = np.random.uniform(0.0003, 0.01, size)
+    flare_decays = np.random.uniform(0.0003, 0.001, size)
 
     return randtimes, flare_amps, flare_rises, flare_decays
 
