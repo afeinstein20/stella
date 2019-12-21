@@ -83,12 +83,17 @@ def flare_parameters(size, time, amps, cut_ends=30):
     flare_decays : np.ndarray
          The distribution of flare decays rates.
     """
-    randtimes   = np.random.randint(cut_ends, len(time)-cut_ends, size)
+    # CHOOSES UNIQUE TIMES FOR INJ-REC PURPOSES
+    randtimes   = np.random.randint(cut_ends, len(time)-cut_ends, size*2)
+    randtimes   = np.unique(randtimes)
+    randind     = np.random.randint(0, len(randtimes), size)
+    randtimes   = randtimes[randind]
+
     flare_amps  = np.random.uniform(amps[0], amps[1], size)
     flare_rises = np.random.uniform(0.00005,  0.0002,  size)
 
     # Relation between amplitude and decay time
-    flare_decays = np.random.uniform(0.0003, 0.001, size)
+    flare_decays = np.random.uniform(0.0003, 0.004, size)
 
     return randtimes, flare_amps, flare_rises, flare_decays
 
