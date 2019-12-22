@@ -4,6 +4,7 @@ from tqdm import tqdm
 from astropy.table import Table
 from scipy.interpolate import interp1d
 
+from .utils import fill_in
 
 __all__ = ['TrainingSet']
 
@@ -90,58 +91,6 @@ class TrainingSet(object):
         self.fluxes = np.array(flux)
         self.flux_errs = np.array(flux_err)
 
-
-    def fill_in(self, time, flux, flux_err, sigma=2.5):
-        """
-        Fills in any gaps in the data with the standard 
-        deviation of the light curve. Looks for differences
-        in time greater than some defined sigma threshold.
-        
-        Parameters
-        ----------
-        time : np.array
-             An array of time from one light curve.
-        flux : np.array
-             An array of flux from one light curve.
-        flux_err : np.arrayu
-             An array of flux_err from one light curve.
-        sigma : float, optional
-             The sigma-outlier difference to find gaps
-             in time. Default = 2.5.
-
-        Returns
-        -------
-        time : np.array
-        flux : np.array
-        flux_err : np.array
-        """
-        t, f, e = np.array(time), np.array(flux), np.array(flux_err)
-        
-        diff = np.diff(t)
-        diff_ind = np.where(diff >= (np.nanmedian(diff) + 
-                                     sigma*np.nanstd(diff)) )[0]
-        avg_noise = np.nanstd(f) / 2.0
-            
-        if len(diff_ind) > 0:
-            for i in diff_ind:
-                start = i
-                stop  = int(i + 2)
-                
-                func = interp1d(t[start:stop], f[start:stop])
-                
-                new_time = np.arange(t[start],
-                                     t[int(start+1)],
-                                     np.nanmean(diff))
-                noise = np.random.normal(0, avg_noise, len(new_time))
-                new_flux = func(new_time) + noise
-                
-                t = np.insert(t, i, new_time)
-                f = np.insert(f, i, new_flux)
-                e = np.insert(e, i, noise)
-                
-        t, f, e = zip(*sorted(zip(t,f,e)))
-            
-        return t, f, e
 
     def reformat_data(self, id_keyword='tic_id', ft_keyword='tpeak',
                       time_offset=2457000, random_seed=321):
@@ -246,7 +195,7 @@ class TrainingSet(object):
                     labels[x] = 1
                 else:
                     j = j - len(flare_flux)
-                    t, f, e = self.fill_in(time[j], flux[j], flux_err[j])
+                    t, f, e = fill_in(time[j], flux[j], flux_err[j])
                     data = f[0:self.cadences]
 
                 if len(data) == self.cadences:

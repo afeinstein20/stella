@@ -1,7 +1,7 @@
 import wotan
 import batman
 import numpy as np
-from scipy.stats import binned_statistic
+from scipy.interpolate import interp1d
 
 def flare_lightcurve(time, t0, amp, rise, fall, y=None):
     """
@@ -52,7 +52,6 @@ def flare_lightcurve(time, t0, amp, rise, fall, y=None):
     return model, np.array([time[t0], amp, dur, rise, fall])
 
 
-
 def flare_parameters(size, time, amps, cut_ends=30):
     """
     Generates an array of random amplitudes at different times with
@@ -98,32 +97,56 @@ def flare_parameters(size, time, amps, cut_ends=30):
     return randtimes, flare_amps, flare_rises, flare_decays
 
 
-def batman_model(time, p):
+def fill_in(time, flux, flux_err, sigma=2.5):
     """
-    Creates a batman transit model to inject into the data
-    as not-a-flare noise.
+    Fills in any gaps in the data with the standard deviation of
+    the light curve. Looks for differences in time greater than 
+    some defined sigma threshold.
 
     Parameters
-    ----------    
-    time : np.ndarray
-    params : parameters for the batman model. params is an 
-         array of [t0, period, rp/r_star, a/r_star].
-
-    Returns
-    ----------    
-    flux : batman modeled flux with transit injected.
-    """
-    params = batman.TransitParams()
-    params.t0 = p[0]
-    params.per = p[1]
-    params.rp = p[2]
-    params.a = p[3]
-    params.inc = 90.
-    params.ecc = 0.
-    params.w = 90.                       
-    params.u = [0.1, 0.3]                
-    params.limb_dark = "quadratic" 
+    ----------
+    time : np.array
+         Array of time from one light curve.
+    flux : np.array
+         Array of flux from one light curve.
+    flux_err : np.array
+         Array of flux errors from one light curve.
+    sigma : float, optional
+         The sigma-outlier difference to find time
+         gaps. Default is 2.5.
     
-    m = batman.TransitModel(params, time)
-    flux = m.light_curve(params)  
-    return flux
+    Returns
+    -------
+    time : np.array
+    flux : np.array
+    flux_err : np.array
+    """
+    t, f, e = np.array(time), np.array(flux), np.array(flux_err)
+
+    diff = np.diff(t)
+    diff_ind = np.where(diff >= (np.nanmedian(diff) + 
+                                 sigma*np.nanstd(diff)) )[0]
+    avg_noise = np.nanstd(f) / 2.0
+
+    if len(diff_ind) > 0:
+        for i in diff_ind:
+            start = i
+            stop  = int(i+2)
+            
+            func = interp1d(t[start:stop], f[start:stop])
+
+            new_time = np.arange(t[start],
+                                 t[int(start+1)],
+                                 np.nanmean(diff))
+            noise = np.random.normal(0, avg_noise, len(new_time))
+            new_flux = func(new_time) + noise
+
+            t = np.insert(t, i, new_time)
+            f = np.insert(f, i, new_flux)
+            e = np.insert(e, i, noise)
+
+    t, f, e = zip(*sorted(zip(t,f,e)))
+
+    return np.array(t), np.array(f), np.array(e)
+    
+                            
