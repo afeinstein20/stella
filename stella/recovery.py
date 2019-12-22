@@ -3,9 +3,10 @@ from tqdm import tqdm
 import more_itertools as mit
 from astropy import units as u
 from astropy.table import Table
+from scipy.signal import find_peaks
 from scipy.optimize import minimize
 
-from .utils import flare_parameters, flare_lightcurve
+from .utils import *
 
 __all__ = ['FlareParameters']
 
@@ -99,6 +100,7 @@ class FlareParameters(object):
 
         # REGION AROUND FLARE TO FIT TO
         reg = 100
+        peak_reg = 20
 
         for i in range(len(times)):
             id = ids[i]
@@ -113,23 +115,28 @@ class FlareParameters(object):
             grouped = np.array([list(group) for group in mit.consecutive_groups(inds[subi])])
             
             for g in grouped:
-                peak = np.argmax(flux[g])
-                peak = g[peak]
+
+                gmin = int(np.min(g))
+                gmax = int(np.max(g))
+                med  = np.nanmedian(flux[gmin-peak_reg:gmax+peak_reg])
+                std  = np.nanstd(flux[gmin-peak_reg:gmax+peak_reg])
+                signal, _ = find_peaks(flux[gmin-peak_reg:gmax+peak_reg],
+                                       height=(med+1.1*std, med+1000*std))
                 
-                if (flux[peak] > flux[int(peak+1)]) & (flux[peak] > flux[int(peak-1)]):
-                    if flux[peak] > flux[int(peak+2)]:
+                for peak in np.arange(gmin-peak_reg, gmax+peak_reg, 1, dtype=int)[signal]:
+                    if (flux[peak] >= flux[int(peak+1)]) & (flux[peak] >= flux[int(peak-1)]):
                         tpeak = time[peak]
                         amp   = flux[peak]
-                        
+
                         ft = time[peak-reg:peak+reg]
                         ff = flux[peak-reg:peak+reg]
                         fe = err[peak-reg:peak+reg]
-                        
+                            
                         # MASKS OUT POTENTIAL FLARE REGION
                         flare_mask = np.zeros(len(ft))
                         flare_mask[int(len(ft)/2-3) : int(len(ft)/2+20)] = 1
                         q = flare_mask == 0
-                        
+
                         # FITS UNDERLYING POLYNOMIAL (MASKS FLARE)
                         fit   = np.polyfit(ft[q], ff[q], deg=6)
                         model = np.poly1d(fit)
@@ -143,7 +150,7 @@ class FlareParameters(object):
                         
                         ed = np.abs(np.sum(norm_flux[:-1] * np.diff(ft) )) * u.day
                         ed_err = np.sum( (fe/model)**2 )
-                        
+                            
                         row = [id, tpeak, amp, err[peak], ed, ed_err, prob[peak]]
                         tab.add_row(row)
 
@@ -180,6 +187,7 @@ class FlareParameters(object):
         for i in tqdm(range(len(self.times))):
 
             ids = np.full(iters, self.ids[i])
+
             inj_time = np.full( (iters, len(self.times[i])), self.times[i] )
             inj_errs = np.full( (iters, len(self.flux_errs[i])), self.flux_errs[i] )
             inj_model = np.full( (iters, len(self.fluxes[i])), self.fluxes[i] )
@@ -196,15 +204,17 @@ class FlareParameters(object):
             for n in range(iters):            
 
                 x_start = x + 0
-
+                model = np.zeros(len(self.fluxes[i]))
                 for f in range(flares_per_inj):
                     m, p = flare_lightcurve(inj_time[n], t0s[x], inj_amps[x],
                                             rises[x], decays[x])
-                    inj_model[n] = inj_model[n] + m + 0.0               
+                    model = model + m + 0.0
                     x += 1
 
+                inj_model[n] = inj_model[n] + model
                 preds = self.model.predict(ids, [inj_time[n]], [inj_model[n]],
                                            [inj_errs[n]], injected=True)
+
                 inj_preds[n] = preds + 0.0
 
                 tab = self.identify_flare_peaks(injected=True, ids=ids,
@@ -214,8 +224,8 @@ class FlareParameters(object):
                                                 predictions = preds)
 
                 for f in np.arange(x_start, x, 1, dtype=int):
-                    subtab = tab[ (tab['tpeak'] >= inj_time[n][t0s[f]-1]) & 
-                                  (tab['tpeak'] <= inj_time[n][t0s[f]+1]) ]
+                    subtab = tab[ (tab['tpeak'] >= inj_time[n][t0s[f]]) & 
+                                  (tab['tpeak'] <= inj_time[n][t0s[f]]) ]
                     if len(subtab) > 0:
                         row = [subtab['ID'][0], subtab['tpeak'][0], subtab['amp'][0],
                                 inj_amps[f], subtab['prob'][0], 1]
