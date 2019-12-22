@@ -3,6 +3,8 @@ from tqdm import tqdm
 import tensorflow as tf
 from tensorflow import keras
 
+from .utils import fill_in
+
 __all__ = ['ConvNN']
 
 class ConvNN(object):
@@ -229,6 +231,8 @@ class ConvNN(object):
         """
         predictions = []
 
+        filled_times, filled_fluxes, filled_errs = [], [], []
+
         cadences = self.cadences
 
         # FOR THE LOADING BAR
@@ -238,9 +242,17 @@ class ConvNN(object):
             disable = False
 
         for j in tqdm(range(len(times)), disable=disable):
-            time = times[j]
-            lc   = fluxes[j]
-        
+            time = times[j] + 0.0
+            lc   = fluxes[j] + 0.0
+
+            if injected is False:
+                time, lc, lc_err = fill_in(time, lc, flux_errs[j])
+
+                # RESETS TIMES, FLUXES, AND FLUX ERRS WITH FILLED IN GAPS
+                filled_times.append(time)
+                filled_fluxes.append(lc)
+                filled_errs.append(lc_err)
+
             reshaped_data = np.zeros((len(lc), cadences))
         
             padding       = np.nanmedian(lc)
@@ -281,9 +293,9 @@ class ConvNN(object):
 
         if injected is False:
             self.predict_ids = np.array(ids)
-            self.predict_times = np.array(times)
-            self.predict_fluxes = np.array(fluxes)
-            self.predict_errs = np.array(flux_errs)
+            self.predict_times = np.array(filled_times)
+            self.predict_fluxes = np.array(filled_fluxes)
+            self.predict_errs = np.array(filled_errs)
             self.predictions = np.array(predictions)
         else:
             return np.array(predictions)
