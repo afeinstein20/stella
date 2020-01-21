@@ -27,7 +27,7 @@ class TrainingSet(object):
     create and train the neural network.
     """
 
-    def __init__(self, fn_dir, catalog, cadences=200, frac_balance=0.75, seed=2):
+    def __init__(self, fn_dir, catalog, cadences=200, frac_balance=0.75):
         """
         Loads in time, flux, flux error data. Reshapes
         arrays into `cadences`-sized bins and labels
@@ -46,8 +46,6 @@ class TrainingSet(object):
         frac_balance : float, optional 
              The amount of the negative class to remove.
              Default is 0.75.
-        seed : int, optional
-             Random seed initializer. Default is 2.
         """
 
         self.fn_dir   = fn_dir
@@ -55,7 +53,6 @@ class TrainingSet(object):
         self.cadences = cadences
 
         self.frac_balance = frac_balance
-        self.seed = seed
 
 
     def load_files(self, id_keyword='tic_id', ft_keyword='tpeak',
@@ -262,7 +259,7 @@ class TrainingSet(object):
         labels          = np.delete(training_labels, np.arange(x, ss, 1, dtype=int))
         training_peaks  = np.delete(training_peaks, np.arange(x, ss, 1, dtype=int))
         training_ids    = np.delete(training_ids, np.arange(x, ss, 1, dtype=int))
-    
+
         self.do_the_shuffle(training_matrix, labels, training_peaks, 
                             training_ids, random_seed)
         
@@ -295,5 +292,5 @@ class TrainingSet(object):
         self.labels = np.delete(labels2, ind_nc_rand[0:length])
         self.training_peaks  = np.delete(peaks2 , ind_nc_rand[0:length])
         self.training_ids    = np.delete(ids2   , ind_nc_rand[0:length])
-        self.training_matrix = np.delete(matrix2, ind_nc_rand[0:length])
+        self.training_matrix = np.delete(matrix2, ind_nc_rand[0:length], axis=0)
         
