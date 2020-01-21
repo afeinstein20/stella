@@ -15,7 +15,8 @@ class ConvNN(object):
 
     def __init__(self, ts, training=0.80, validation=0.90,
                  layers=None, optimizer='adam',
-                 loss='binary_crossentropy', metrics=['accuracy']):
+                 loss='binary_crossentropy', 
+                 metrics=None, seed=2):
         """
         Creates and trains a Tensorflow keras model
         with either layers that have been passed in
@@ -39,10 +40,12 @@ class ConvNN(object):
              Loss function used to compile keras model. Default is
              'binary_crossentropy'.
         metrics: np.array, optional
-             Metrics used to train the keras model on. Default is 
-             ['accuracy'].
+             Metrics used to train the keras model on. If None, metrics are
+             [accuracy, precision, recall].
         epochs : int, optional
              Number of epochs to train the keras model on. Default is 15.
+        seed : int, optional
+             Sets random seed for reproducable results. Default is 2.
 
         Attributes
         ----------
@@ -61,6 +64,7 @@ class ConvNN(object):
         self.training_matrix = ts.training_matrix
         self.labels = ts.labels
         self.cadences = ts.cadences
+        self.seed = seed
 
         self.train_cutoff = int(training * len(self.labels))
         self.val_cutoff   = int(validation * len(self.labels))
@@ -76,6 +80,10 @@ class ConvNN(object):
         ----------
         model : tensorflow.python.keras.engine.sequential.Sequential
         """
+        # SETS RANDOM SEED FOR REPRODUCABLE RESULTS
+        np.random.seed(self.seed)
+        tf.set_random_seed(self.seed)
+
         # INITIALIZE CLEAN MODEL
         keras.backend.clear_session()
 
@@ -110,9 +118,14 @@ class ConvNN(object):
                 model.add(l)
                 
         # COMPILE MODEL AND SET OPTIMIZER, LOSS, METRICS
-        model.compile(optimizer=self.optimizer,
-                      loss=self.loss,
-                      metrics=self.metrics)
+        if self.metrics is None:
+            model.compile(optimizer=self.optimizer,
+                          loss=self.loss,
+                          metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
+        else:
+            model.compile(optimizer=self.optimizer,
+                          loss=self.loss,
+                          metrics=self.metrics)
 
         self.model = model
         
@@ -120,7 +133,7 @@ class ConvNN(object):
         model.summary()
 
 
-    def train_model(self, epochs=500, batch_size=64):
+    def train_model(self, epochs=350, batch_size=64):
         """
         Trains the model using the training set from stella.TrainingData.
 
@@ -229,73 +242,3 @@ class ConvNN(object):
         predictions : np.ndarray
              An array of predictions from the model.
         """
-        predictions = []
-
-        filled_times, filled_fluxes, filled_errs = [], [], []
-
-        cadences = self.cadences
-
-        # FOR THE LOADING BAR
-        if injected is True:
-            disable = True
-        else:
-            disable = False
-
-        for j in tqdm(range(len(times)), disable=disable):
-            time = times[j] + 0.0
-            lc   = fluxes[j] + 0.0
-
-            if injected is False:
-                time, lc, lc_err = fill_in(time, lc, flux_errs[j])
-
-                # RESETS TIMES, FLUXES, AND FLUX ERRS WITH FILLED IN GAPS
-                filled_times.append(time)
-                filled_fluxes.append(lc)
-                filled_errs.append(lc_err)
-
-            reshaped_data = np.zeros((len(lc), cadences))
-        
-            padding       = np.nanmedian(lc)
-            std           = np.std(lc)/3.
-            cadence_pad   = int(cadences/2)
-
-            for i in range(len(lc)):
-                if i <= cadences/2:
-                    fill_length   = int(cadence_pad-i)
-                    padding_array = np.zeros( (fill_length,))
-                    f = np.append(padding_array, lc[0:int(i+cadence_pad)])
-                    
-                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
-                    tstep_padding = np.flip(time[i] - tsteps)
-                    t = np.append(tstep_padding, time[0:int(i+cadence_pad)])
-                    
-                elif i >= (len(lc)-cadence_pad):
-                    loc = [int(i-cadence_pad), int(len(lc))]
-                    fill_length   = int(np.abs(cadences - len(lc[loc[0]:loc[1]])))
-                    padding_array = np.zeros( (fill_length,))
-                    f = np.append(lc[loc[0]:loc[1]], padding_array)
-                    
-                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
-                    tstep_padding = time[i] - tsteps
-                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
-                    
-                else:
-                    loc = [int(i-cadence_pad), int(i+cadence_pad)]
-                    f = lc[loc[0]:loc[1]]
-                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
-
-                reshaped_data[i] = f
-                
-            reshaped_data = reshaped_data.reshape(reshaped_data.shape[0], 
-                                                  reshaped_data.shape[1], 1)
-            preds = self.model.predict(reshaped_data)
-            predictions.append(np.reshape(preds, len(preds)))
-
-        if injected is False:
-            self.predict_ids = np.array(ids)
-            self.predict_times = np.array(filled_times)
-            self.predict_fluxes = np.array(filled_fluxes)
-            self.predict_errs = np.array(filled_errs)
-            self.predictions = np.array(predictions)
-        else:
-            return np.array(predictions)
