@@ -27,7 +27,7 @@ class TrainingSet(object):
     create and train the neural network.
     """
 
-    def __init__(self, fn_dir, catalog, cadences=200, frac_balance=0.75):
+    def __init__(self, fn_dir, catalog, cadences=200, frac_balance=0.7):
         """
         Loads in time, flux, flux error data. Reshapes
         arrays into `cadences`-sized bins and labels
@@ -121,17 +121,18 @@ class TrainingSet(object):
 
     def break_rest(self, time, flux, flux_err):
         """
-        Breaks up the non-flare cases into bite-sized cadence-length chunks.
+        Breaks up the non-flare cases into bite-sized cadence-length chunks.  
         """
+        # BREAKING UP REST OF LIGHT CURVE INTO CADENCE SIZED BITES
         diff = np.diff(time)
-        breaking_points = np.where(diff > (np.nanmedian(diff) + 2.0*np.nanstd(diff)))[0]
-        
-        tot = 200
-        ss  = 1000
-        nonflare_time = np.zeros((ss, self.cadences))
-        nonflare_flux = np.zeros((ss, self.cadences))
-        nonflare_err = np.zeros((ss,  self.cadences))
+        breaking_points = np.where(diff > (np.nanmedian(diff) + 1.5*np.nanstd(diff)))[0]
     
+        tot = 100
+        ss  = 1000
+        nonflare_time = np.zeros((ss,self.cadences))
+        nonflare_flux = np.zeros((ss,self.cadences))
+        nonflare_err = np.zeros((ss,self.cadences))
+        
         x = 0
         for j in range(len(breaking_points)+1):
             if j == 0:
@@ -144,28 +145,32 @@ class TrainingSet(object):
                 start = breaking_points[-1]
                 end = len(time)
 
-            if (end-start) > self.cadences:
-                # DIVIDES LIGHTCURVE INTO EVEN BINS
+            if np.abs(end-start) > (2*self.cadences):
+                broken_time = time[start:end]
+                broken_flux = flux[start:end]
+                broken_err  = flux_err[start:end]
+                
+                # DIVIDE LIGHTCURVE INTO EVEN BINS
                 c = 0
-                while (len(time) - c) % self.cadences != 0:
+                while (len(broken_time) - c) % self.cadences != 0:
                     c += 1
-
+                        
                 # REMOVING CADENCES TO BIN EVENLY INTO CADENCES
-                temp_time = np.delete(time, np.arange(len(time)-c, 
-                                                      len(time), 1, dtype=int) )
-                temp_flux = np.delete(flux, np.arange(len(flux)-c, 
-                                                      len(flux), 1, dtype=int) )
-                temp_err = np.delete(flux_err, np.arange(len(flux_err)-c, 
-                                                         len(flux_err), 1, dtype=int) )
-        
+                temp_time = np.delete(broken_time, np.arange(len(broken_time)-c, 
+                                                             len(broken_time), 1, dtype=int) )
+                temp_flux = np.delete(broken_flux, np.arange(len(broken_flux)-c, 
+                                                             len(broken_flux), 1, dtype=int) )
+                temp_err = np.delete(broken_err, np.arange(len(broken_err)-c, 
+                                                           len(broken_err), 1, dtype=int) )
+                
                 # RESHAPE ARRAY FOR INPUT INTO MATRIX
                 temp_time = np.reshape(temp_time, 
                                        (int(len(temp_time) / self.cadences), self.cadences) )
                 temp_flux = np.reshape(temp_flux, 
                                        (int(len(temp_flux) / self.cadences), self.cadences) )
                 temp_err  = np.reshape(temp_err, 
-                                       (int(len(temp_err) /  self.cadences), self.cadences) )
-
+                                       (int(len(temp_err) / self.cadences), self.cadences) )
+                
                 # APPENDS TO BIGGER MATRIX 
                 for f in range(len(temp_flux)):
                     if x >= ss:
@@ -175,14 +180,12 @@ class TrainingSet(object):
                         nonflare_flux[x] = temp_flux[f]
                         nonflare_err[x] = temp_err[f]
                         x += 1
-    
-        np.random.seed(101)
-        rand = np.random.randint(0,x,tot)
+
         nonflare_time = np.delete(nonflare_time, np.arange(x, ss, 1, dtype=int), axis=0)
         nonflare_flux = np.delete(nonflare_flux, np.arange(x, ss, 1, dtype=int), axis=0)
         nonflare_err  = np.delete(nonflare_err,  np.arange(x, ss, 1, dtype=int), axis=0)
         
-        return nonflare_time[rand], nonflare_flux[rand], nonflare_err[rand]
+        return nonflare_time, nonflare_flux, nonflare_err
 
 
     def reformat_data(self, random_seed=321):
@@ -294,3 +297,8 @@ class TrainingSet(object):
         self.training_ids    = np.delete(ids2   , ind_nc_rand[0:length])
         self.training_matrix = np.delete(matrix2, ind_nc_rand[0:length], axis=0)
         
+        ind_pc = np.where(self.labels==1)
+        ind_nc = np.where(self.labels==0)
+        print("{} positive classes (flare)".format(len(ind_pc[0])))
+        print("{} negative classes (no flare)".format(len(ind_nc[0])))
+        print("{}% class imbalance\n".format(np.round(100 * len(ind_pc[0]) / len(ind_nc[0]))))
