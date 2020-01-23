@@ -2,8 +2,8 @@ import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
 from tensorflow import keras
-
-from .utils import fill_in
+from astroy.table import Table, Column
+from scipy.interpolate import interp1d
 
 __all__ = ['ConvNN']
 
@@ -16,7 +16,7 @@ class ConvNN(object):
     def __init__(self, ts, training=0.80, validation=0.90,
                  layers=None, optimizer='adam',
                  loss='binary_crossentropy', 
-                 metrics=None, seed=2):
+                 metrics=None, seed=2, output_dir=None):
         """
         Creates and trains a Tensorflow keras model
         with either layers that have been passed in
@@ -46,6 +46,9 @@ class ConvNN(object):
              Number of epochs to train the keras model on. Default is 15.
         seed : int, optional
              Sets random seed for reproducable results. Default is 2.
+        output_dir : path, optional
+             The path to save models/histories/predictions to. Default is
+             to create a hidden ~/.stella directory.
 
         Attributes
         ----------
@@ -65,6 +68,9 @@ class ConvNN(object):
         self.labels = ts.labels
         self.cadences = ts.cadences
         self.seed = seed
+        
+        if self.output_dir is None:
+            self.fetch_dir()
 
         self.train_cutoff = int(training * len(self.labels))
         self.val_cutoff   = int(validation * len(self.labels))
@@ -171,10 +177,66 @@ class ConvNN(object):
         self.test_data = x_test
         self.test_labels = y_test
 
-        history = self.model.fit(x_train, y_train, epochs=epochs, 
-                                 batch_size=batch_size, shuffle=True, 
-                                 validation_data=(x_val, y_val))
-        self.history = history
+        self.history = self.model.fit(x_train, y_train, epochs=epochs, 
+                                      batch_size=batch_size, shuffle=True, 
+                                      validation_data=(x_val, y_val))
+
+
+    def multi_models(self, times, fluxes, flux_errs,
+                     n=5, seeds=None, epochs=150, batch_size=64,
+                     save=False):
+        """
+        Runs n number of models with given initial random seeds of
+        length n. Also saves each model run to a hidden ~/.stella 
+        directory. 
+
+        Parameters
+        ----------
+        times : np.ndarray
+             Array of times to predict on.
+        fluxes : np.ndarray
+             Array of fluxes to predict on.
+        flux_errs : np.ndarray
+             Array of flux errors associated with fluxes.
+        n : int, optional
+             Number of models to loop through. Default is 5.
+        seeds : np.array, optional
+             Array of random seed starters of length n, where
+             n is the number of models you want to run.
+        save : bool, optional
+             Tells whether or not to save the model histories
+             to a .txt file. Default is False.
+
+        Attributes
+        ----------
+        history_table : Astropy.table.Table
+             Saves the metric values for each model run.
+        """
+        if len(seeds) != n:
+            print("Please input {}-random seeds. You put in {}.".format(n, 
+                                                                        len(seeds)))
+            return
+
+        table = Table()
+
+        else:
+            for seed in seeds:
+                keras.backend.clear_session()
+                self.train_model(epochs=epochs, batch_size=batch_size)
+
+                col_names = list(self.history.history.keys())
+                for cn in col_names:
+                    col = Column(self.history.history[cn], name=cn+'{0:04d}'.format(seed))
+                    table.add_column(col)
+
+                self.model.save(os.path.join(self.output_dir, 'model_{0:04d}.h5'.format(seed)))
+
+                self.predict(times, fluxes, flux_errs)
+
+            self.history_table = table
+            
+            if save is True:
+                table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
 
         
     def loss_acc(self):
@@ -210,15 +272,13 @@ class ConvNN(object):
         return fig
 
 
-    def predict(self, ids, times, fluxes, flux_errs, injected=False):
+    def predict(self, times, fluxes, errs, injected=False):
         """
         Takes in arrays of time and flux and predicts where the flares 
         are based on the keras model created and trained.
 
         Parameters
         ----------
-        ids : np.array
-             Array of light curve identifiers (e.g. list of TICs).
         times : np.ndarray
              Array of times to predict flares in.
         fluxes : np.ndarray
@@ -231,8 +291,6 @@ class ConvNN(object):
              
         Attributes
         ----------
-        predict_ids : np.array
-             The input target IDs.
         predict_times : np.ndarray
              The input times array.
         predict_fluxes : np.ndarray
@@ -242,3 +300,123 @@ class ConvNN(object):
         predictions : np.ndarray
              An array of predictions from the model.
         """
+        def fill_in_sample(t, f, e, sigma=2.5):
+            # FILLS IN GAPS IN THE DATA FOR CHUNKING TO FIND FLARES
+            t, f = np.array(t), np.array(f)
+            
+            diff = np.diff(t)
+            
+            diff_ind = np.where( diff >= (np.nanmedian(diff) + sigma*np.nanstd(diff)) )[0]
+            avg_noise = np.nanstd(f) / 2.0
+            
+            if len(diff_ind) > 0:
+                for i in diff_ind:
+                    start = i
+                    stop  = int(i + 2)
+                    func = interp1d(t[start:stop], f[start:stop])
+                    new_time = np.arange(t[start], 
+                                         t[int(start+1)],
+                                         np.nanmedian(diff))
+                    new_flux = func(new_time) + np.random.normal(0, avg_noise,
+                                                                 len(new_time))
+                    t = np.insert(t, i, new_time)
+                    f = np.insert(f, i, new_flux)
+                    e = np.insert(e, i,
+                                  np.full(len(new_time), avg_noise))
+            t, f = zip(*sorted(zip(t, f)))
+            return t, f, e
+
+
+        predictions = []
+
+        cadences = self.cadences + 0
+        
+        new_time = []
+        new_flux = []
+    
+        for j in tqdm(range(len(times))):
+            q = np.isnan(fluxes[j]) == False
+            time = times[j]#[q]
+            lc   = fluxes[j]#[q]
+            err  = errs[j]#[q]
+            
+            time, lc, err = fill_in_sample(time, lc, err)
+        
+            # LIGHT CURVE MUST BE NORMALIZED
+            lc = lc/np.nanmedian(lc)
+    
+            new_time.append(time)
+            new_flux.append(lc)
+            
+            reshaped_data = np.zeros((len(lc), cadences))
+            
+            padding       = np.nanmedian(lc)
+            std           = np.std(lc)/4.5
+            cadence_pad   = int(cadences/2)
+            
+            for i in range(len(lc)):
+                if i <= cadences/2:
+                    fill_length   = int(cadence_pad-i)
+                    padding_array = np.zeros( (fill_length,))
+                    f = np.append(padding_array, lc[0:int(i+cadence_pad)])
+                    
+                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
+                    tstep_padding = np.flip(time[i] - tsteps)
+                    t = np.append(tstep_padding, time[0:int(i+cadence_pad)])
+                    
+                elif i >= (len(lc)-cadence_pad):
+                    loc = [int(i-cadence_pad), int(len(lc))]
+                    fill_length   = int(np.abs(cadences - len(lc[loc[0]:loc[1]])))
+                    padding_array = np.zeros( (fill_length,))
+                    f = np.append(lc[loc[0]:loc[1]], padding_array)
+                    
+                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
+                    tstep_padding = time[i] - tsteps
+                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
+                    
+                else:
+                    loc = [int(i-cadence_pad), int(i+cadence_pad)]
+                    f = lc[loc[0]:loc[1]]
+                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
+                    
+                reshaped_data[i] = f
+            
+            reshaped_data = reshaped_data.reshape(reshaped_data.shape[0], 
+                                                  reshaped_data.shape[1], 1)
+            
+            preds = self.model.predict(reshaped_data)
+            preds = np.reshape(preds, (len(preds),))
+            predictions.append(preds)
+            
+        return predictions
+
+
+        def fetch_dir(self):
+            """
+            Returns the default path to the directory where files will be saved
+            or loaded.
+            By default, this method will return "~/.stella" and create
+            this directory if it does not exist.  If the directory cannot be
+            access or created, then it returns the local directory (".").
+
+            Attributes
+            -------
+            output_dir : str
+                 Path to location of saved CNN models.
+            """
+
+            download_dir    = os.path.join(os.path.expanduser('~'), '.stella')
+            if os.path.isdir(download_dir):
+                return download_dir
+            else:
+                # if it doesn't exist, make a new cache directory
+                try:
+                    os.mkdir(download_dir)
+                # downloads locally if OS error occurs
+                except OSError:
+                    download_dir = '.'
+                    warnings.warn('Warning: unable to create {}. '
+                                  'Saving models to the current '
+                                  'working directory instead.'.format(download_dir))
+                    
+            self.output_dir = download_dir
