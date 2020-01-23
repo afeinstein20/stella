@@ -217,6 +217,8 @@ class ConvNN(object):
         ----------
         history_table : Astropy.table.Table
              Saves the metric values for each model run.
+        multi_predictions : np.ndarray
+             Array of all the predictions from each model run.
         """
         if len(seeds) != n:
             print("Please input {}-random seeds. You put in {}.".format(n, 
@@ -251,7 +253,8 @@ class ConvNN(object):
                                 [times[i], fluxes[i], flux_errs[i], predictions[i]])
 
             self.history_table = table
-            
+            self.multi_predictions = all_predictions
+
             if save is True:
                 table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
 
