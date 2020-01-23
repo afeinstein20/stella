@@ -45,6 +45,45 @@ class FlareParameters(object):
         self.predictions = cnn.predictions
 
 
+    def group_inds(self, values):
+        """
+        Groups regions marked as flares (> prob_threshold) for
+        flare fitting. Indices within 4 of each other are grouped
+        as one flare.
+
+        Returns
+        -------
+        results: np.ndarray
+             An array of arrays, which are groups of indices
+             supposedly attributed with a single flare.
+        """
+        results = []
+
+        for i, v in enumerate(values):
+            if i == 0:
+                mini = maxi = v
+                temp = [v]
+            else:
+                # SETS 4 CADENCE LIMIT
+                if (np.abs(v-maxi) <= 4):
+                    temp.append(v)
+                    if v > maxi:
+                        maxi = v
+                    if v < mini:
+                        mini = v
+                else:
+                    results.append(temp)
+                    mini = maxi = v
+                    temp = [v]
+                
+                # GETS THE LAST GROUP
+                if i == len(values)-1:
+                    results.append(temp)
+
+        return np.array(results)
+
+
+
     def identify_flare_peaks(self, threshold=0.75, cut_ends=30, injected=False,
                              ids=None, times=None, fluxes=None, flux_errs=None,
                              predictions=None):
@@ -69,7 +108,7 @@ class FlareParameters(object):
         ----------
         flare_table : astropy.table.Table
              A table of flare times, amplitudes, and equivalent
-             durations.
+             durations. Equivalent duration given in units of days.
         """
 
         def chiSquare(var, x, y, yerr, model):
@@ -80,7 +119,7 @@ class FlareParameters(object):
             nonlocal reg
 
             amp, rise, decay = var            
-            m = flare_lightcurve(x, int(reg), amp, rise,
+            m = flare_lightcurve(x, int(len(x)/2), amp, rise,
                                  decay, y=model)[0]
 
             return np.sum( (y-m)**2 / yerr**2)        
@@ -98,66 +137,52 @@ class FlareParameters(object):
         tab = Table(names=['ID', 'tpeak', 'amp', 'amp_err',
                            'ed', 'ed_err', 'prob'])
 
+        fit_to_region = 50
+
         # REGION AROUND FLARE TO FIT TO
-        reg = 100
-        peak_reg = 20
-
         for i in range(len(times)):
-            id = ids[i]
-            time, flux, err = times[i], fluxes[i], flux_errs[i]
-            prob = np.reshape(predictions[i], len(predictions[i]))
 
-            # CUTS ON THRESHOLD VALUE & ENDS
-            inds = np.where(prob >= self.threshold)[0]
-            subi = np.where((inds >= self.cut_ends) & (inds <= len(prob)-self.cut_ends))[0]
+            time = times[i][cut_ends:len(times[i])-cut_ends] + 0.0
+            flux = fluxes[i][cut_ends:len(fluxes[i])-cut_ends] + 0.0
+            flux /= np.nanmedian(flux)
 
-            # GROUPINGS OF POINTS IN FLARE
-            grouped = np.array([list(group) for group in mit.consecutive_groups(inds[subi])])
-            
-            for g in grouped:
+            err  = flux_errs[i][cut_ends:len(flux_errs[i])-cut_ends] + 0.0
+            prob = predictions[i][cut_ends:len(predictions[i])-cut_ends] + 0.0
 
-                gmin = int(np.min(g))
-                gmax = int(np.max(g))
-                med  = np.nanmedian(flux[gmin-peak_reg:gmax+peak_reg])
-                std  = np.nanstd(flux[gmin-peak_reg:gmax+peak_reg])
-                signal, _ = find_peaks(flux[gmin-peak_reg:gmax+peak_reg],
-                                       height=(med+1.1*std, med+1000*std))
-                
-                for peak in np.arange(gmin-peak_reg, gmax+peak_reg, 1, dtype=int)[signal]:
-                    if (flux[peak] >= flux[int(peak+1)]) & (flux[peak] >= flux[int(peak-1)]):
-                        tpeak = time[peak]
-                        amp   = flux[peak]
+            where_prob_higher = np.where(prob >= threshold)[0]
 
-                        ft = time[peak-reg:peak+reg]
-                        ff = flux[peak-reg:peak+reg]
-                        fe = err[peak-reg:peak+reg]
-                            
-                        # MASKS OUT POTENTIAL FLARE REGION
-                        flare_mask = np.zeros(len(ft))
-                        flare_mask[int(len(ft)/2-3) : int(len(ft)/2+20)] = 1
-                        q = flare_mask == 0
+            groupings = self.group_inds(where_prob_higher)
 
-                        # FITS UNDERLYING POLYNOMIAL (MASKS FLARE)
-                        fit   = np.polyfit(ft[q], ff[q], deg=6)
-                        model = np.poly1d(fit)
-                        model = model(ft)
+            if len(groupings) > 0:
+                for g in groupings:
+                    argmax = g[np.argmax(flux[g])]
+                    amp = flux[argmax]
+                    tpeak = time[argmax]
+                    prob  = prob[argmax]
 
+                    fit_min = argmax - fit_to_region
+                    fit_max = argmax + fit_to_region
 
-                        x = minimize(chiSquare, x0=[amp-np.nanmedian(ff), 0.0001, 0.0005],
-                                     args=(ft, ff, fe, model), method='L-BFGS-B')
-                    
-                        norm_flux = (ff - model) / model
+                    # FITS UNDERLYING POLYNOMIAL (MASKS FLARE)
+                    mask_inds = np.append(np.arange(argmax-fit_to_region, argmax-4, 1, dtype=int),
+                                          np.arange(argmax+4, argmax+fit_to_region, 1, dtype=int))
+                    underfit = np.polyfit(time[mask_inds], flux[mask_inds], deg=6)
+                    model = np.poly1d(underfit)
+                    model = model(flux[fit_min:fit_max]
+
+                    x = minimize(chiSquare, x0=[amp, 0.0001, 0.0005],
+                                     args=(time[fit_min:fit_max], 
+                                           flux[fit_min:fit_max], 
+                                           err[fit_min:fit_max], model), method='L-BFGS-B')
                         
-                        ed = np.abs(np.sum(norm_flux[:-1] * np.diff(ft) )) * u.day
-                        ed_err = np.sum( (fe/model)**2 )
-                            
-                        row = [id, tpeak, amp, err[peak], ed, ed_err, prob[peak]]
-                        tab.add_row(row)
+#                        norm_flux = (ff - model) / model
+                        
+#                        ed = np.abs(np.sum(norm_flux[:-1] * np.diff(ft) )) * u.day
+#                        ed_err = np.sum( (fe/model)**2 )
+                        
+#                        row = [id, tpeak, amp, err[peak], ed, ed_err, prob[peak]]
+#                        tab.add_row(row)
 
-        if injected is False:
-            self.flare_table = tab
-        else:
-            return tab
 
 
     def injection_recovery(self, amps=[0.001, 0.1], flares_per_inj=20, iters=5):
