@@ -1,9 +1,10 @@
+import os
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
 from tensorflow import keras
-from astroy.table import Table, Column
 from scipy.interpolate import interp1d
+from astropy.table import Table, Column
 
 __all__ = ['ConvNN']
 
@@ -64,13 +65,15 @@ class ConvNN(object):
         self.optimizer = optimizer
         self.loss = loss
         self.metrics = metrics
-        self.training_matrix = ts.training_matrix
-        self.labels = ts.labels
-        self.cadences = ts.cadences
+        self.training_matrix = np.copy(ts.training_matrix)
+        self.labels = np.copy(ts.labels)
+        self.cadences = np.copy(ts.cadences)
         self.seed = seed
         
-        if self.output_dir is None:
+        if output_dir is None:
             self.fetch_dir()
+        else:
+            self.output_dir = output_dir
 
         self.train_cutoff = int(training * len(self.labels))
         self.val_cutoff   = int(validation * len(self.labels))
@@ -182,7 +185,7 @@ class ConvNN(object):
                                       validation_data=(x_val, y_val))
 
 
-    def multi_models(self, times, fluxes, flux_errs,
+    def multi_models(self, ids, times, fluxes, flux_errs,
                      n=5, seeds=None, epochs=150, batch_size=64,
                      save=False):
         """
@@ -192,6 +195,9 @@ class ConvNN(object):
 
         Parameters
         ----------
+        ids : np.ndarray
+             Identifiers for each light curve passed in. Used to
+             save the output predictions.
         times : np.ndarray
              Array of times to predict on.
         fluxes : np.ndarray
@@ -217,11 +223,16 @@ class ConvNN(object):
                                                                         len(seeds)))
             return
 
-        table = Table()
-
         else:
+            table = Table()
+            all_predictions = []
+            
+            pred_fn = os.path.join(self.output_dir,'{0:09d}_seed{1:03d}.npy')
+
             for seed in seeds:
+                self.seed = seed
                 keras.backend.clear_session()
+                self.create_model()
                 self.train_model(epochs=epochs, batch_size=batch_size)
 
                 col_names = list(self.history.history.keys())
@@ -231,7 +242,13 @@ class ConvNN(object):
 
                 self.model.save(os.path.join(self.output_dir, 'model_{0:04d}.h5'.format(seed)))
 
-                self.predict(times, fluxes, flux_errs)
+                predictions = self.predict(times, fluxes, flux_errs)
+                all_predictions.append(predictions)
+
+                if save is True:
+                    for i in range(len(predictions)):
+                        np.save(pred_fn.format(ids[i], seed),
+                                [times[i], fluxes[i], flux_errs[i], predictions[i]])
 
             self.history_table = table
             
@@ -391,32 +408,31 @@ class ConvNN(object):
         return predictions
 
 
-        def fetch_dir(self):
-            """
-            Returns the default path to the directory where files will be saved
-            or loaded.
-            By default, this method will return "~/.stella" and create
-            this directory if it does not exist.  If the directory cannot be
-            access or created, then it returns the local directory (".").
-
-            Attributes
-            -------
-            output_dir : str
-                 Path to location of saved CNN models.
-            """
-
-            download_dir    = os.path.join(os.path.expanduser('~'), '.stella')
-            if os.path.isdir(download_dir):
-                return download_dir
-            else:
-                # if it doesn't exist, make a new cache directory
-                try:
-                    os.mkdir(download_dir)
+    def fetch_dir(self):
+        """
+        Returns the default path to the directory where files will be saved
+        or loaded.
+        By default, this method will return "~/.stella" and create
+        this directory if it does not exist.  If the directory cannot be
+        access or created, then it returns the local directory (".").
+        
+        Attributes
+        -------
+        output_dir : str
+        Path to location of saved CNN models.
+        """
+        download_dir    = os.path.join(os.path.expanduser('~'), '.stella')
+        if os.path.isdir(download_dir):
+            self.output_dir = download_dir
+        else:
+            # if it doesn't exist, make a new cache directory
+            try:
+                os.mkdir(download_dir)
                 # downloads locally if OS error occurs
-                except OSError:
-                    download_dir = '.'
-                    warnings.warn('Warning: unable to create {}. '
-                                  'Saving models to the current '
-                                  'working directory instead.'.format(download_dir))
+            except OSError:
+                download_dir = '.'
+                warnings.warn('Warning: unable to create {}. '
+                              'Saving models to the current '
+                              'working directory instead.'.format(download_dir))
                     
             self.output_dir = download_dir

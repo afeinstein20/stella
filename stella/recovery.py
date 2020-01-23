@@ -116,8 +116,6 @@ class FlareParameters(object):
             Used in scipy.optimize.minimize to compute chi-square
             on a flare model.
             """
-            nonlocal reg
-
             amp, rise, decay = var            
             m = flare_lightcurve(x, int(len(x)/2), amp, rise,
                                  decay, y=model)[0]
@@ -168,8 +166,8 @@ class FlareParameters(object):
                                           np.arange(argmax+4, argmax+fit_to_region, 1, dtype=int))
                     underfit = np.polyfit(time[mask_inds], flux[mask_inds], deg=6)
                     model = np.poly1d(underfit)
-                    model = model(flux[fit_min:fit_max]
-
+                    model = model(flux[fit_min:fit_max])
+                                  
                     x = minimize(chiSquare, x0=[amp, 0.0001, 0.0005],
                                      args=(time[fit_min:fit_max], 
                                            flux[fit_min:fit_max], 
