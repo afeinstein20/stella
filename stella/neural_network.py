@@ -234,6 +234,8 @@ class ConvNN(object):
             for seed in seeds:
                 self.seed = seed
                 keras.backend.clear_session()
+
+                # CREATES MODEL BASED ON GIVEN RANDOM SEED
                 self.create_model()
                 self.train_model(epochs=epochs, batch_size=batch_size)
 
@@ -242,11 +244,14 @@ class ConvNN(object):
                     col = Column(self.history.history[cn], name=cn+'{0:04d}'.format(seed))
                     table.add_column(col)
 
+                # SAVES THE MODEL TO OUTPUT DIRECTORY
                 self.model.save(os.path.join(self.output_dir, 'model_{0:04d}.h5'.format(seed)))
 
+                # GETS PREDICTIONS FOR EACH LIGHT CURVE
                 predictions = self.predict(times, fluxes, flux_errs)
                 all_predictions.append(predictions)
 
+                # SAVES PREDICTIONS TO .NPY FILES
                 if save is True:
                     for i in range(len(predictions)):
                         np.save(pred_fn.format(ids[i], seed),
@@ -255,6 +260,17 @@ class ConvNN(object):
             self.history_table = table
             self.multi_predictions = all_predictions
 
+            # GETS AVERAGE PREDICTION ACROSS ALL 10 MODELS
+            avg_preds = []
+            for i in range(len(ids)):
+                avg = np.zeros(len(times[i]))
+                for p in range(len(all_predictions)):
+                    avg += all_predictions[p][i]
+                avg = avg / len(seeds) + 0.0
+                avg_preds.append(avg)
+            self.avg_preds = np.array(avg_preds)
+
+            # WRITES HISTORIES TO TABLE (IF DESIRED)
             if save is True:
                 table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
 
