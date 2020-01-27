@@ -1,4 +1,4 @@
-import os
+import os, glob
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
@@ -202,7 +202,8 @@ class ConvNN(object):
                                       validation_data=(x_val, y_val))
 
 
-    def train_multi_models(self, n=5, seeds=None, epochs=150, batch_size=64):
+    def train_multi_models(self, n=5, seeds=None, epochs=150, batch_size=64,
+                           metric_threshold=0.5):
         """
         Runs n number of models with given initial random seeds of
         length n. Also saves each model run to a hidden ~/.stella 
@@ -218,6 +219,9 @@ class ConvNN(object):
         save : bool, optional
              Tells whether or not to save the model histories
              to a .txt file. Default is False.
+        metric_threshold : float, optional
+             Defines the threshold for positive vs. negative cases. Default
+             is 0.5 (50%). 
 
         Attributes
         ----------
@@ -230,6 +234,9 @@ class ConvNN(object):
             print("Please input {}-random seeds. You put in {}.".format(n, 
                                                                         len(seeds)))
             return
+
+        self.predval_fmt = 'predval_s{0:04d}_i{1:04d}_b{2}.txt'
+        self.predtest_fmt = 'predtest_s{0:04d}_i{1:04d}_b{2}.txt'
 
         else:
             table = Table()
@@ -256,9 +263,9 @@ class ConvNN(object):
                 # GETS PREDICTIONS FOR EACH LIGHT CURVE
                 val_preds = self.model.predict(self.val_data)
 
-                np.savetxt(os.path.join(self.output_dir, 'predval_s{0:04d}_i{1:04d}_b{2}.txt'.format(int(seed), 
-                                                                                                     int(epochs),
-                                                                                                     self.frac_balance)),
+                np.savetxt(os.path.join(self.output_dir, self.predval_fmt.format(int(seed), 
+                                                                                 int(epochs),
+                                                                                 self.frac_balance)),
                            np.column_stack((self.val_ids, val_preds, self.val_labels,
                                             self.val_tpeaks)),
                            fmt=['%.0f', '%0.6f', '%0.6f', '%.10f'], delimiter=',', 
@@ -266,9 +273,9 @@ class ConvNN(object):
 
                 test_preds = self.model.predict(self.test_data)
 
-                np.savetxt(os.path.join(self.output_dir, 'predtest_s{0:04d}_i{1:04d}_b{2}.txt'.format(int(seed), 
-                                                                                                      int(epochs),
-                                                                                                      self.frac_balance)),
+                np.savetxt(os.path.join(self.output_dir, self.predtest_fmt.format(int(seed), 
+                                                                                  int(epochs),
+                                                                                  self.frac_balance)),
                            np.column_stack((self.test_ids, test_preds, self.test_labels,
                                             self.test_tpeaks)),
                            fmt=['%.0f','%0.6f', '%0.6f', '%.10f'], delimiter=',',
@@ -278,7 +285,97 @@ class ConvNN(object):
             self.multi_predictions = all_predictions
 
             table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
+
+            self.ensemble_metrics(metric_threshold)
+            
+
+    def ensemble_metrics(self, threshold):
+        """
+        Calculates the metrics and average metrics when ensemble training.
+
+        Parameters
+        ----------
+        threshold : float
+             Defines the threshold for positive vs. negative cases.
+
+        Attributes
+        ----------
+        average_precision : float
+        accuracy : float
+        recall_score : float
+        precision_score : float
+        prec_recall_curve : np.array
+             2D array of precision and recall for plotting purposes.
+        """
+        from sklearn.metrics import precision_recall_curve
+        from sklearn.metrics import average_precision_score
+        from sklearn.metrics import confusion_matrix
+        from sklearn.metrics import precision_score
+        from sklearn.metrics import recall_score
+
+
+        files = np.sort(glob.glob(os.path.join(self.output_dir, 
+                                               "predval*i{0:04d}*_b{1}.txt".format(self.epochs, 
+                                                                                   self.frac_balance))))
+        # CREATES TABLE OF PREDICTED VALUES FOR METRICS
+        def ceate_df(all_files):
+            df= Table()
+            mean_arr = []
+            
+            for i, val in enumerate(all_files):
+                r = Table.read(val, format="csv")
                 
+                df.add_column(Column(np.round(r['pred'].data, 3),
+                                     name='s'+(val.split('_s')[-1]).split('_')[0]))
+                
+                mean_arr.append(np.round(r['pred'].data, 3))
+                
+                df.add_column(Column(np.nanmean(mean_arr, axis=0), name='pred'))
+        
+            df.add_column(Column(r['gt'].data, name='gt'), index=0)
+            df.add_column(Column(r['tpeak'].data, name='peak'), index=0)
+            df.add_column(Column(r['# tic'].data, name='tic'), index=0)
+            return df
+
+
+        df = create_df(files)
+        ap, ac = [], []
+
+        rs, ps = [], []
+        for i, val in enumerate(df.columns[3:]):
+    
+            # CALCULATES AVERAGE PRECISION SCORE
+            ap.append(np.round(average_precision_score(df['gt'].data, 
+                                                       df[val].data, average=None), 4))
+            # ROUNDED BASED ON THRESHOLD
+            arr = np.copy(df[val].data)
+            arr[arr >= threshold] = 1.0
+            arr[arr < threshold] = 0.0
+        
+            # CALCULATES ACCURACY
+            ac.append(np.round(np.sum(arr == df['gt'].data) / len(df), 4))
+        
+        
+        pred_round = np.zeros(len(df))
+        pred_round[df['pred'] >= threshold] = 1
+        pred_round[df['pred'] < threshold]  = 0
+    
+        # CALCULATES RECALL SCORE
+        rs = np.round(recall_score(df['gt'], pred_round), 4)
+        
+        # CALCULATES PRECISION SCORE
+        ps = np.round(precision_score(df['gt'], pred_round), 4)
+
+        # PRECISION RECALL CURVE
+        prec_curve, rec_curve, _ = precision_recall_curve(df['gt'], pred_round)
+
+        self.average_precision = ap[-1]
+        self.accuracy = ac[-1]
+        self.recall_score = rs
+        self.precision_score = ps
+        self.prec_recall_curve = np.array([rec_curve, prec_curve])
+                        
+        
         
     def loss_acc(self):
         """
