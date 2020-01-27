@@ -69,7 +69,10 @@ class ConvNN(object):
         self.labels = np.copy(ts.labels)
         self.cadences = np.copy(ts.cadences)
         self.seed = seed
-        
+
+        self.tpeaks = ts.training_peaks
+        self.training_ids = ts.training_ids
+
         if output_dir is None:
             self.fetch_dir()
         else:
@@ -180,17 +183,25 @@ class ConvNN(object):
         x_val   = x_val.reshape(x_val.shape[0], x_train.shape[1], 1)
         x_test  = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
 
+        self.train_data = x_train
+        self.train_labels = y_train
+        
         self.test_data = x_test
         self.test_labels = y_test
+        self.test_ids = self.training_ids[self.train_cutoff:self.val_cutoff]
+        self.test_tpeaks = self.tpeaks[self.train_cutoff:self.val_cutoff]
+
+        self.val_data = x_val
+        self.val_labels = y_val
+        self.val_ids = self.training_ids[self.val_cutoff:]
+        self.val_tpeaks = self.tpeaks[self.val_cutoff:]
 
         self.history = self.model.fit(x_train, y_train, epochs=epochs, 
                                       batch_size=batch_size, shuffle=shuffle,
                                       validation_data=(x_val, y_val))
 
 
-    def multi_models(self, ids, times, fluxes, flux_errs,
-                     n=5, seeds=None, epochs=150, batch_size=64,
-                     save=False):
+    def train_multi_models(self, n=5, seeds=None, epochs=150, batch_size=64):
         """
         Runs n number of models with given initial random seeds of
         length n. Also saves each model run to a hidden ~/.stella 
@@ -198,15 +209,6 @@ class ConvNN(object):
 
         Parameters
         ----------
-        ids : np.ndarray
-             Identifiers for each light curve passed in. Used to
-             save the output predictions.
-        times : np.ndarray
-             Array of times to predict on.
-        fluxes : np.ndarray
-             Array of fluxes to predict on.
-        flux_errs : np.ndarray
-             Array of flux errors associated with fluxes.
         n : int, optional
              Number of models to loop through. Default is 5.
         seeds : np.array, optional
@@ -251,14 +253,9 @@ class ConvNN(object):
                 self.model.save(os.path.join(self.output_dir, 'model_{0:04d}.h5'.format(seed)))
 
                 # GETS PREDICTIONS FOR EACH LIGHT CURVE
-                predictions = self.predict(times, fluxes, flux_errs)
-                all_predictions.append(predictions)
+                val_preds = self.model.predict(self.val_data)
 
-                # SAVES PREDICTIONS TO .NPY FILES
-                if save is True:
-                    for i in range(len(predictions)):
-                        np.save(pred_fn.format(ids[i], seed),
-                                [times[i], fluxes[i], flux_errs[i], predictions[i]])
+                test_preds = self.model.predict(self.test_data)
 
             self.history_table = table
             self.multi_predictions = all_predictions

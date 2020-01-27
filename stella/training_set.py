@@ -253,6 +253,8 @@ class TrainingSet(object):
                 if x >= ss:
                     break
                 else:
+                    training_ids[x] = self.ids[i] + 0.0
+                    training_peaks[x] = nontime[j][int(self.cadences/2)]
                     training_matrix[x] = nonflux[j]
                     training_labels[x] = 0
                     x += 1
@@ -264,16 +266,15 @@ class TrainingSet(object):
         training_ids    = np.delete(training_ids, np.arange(x, ss, 1, dtype=int))
 
         self.do_the_shuffle(training_matrix, labels, training_peaks, 
-                            training_ids, random_seed)
+                            training_ids)
         
 
-    def do_the_shuffle(self, training_matrix, labels, training_peaks, training_ids, seed):
+    def do_the_shuffle(self, training_matrix, labels, training_peaks, training_ids):
         """
         Shuffles the data in a random order and fixes data inbalance based on
         frac_balance.
         """
-        np.random.seed(seed)
-
+        np.random.seed(321)
         ind_shuffle = np.random.permutation(training_matrix.shape[0])
 
         labels2 = np.copy(labels[ind_shuffle])
@@ -285,8 +286,7 @@ class TrainingSet(object):
         ind_nc = np.where(labels2 == 0)
         
         # RANDOMIZE INDEXES
-        random_seed = 123
-        np.random.seed(random_seed)
+        np.random.seed(123)
         ind_nc_rand = np.random.permutation(ind_nc[0])
 
         # REMOVE FRAC_BALANCE% OF NEGATIVE CLASS
