@@ -73,6 +73,7 @@ class ConvNN(object):
 
         self.tpeaks = ts.training_peaks
         self.training_ids = ts.training_ids
+        self.prec_recall_curve = None
 
         if output_dir is None:
             self.fetch_dir()
@@ -289,6 +290,41 @@ class ConvNN(object):
             self.ensemble_metrics(metric_threshold)
             
 
+    def ceate_df(self, threshold, mode='metrics'):
+        """
+        Creates an astropy.Table.table for the ensemble metrics.
+        """
+        files = np.sort(glob.glob(os.path.join(self.output_dir,
+                                               "predval*i{0:04d}*_b{1}.txt".format(self.epochs,
+                                                                                   self.frac_balance))))
+        if mode is 'metrics' and len(files) < 2:
+            raise ValueError("Can only calculate metrics for multiple models.")
+        
+        
+        df= Table()
+        mean_arr = []
+        
+        for i, val in enumerate(files):
+            r = Table.read(val, format="csv")
+            
+            df.add_column(Column(np.round(r['pred'].data, 3),
+                                 name='s'+(val.split('_s')[-1]).split('_')[0]))
+            
+            mean_arr.append(np.round(r['pred'].data, 3))
+            
+        df.add_column(Column(np.nanmean(mean_arr, axis=0), name='pred'))
+        
+        df.add_column(Column(r['gt'].data, name='gt'), index=0)
+        df.add_column(Column(r['tpeak'].data, name='peak'), index=0)
+        df.add_column(Column(r['# tic'].data, name='tic'), index=0)
+
+        pred_round = np.zeros(len(df))
+        pred_round[df['pred'] >= threshold] = 1
+        pred_round[df['pred'] < threshold]  = 0
+        df.add_column(Column(pred_round, name='pred_round'), index=0)
+
+        return df
+
     def ensemble_metrics(self, threshold):
         """
         Calculates the metrics and average metrics when ensemble training.
@@ -309,40 +345,14 @@ class ConvNN(object):
         """
         from sklearn.metrics import precision_recall_curve
         from sklearn.metrics import average_precision_score
-        from sklearn.metrics import confusion_matrix
         from sklearn.metrics import precision_score
         from sklearn.metrics import recall_score
 
-
-        files = np.sort(glob.glob(os.path.join(self.output_dir, 
-                                               "predval*i{0:04d}*_b{1}.txt".format(self.epochs, 
-                                                                                   self.frac_balance))))
-        # CREATES TABLE OF PREDICTED VALUES FOR METRICS
-        def ceate_df(all_files):
-            df= Table()
-            mean_arr = []
-            
-            for i, val in enumerate(all_files):
-                r = Table.read(val, format="csv")
-                
-                df.add_column(Column(np.round(r['pred'].data, 3),
-                                     name='s'+(val.split('_s')[-1]).split('_')[0]))
-                
-                mean_arr.append(np.round(r['pred'].data, 3))
-                
-                df.add_column(Column(np.nanmean(mean_arr, axis=0), name='pred'))
-        
-            df.add_column(Column(r['gt'].data, name='gt'), index=0)
-            df.add_column(Column(r['tpeak'].data, name='peak'), index=0)
-            df.add_column(Column(r['# tic'].data, name='tic'), index=0)
-            return df
-
-
-        df = create_df(files)
+        df = self.create_df(threshold)
         ap, ac = [], []
 
         rs, ps = [], []
-        for i, val in enumerate(df.columns[3:]):
+        for i, val in enumerate(df.columns[4:]):
     
             # CALCULATES AVERAGE PRECISION SCORE
             ap.append(np.round(average_precision_score(df['gt'].data, 
@@ -354,20 +364,15 @@ class ConvNN(object):
         
             # CALCULATES ACCURACY
             ac.append(np.round(np.sum(arr == df['gt'].data) / len(df), 4))
-        
-        
-        pred_round = np.zeros(len(df))
-        pred_round[df['pred'] >= threshold] = 1
-        pred_round[df['pred'] < threshold]  = 0
-    
+
         # CALCULATES RECALL SCORE
-        rs = np.round(recall_score(df['gt'], pred_round), 4)
+        rs = np.round(recall_score(df['gt'], df['pred_round']), 4)
         
         # CALCULATES PRECISION SCORE
-        ps = np.round(precision_score(df['gt'], pred_round), 4)
+        ps = np.round(precision_score(df['gt'], df['pred_round']), 4)
 
         # PRECISION RECALL CURVE
-        prec_curve, rec_curve, _ = precision_recall_curve(df['gt'], pred_round)
+        prec_curve, rec_curve, _ = precision_recall_curve(df['gt'], df['pred_round'])
 
         self.average_precision = ap[-1]
         self.accuracy = ac[-1]
@@ -376,38 +381,26 @@ class ConvNN(object):
         self.prec_recall_curve = np.array([rec_curve, prec_curve])
                         
         
+    def confusion_matrix(self, threshold=0.5):
+        """
+        Creates a confusion matrix that labels true positives, true negatives,
+        false positives, and false negatives.
+
+        Parameters
+        ----------
+        threshold : float, optional
+             Defines the threshold for positive vs. negative cases.
+        """
+
+        df = self.create_df(threshold, mode="confusion")
+
+        # INDICES FOR THE CONFUSION MATRIX
+        ind_tn = np.where( (df['pred_round'] == 0) & (df['gt'] == 0) )[0]
+        ind_fn = np.where( (df['pred_round'] == 0) & (df['gt'] == 1) )[0]
+        ind_tp = np.where( (df['pred_round'] == 1) & (df['gt'] == 1) )[0]
+        ind_fp = np.where( (df['pred_round'] == 1) & (df['gt'] == 0) )[0]
         
-    def loss_acc(self):
-        """
-        Plots the loss and accuracy for the training and validation 
-        data sets. Keyword accuracy will change based on what metrics
-        were used.
-
-        Returns
-        -------
-        fig : matplotlib.figure.Figure
-        """
-        import matplotlib.pyplot as plt
-
-        epochs = np.arange(0,len(self.history.history['loss']),1)
-
-        fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(14,4))
-
-        ax1.plot(epochs, self.history.history['loss'], c='k',
-                 linewidth=2, label='Training')
-        ax1.plot(epochs, self.history.history['val_loss'], c='darkorange',
-                 linewidth=2, label='Validation')
-        ax1.set_xlabel('Epochs')
-        ax1.set_ylabel('Loss')
-
-        ax2.plot(epochs, self.history.history['acc'], c='k',
-                 linewidth=2)
-        ax2.plot(epochs, self.history.history['val_acc'], c='darkorange',
-                 linewidth=2)
-        ax2.set_xlabel('Epochs')
-        ax2.set_ylabel('Accuracy')
-
-        return fig
+        x_val =  self.val_data + 0.0
 
 
     def predict(self, times, fluxes, errs, injected=False):
