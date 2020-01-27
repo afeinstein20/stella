@@ -74,6 +74,8 @@ class ConvNN(object):
         self.tpeaks = ts.training_peaks
         self.training_ids = ts.training_ids
         self.prec_recall_curve = None
+        self.history = None
+        self.history_table = None
 
         if output_dir is None:
             self.fetch_dir()
@@ -96,7 +98,7 @@ class ConvNN(object):
         """
         # SETS RANDOM SEED FOR REPRODUCABLE RESULTS
         np.random.seed(self.seed)
-        tf.set_random_seed(self.seed)
+        tf.random.set_seed(self.seed)
 
         # INITIALIZE CLEAN MODEL
         keras.backend.clear_session()
@@ -135,7 +137,8 @@ class ConvNN(object):
         if self.metrics is None:
             model.compile(optimizer=self.optimizer,
                           loss=self.loss,
-                          metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
+                          metrics=['accuracy', tf.keras.metrics.Precision(), 
+                                   tf.keras.metrics.Recall()])
         else:
             model.compile(optimizer=self.optimizer,
                           loss=self.loss,
@@ -231,13 +234,14 @@ class ConvNN(object):
         multi_predictions : np.ndarray
              Array of all the predictions from each model run.
         """
+        self.predval_fmt = 'predval_s{0:04d}_i{1:04d}_b{2}.txt'
+        self.predtest_fmt = 'predtest_s{0:04d}_i{1:04d}_b{2}.txt'
+        self.epochs = epochs
+
         if len(seeds) != n:
             print("Please input {}-random seeds. You put in {}.".format(n, 
                                                                         len(seeds)))
             return
-
-        self.predval_fmt = 'predval_s{0:04d}_i{1:04d}_b{2}.txt'
-        self.predtest_fmt = 'predtest_s{0:04d}_i{1:04d}_b{2}.txt'
 
         else:
             table = Table()
@@ -290,7 +294,7 @@ class ConvNN(object):
             self.ensemble_metrics(metric_threshold)
             
 
-    def ceate_df(self, threshold, mode='metrics'):
+    def create_df(self, threshold, mode='metrics'):
         """
         Creates an astropy.Table.table for the ensemble metrics.
         """
