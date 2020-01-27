@@ -17,6 +17,7 @@ class Visualize(object):
         ----------
         cnn : stella.ConvNN
         """
+        self.cnn     = cnn
         self.history = cnn.history.history
         self.epochs  = cnn.epochs
 
@@ -80,10 +81,20 @@ class Visualize(object):
         return fig
 
 
-    def confusion_matrix(self, **kwargs):
+    def confusion_matrix(self, threshold=0.5):
         """
         Plots the confusion matrix of true positives,
         true negatives, false positives, and false 
         negatives.
+
+        Parameters
+        ----------
+        threshold : float, optional
+             Defines the threshold for positive vs. negative cases.
+             Default is 0.5 (50%).
         """
+        
+        df = self.cnn.ceate_df(threshold, mode="confusion")
+        x_val = self.cnn.val_data
+
         return

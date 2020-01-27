@@ -381,28 +381,6 @@ class ConvNN(object):
         self.prec_recall_curve = np.array([rec_curve, prec_curve])
                         
         
-    def confusion_matrix(self, threshold=0.5):
-        """
-        Creates a confusion matrix that labels true positives, true negatives,
-        false positives, and false negatives.
-
-        Parameters
-        ----------
-        threshold : float, optional
-             Defines the threshold for positive vs. negative cases.
-        """
-
-        df = self.create_df(threshold, mode="confusion")
-
-        # INDICES FOR THE CONFUSION MATRIX
-        ind_tn = np.where( (df['pred_round'] == 0) & (df['gt'] == 0) )[0]
-        ind_fn = np.where( (df['pred_round'] == 0) & (df['gt'] == 1) )[0]
-        ind_tp = np.where( (df['pred_round'] == 1) & (df['gt'] == 1) )[0]
-        ind_fp = np.where( (df['pred_round'] == 1) & (df['gt'] == 0) )[0]
-        
-        x_val =  self.val_data + 0.0
-
-
     def predict(self, times, fluxes, errs, injected=False):
         """
         Takes in arrays of time and flux and predicts where the flares 
