@@ -69,6 +69,7 @@ class ConvNN(object):
         self.labels = np.copy(ts.labels)
         self.cadences = np.copy(ts.cadences)
         self.seed = seed
+        self.frac_balance = ts.frac_balance + 0.0
 
         self.tpeaks = ts.training_peaks
         self.training_ids = ts.training_ids
@@ -188,13 +189,13 @@ class ConvNN(object):
         
         self.test_data = x_test
         self.test_labels = y_test
-        self.test_ids = self.training_ids[self.train_cutoff:self.val_cutoff]
-        self.test_tpeaks = self.tpeaks[self.train_cutoff:self.val_cutoff]
+        self.test_ids = self.training_ids[self.val_cutoff:]
+        self.test_tpeaks = self.tpeaks[self.val_cutoff:]
 
         self.val_data = x_val
         self.val_labels = y_val
-        self.val_ids = self.training_ids[self.val_cutoff:]
-        self.val_tpeaks = self.tpeaks[self.val_cutoff:]
+        self.val_ids = self.training_ids[self.train_cutoff:self.val_cutoff]
+        self.val_tpeaks = self.tpeaks[self.train_cutoff:self.val_cutoff]
 
         self.history = self.model.fit(x_train, y_train, epochs=epochs, 
                                       batch_size=batch_size, shuffle=shuffle,
@@ -255,25 +256,29 @@ class ConvNN(object):
                 # GETS PREDICTIONS FOR EACH LIGHT CURVE
                 val_preds = self.model.predict(self.val_data)
 
+                np.savetxt(os.path.join(self.output_dir, 'predval_s{0:04d}_i{1:04d}_b{2}.txt'.format(int(seed), 
+                                                                                                     int(epochs),
+                                                                                                     self.frac_balance)),
+                           np.column_stack((self.val_ids, val_preds, self.val_labels,
+                                            self.val_tpeaks)),
+                           fmt=['%.0f', '%0.6f', '%0.6f', '%.10f'], delimiter=',', 
+                           header='tic,pred,gt,tpeak')
+
                 test_preds = self.model.predict(self.test_data)
+
+                np.savetxt(os.path.join(self.output_dir, 'predtest_s{0:04d}_i{1:04d}_b{2}.txt'.format(int(seed), 
+                                                                                                      int(epochs),
+                                                                                                      self.frac_balance)),
+                           np.column_stack((self.test_ids, test_preds, self.test_labels,
+                                            self.test_tpeaks)),
+                           fmt=['%.0f','%0.6f', '%0.6f', '%.10f'], delimiter=',',
+                           header='tic,pred,gt,tpeak')
 
             self.history_table = table
             self.multi_predictions = all_predictions
 
-            # GETS AVERAGE PREDICTION ACROSS ALL 10 MODELS
-            avg_preds = []
-            for i in range(len(ids)):
-                avg = np.zeros(len(times[i]))
-                for p in range(len(all_predictions)):
-                    avg += all_predictions[p][i]
-                avg = avg / len(seeds) + 0.0
-                avg_preds.append(avg)
-            self.avg_preds = np.array(avg_preds)
-
-            # WRITES HISTORIES TO TABLE (IF DESIRED)
-            if save is True:
-                table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
-
+            table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
+                
         
     def loss_acc(self):
         """
