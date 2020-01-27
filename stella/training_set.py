@@ -27,7 +27,7 @@ class TrainingSet(object):
     create and train the neural network.
     """
 
-    def __init__(self, fn_dir, catalog, cadences=200, frac_balance=0.7):
+    def __init__(self, fn_dir, catalog, cadences=200, frac_balance=0.73):
         """
         Loads in time, flux, flux error data. Reshapes
         arrays into `cadences`-sized bins and labels

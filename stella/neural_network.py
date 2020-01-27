@@ -142,7 +142,7 @@ class ConvNN(object):
         model.summary()
 
 
-    def train_model(self, epochs=350, batch_size=64):
+    def train_model(self, epochs=350, batch_size=64, shuffle=True):
         """
         Trains the model using the training set from stella.TrainingData.
 
@@ -154,6 +154,9 @@ class ConvNN(object):
         batch_size : int, optional
              The batch size fro training.
              Default is 64.
+        shuffle : bool, optional
+             Whether or not to shuffle the training set batches.
+             Default is True.
 
         Attributes
         ---------- 
@@ -181,7 +184,7 @@ class ConvNN(object):
         self.test_labels = y_test
 
         self.history = self.model.fit(x_train, y_train, epochs=epochs, 
-                                      batch_size=batch_size, shuffle=True, 
+                                      batch_size=batch_size, shuffle=shuffle,
                                       validation_data=(x_val, y_val))
 
 
