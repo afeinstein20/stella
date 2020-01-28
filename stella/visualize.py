@@ -57,9 +57,9 @@ class Visualize(object):
         ax1.set_ylabel('Loss')
         ax1.legend()
 
-        ax2.plot(epochs, self.history['acc'], c=train_color,
+        ax2.plot(epochs, self.history['accuracy'], c=train_color,
                  linewidth=2)
-        ax2.plot(epochs, self.history['val_acc'], c=val_color,
+        ax2.plot(epochs, self.history['val_accuracy'], c=val_color,
                  linewidth=2)
         ax2.set_xlabel('Epochs')
         ax2.set_ylabel('Accuracy')
