@@ -77,6 +77,9 @@ class ConvNN(object):
         self.history = None
         self.history_table = None
 
+        self.predval_fmt = 'predval_s{0:04d}_i{1:04d}_b{2}.txt'
+        self.predtest_fmt = 'predtest_s{0:04d}_i{1:04d}_b{2}.txt'
+
         if output_dir is None:
             self.fetch_dir()
         else:
@@ -150,7 +153,7 @@ class ConvNN(object):
         model.summary()
 
 
-    def train_model(self, epochs=350, batch_size=64, shuffle=True):
+    def train_model(self, epochs=350, batch_size=64, shuffle=True, kfolds=False):
         """
         Trains the model using the training set from stella.TrainingData.
 
@@ -158,7 +161,7 @@ class ConvNN(object):
         ---------- 
         epochs : int, optional 
              The number of epochs to train for.
-             Default is 500.
+             Default is 350.
         batch_size : int, optional
              The batch size fro training.
              Default is 64.
@@ -175,31 +178,40 @@ class ConvNN(object):
         test_labels : np.array
              The labels for the testing data set.
         """
-        x_train = self.training_matrix[0:self.train_cutoff]
-        y_train = self.labels[0:self.train_cutoff]
+        if kfolds is False:
+            x_train = self.training_matrix[0:self.train_cutoff]
+            y_train = self.labels[0:self.train_cutoff]
 
-        x_val = self.training_matrix[self.train_cutoff:self.val_cutoff]
-        y_val = self.labels[self.train_cutoff:self.val_cutoff]
+            x_val = self.training_matrix[self.train_cutoff:self.val_cutoff]
+            y_val = self.labels[self.train_cutoff:self.val_cutoff]
 
-        x_test = self.training_matrix[self.val_cutoff:] 
-        y_test = self.labels[self.val_cutoff:]
+            x_test = self.training_matrix[self.val_cutoff:] 
+            y_test = self.labels[self.val_cutoff:]
 
-        x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
-        x_val   = x_val.reshape(x_val.shape[0], x_train.shape[1], 1)
-        x_test  = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
-
-        self.train_data = x_train
-        self.train_labels = y_train
+            x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
+            x_val   = x_val.reshape(x_val.shape[0], x_train.shape[1], 1)
+            x_test  = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
+            
+            self.train_data = x_train
+            self.train_labels = y_train
         
-        self.test_data = x_test
-        self.test_labels = y_test
-        self.test_ids = self.training_ids[self.val_cutoff:]
-        self.test_tpeaks = self.tpeaks[self.val_cutoff:]
+            self.test_data = x_test
+            self.test_labels = y_test
+            self.test_ids = self.training_ids[self.val_cutoff:]
+            self.test_tpeaks = self.tpeaks[self.val_cutoff:]
 
-        self.val_data = x_val
-        self.val_labels = y_val
-        self.val_ids = self.training_ids[self.train_cutoff:self.val_cutoff]
-        self.val_tpeaks = self.tpeaks[self.train_cutoff:self.val_cutoff]
+            self.val_data = x_val
+            self.val_labels = y_val
+            self.val_ids = self.training_ids[self.train_cutoff:self.val_cutoff]
+            self.val_tpeaks = self.tpeaks[self.train_cutoff:self.val_cutoff]
+
+            
+        else:
+            x_train = self.kfolds_train_data
+            y_train = self.kfolds_train_labels
+            
+            x_val = self.kfolds_val_data
+            y_val = self.kfolds_val_labels
 
         self.history = self.model.fit(x_train, y_train, epochs=epochs, 
                                       batch_size=batch_size, shuffle=shuffle,
@@ -234,8 +246,6 @@ class ConvNN(object):
         multi_predictions : np.ndarray
              Array of all the predictions from each model run.
         """
-        self.predval_fmt = 'predval_s{0:04d}_i{1:04d}_b{2}.txt'
-        self.predtest_fmt = 'predtest_s{0:04d}_i{1:04d}_b{2}.txt'
         self.epochs = epochs
 
         if len(seeds) != n:
@@ -291,16 +301,40 @@ class ConvNN(object):
 
             table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
 
-            self.ensemble_metrics(metric_threshold)
-            
+            df = self.create_df(metric_threshold)
+            self.ensemble_metrics(df)
+#            df = self.calibration(df, metric_threshold)
 
-    def create_df(self, threshold, mode='metrics'):
+    def create_df(self, threshold, mode='metrics', data_set='validation'):
         """
         Creates an astropy.Table.table for the ensemble metrics.
+
+        Parameters
+        ----------
+        threshold : float
+             Percentage cutoff for the ensemble metrics. Recommended 0.5.
+        mode : str, optional
+             Makes sure there are models to run metric calculations
+             on. Default is 'metrics'.
+        data_set : str, optional
+             Allows the user to look at either the validation or test
+             set metrics. Default is 'validation'. The other option is 'test'.
+
+        Returns
+        -------
+        df : astropy.Table.table
+             Table of predicted values from each model run.
         """
-        files = np.sort(glob.glob(os.path.join(self.output_dir,
-                                               "predval*i{0:04d}*_b{1}.txt".format(self.epochs,
-                                                                                   self.frac_balance))))
+        
+        if data_set.lower() == 'validation':
+            files = np.sort(glob.glob(os.path.join(self.output_dir,
+                                                   "predval*i{0:04d}*_b{1}.txt".format(self.epochs,
+                                                                                       self.frac_balance))))
+        elif data_set.lower() == 'test':
+            files = np.sort(glob.glob(os.path.join(self.output_dir,
+                                                   "predtest*i{0:04d}*_b{1}.txt".format(self.epochs,
+                                                                                        self.frac_balance))))
+
         if mode is 'metrics' and len(files) < 2:
             raise ValueError("Can only calculate metrics for multiple models.")
         
@@ -329,14 +363,14 @@ class ConvNN(object):
 
         return df
 
-    def ensemble_metrics(self, threshold):
+    def ensemble_metrics(self, df):
         """
         Calculates the metrics and average metrics when ensemble training.
 
         Parameters
         ----------
-        threshold : float
-             Defines the threshold for positive vs. negative cases.
+        df : astropy.Table.table
+             Table of output predictions from the validation set.
 
         Attributes
         ----------
@@ -352,7 +386,6 @@ class ConvNN(object):
         from sklearn.metrics import precision_score
         from sklearn.metrics import recall_score
 
-        df = self.create_df(threshold)
         ap, ac = [], []
 
         rs, ps = [], []
@@ -376,14 +409,130 @@ class ConvNN(object):
         ps = np.round(precision_score(df['gt'], df['pred_round']), 4)
 
         # PRECISION RECALL CURVE
-        prec_curve, rec_curve, _ = precision_recall_curve(df['gt'], df['pred_round'])
+        prec_curve, rec_curve, _ = precision_recall_curve(df['gt'], df['pred'])
 
         self.average_precision = ap[-1]
         self.accuracy = ac[-1]
         self.recall_score = rs
         self.precision_score = ps
         self.prec_recall_curve = np.array([rec_curve, prec_curve])
-                        
+ 
+
+    def cross_validation(self, epochs=350, batch_size=64,
+                         kfolds=5, shuffle=True):
+        """
+        Performs cross validation for a given number of K-folds.
+
+        Parameters
+        ----------
+        epochs : int, optional
+             Number of epochs to run each folded model on. Default is 350.
+        batch_size : int, optional
+             The batch size for training. Default is 64.
+        kfolds : int, optional
+             Number of folds to perform. Default is 5.
+        shuffle : bool, optional
+             Allows for shuffling in scikitlearn.model_slection.KFold.
+             Default is True.
+        """
+        from sklearn.model_selection import KFold
+        from sklearn.metrics import precision_recall_curve
+        from sklearn.metrics import average_precision_score
+
+        num_flares = len(self.labels)
+        trainval_cutoff = int(0.90 * num_flares)
+
+        x_trainval = self.training_matrix[0:trainval_cutoff]
+        y_trainval = self.labels[0:trainval_cutoff]
+        p_trainval = self.tpeaks[0:trainval_cutoff]
+        t_trainval = self.training_ids[0:trainval_cutoff]
+
+        print("Partitioned {} out of {} flares into train-val set".format(len(y_trainval), 
+                                                                          num_flares))
+        
+        kfolds_histories = []
+        kfolds_predictions = []
+
+        kf = KFold(n_splits=kfolds, shuffle=shuffle)
+
+        broken = self.predval_fmt.split('.')
+        kfolds_fmt = broken[0] + 'kfold{0:02d}.txt'
+
+        i = 0
+        for ti, vi in kf.split(y_trainval):
+
+            # CREATES TRAINING AND VALIDATION SETS
+            x_train   = x_trainval[ti]
+            self.kfolds_train_labels = y_trainval[ti]
+            
+            x_val   = x_trainval[vi]
+            self.kfolds_val_labels = y_trainval[vi]
+
+            p_val = p_trainval[vi]
+            t_val = t_trainval[vi]
+            
+            # REFORMAT TO ADD ADDITIONAL CHANNEL TO DATA
+            self.kfolds_train_data = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
+            self.kfolds_val_data = x_val.reshape(x_val.shape[0], x_val.shape[1], 1)
+            
+            print("x_train shape:", self.kfolds_train_data.shape, 
+                  "y_train shape:", self.kfolds_train_labels.shape)
+            print("x_val shape:", self.kfolds_val_data.shape, 
+                  "y_val shape:", self.kfolds_val_labels.shape)
+
+            self.create_model()
+            self.train_model(epochs=epochs, batch_size=batch_size,
+                             shuffle=shuffle, kfolds=True)
+
+            # CALCULATE METRICS FOR VALIDATION SET
+            pred_val = self.model.predict(x_val)
+            precision, recall, _ = precision_recall_curve(y_val, pred_val)
+            ap_final = average_precision_score(y_val, pred_val, average=None)
+
+            print("Final Average Precision: ", round(ap_final, 3))
+            print("Final Accuracy: ", round(history.history['val_acc'][-1], 3))
+            
+            kfolds_histories.append(self.model.history.history)
+
+            # SAVES KFOLDS PREDICTIONS
+            broken
+            np.savetxt(os.path.join(self.output_dir, kfolds_fmt.format(i)),
+                       np.column_stack((t_val, pred_val, y_val, p_val)), 
+                       fmt=['%.0f', '%.6f', '%.6f', '%.10f'], 
+                       delimiter=',', header="tic,pred,gt,tpeak")
+            i += 1
+
+        self.kfolds_histories = kfolds_histories
+
+
+    def calibration(self, df, metric_threshold):
+        """
+        Transforming the rankings output by the CNN into actual probabilities.
+        This can only be run for an ensemble of models.
+
+        Parameters
+        ----------
+        df : astropy.Table.table
+             Table of output predictions from the validation set.
+        metric_threshold : float
+             Defines ranking above which something is considered
+             a flares.
+        """
+        # ADD COLUMN TO TABLE THAT CALCULATES THE FRACTION OF MODELS
+        # THAT SAY SOMETHING IS A FLARE
+        names= [i for i in df.colnames if 's' in i]
+        flare_frac = np.zeros(len(df))
+
+        for i, val in enumerate(len(df)):
+            preds = np.array(list(df[names][i]))
+            flare_frac[i] = len(preds[preds >= threshold]) / len(preds)
+
+        df.add_column(Column(flare_frac, name='flare_frac'))
+        
+        # !! WORK IN PROGRESS !!
+
+        return df
+                       
         
     def predict(self, times, fluxes, errs, injected=False):
         """
