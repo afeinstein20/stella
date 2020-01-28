@@ -180,6 +180,7 @@ class ConvNN(object):
              The labels for the testing data set.
         """
         self.create_model(seed)
+        self.epochs = epochs
 
         if kfolds is False:
             x_train = self.training_matrix[0:self.train_cutoff]
@@ -221,7 +222,7 @@ class ConvNN(object):
                                       validation_data=(x_val, y_val))
 
 
-    def train_multi_models(self, n=5, seeds=None, epochs=150, batch_size=64,
+    def train_multi_models(self, seeds=None, epochs=350, batch_size=64,
                            metric_threshold=0.5):
         """
         Runs n number of models with given initial random seeds of
@@ -230,14 +231,14 @@ class ConvNN(object):
 
         Parameters
         ----------
-        n : int, optional
-             Number of models to loop through. Default is 5.
         seeds : np.array, optional
              Array of random seed starters of length n, where
              n is the number of models you want to run.
-        save : bool, optional
-             Tells whether or not to save the model histories
-             to a .txt file. Default is False.
+        epochs : int, optional
+             Number of epochs to train for. Default is 350.
+        batch_size : int, optional
+             Setting the batch size for the training. Default
+             is 64.
         metric_threshold : float, optional
              Defines the threshold for positive vs. negative cases. Default
              is 0.5 (50%). 
@@ -250,11 +251,6 @@ class ConvNN(object):
              Array of all the predictions from each model run.
         """
         self.epochs = epochs
-
-        if len(seeds) != n:
-            print("Please input {}-random seeds. You put in {}.".format(n, 
-                                                                        len(seeds)))
-            return
 
         else:
             table = Table()
@@ -275,7 +271,9 @@ class ConvNN(object):
                     table.add_column(col)
 
                 # SAVES THE MODEL TO OUTPUT DIRECTORY
-                self.model.save(os.path.join(self.output_dir, 'model_{0:04d}.h5'.format(seed)))
+                self.model.save(os.path.join(self.output_dir, 'model_s{0:04d}_i{1:04d}_b{2}.h5'.format(int(seed),
+                                                                                                       int(epochs),
+                                                                                                       self.frac_balance)))
 
                 # GETS PREDICTIONS FOR EACH LIGHT CURVE
                 val_preds = self.model.predict(self.val_data)
