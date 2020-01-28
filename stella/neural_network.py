@@ -419,7 +419,7 @@ class ConvNN(object):
  
 
     def cross_validation(self, epochs=350, batch_size=64,
-                         kfolds=5, shuffle=True):
+                         n_splits=5, shuffle=True):
         """
         Performs cross validation for a given number of K-folds.
 
@@ -429,7 +429,7 @@ class ConvNN(object):
              Number of epochs to run each folded model on. Default is 350.
         batch_size : int, optional
              The batch size for training. Default is 64.
-        kfolds : int, optional
+        n_splits : int, optional
              Number of folds to perform. Default is 5.
         shuffle : bool, optional
              Allows for shuffling in scikitlearn.model_slection.KFold.
@@ -453,14 +453,16 @@ class ConvNN(object):
         kfolds_histories = []
         kfolds_predictions = []
 
-        kf = KFold(n_splits=kfolds, shuffle=shuffle)
+        kf = KFold(n_splits=n_splits, shuffle=shuffle)
 
         broken = self.predval_fmt.split('.')
-        kfolds_fmt = broken[0] + 'kfold{0:02d}.txt'
+        kfolds_fmt = broken[0].format(int(self.seed),
+                                      int(epochs),
+                                      self.frac_balance) + '_kfold{0:02d}.txt'
 
         i = 0
         for ti, vi in kf.split(y_trainval):
-
+            print(len(ti), len(vi))
             # CREATES TRAINING AND VALIDATION SETS
             x_train   = x_trainval[ti]
             self.kfolds_train_labels = y_trainval[ti]
@@ -485,19 +487,20 @@ class ConvNN(object):
                              shuffle=shuffle, kfolds=True)
 
             # CALCULATE METRICS FOR VALIDATION SET
-            pred_val = self.model.predict(x_val)
-            precision, recall, _ = precision_recall_curve(y_val, pred_val)
-            ap_final = average_precision_score(y_val, pred_val, average=None)
+            pred_val = self.model.predict(self.kfolds_val_data)
+            precision, recall, _ = precision_recall_curve(self.kfolds_val_labels, pred_val)
+            ap_final = average_precision_score(self.kfolds_val_labels, 
+                                               pred_val, average=None)
 
             print("Final Average Precision: ", round(ap_final, 3))
-            print("Final Accuracy: ", round(history.history['val_acc'][-1], 3))
+            print("Final Accuracy: ", round(self.model.history.history['val_accuracy'][-1], 3))
             
             kfolds_histories.append(self.model.history.history)
 
             # SAVES KFOLDS PREDICTIONS
             broken
             np.savetxt(os.path.join(self.output_dir, kfolds_fmt.format(i)),
-                       np.column_stack((t_val, pred_val, y_val, p_val)), 
+                       np.column_stack((t_val, pred_val, self.kfolds_val_labels, p_val)), 
                        fmt=['%.0f', '%.6f', '%.6f', '%.10f'], 
                        delimiter=',', header="tic,pred,gt,tpeak")
             i += 1
