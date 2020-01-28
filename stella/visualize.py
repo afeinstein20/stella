@@ -10,15 +10,29 @@ class Visualize(object):
     Creates diagnostic plots for the neural network.
     """
 
-    def __init__(self, cnn):
+    def __init__(self, cnn, set='validation'):
         """
         Initialized visualization class.
 
         Parameters
         ----------
         cnn : stella.ConvNN
+        set : str, optional
+             An option to view the results of the
+             validation set or the testing set. The
+             testing set should only be looked at at
+             the very end of creating, training, and 
+             testing the network using the validation set.
+             Default is 'validation'. The alternative 
+             option is 'test'.
         """
         self.cnn = cnn
+        self.set = set
+
+        if set.lower() == 'validation':
+            self.data_set = cnn.val_data
+        if set.lower() == 'test':
+            self.data_set = cnn.test_data
 
         if cnn.history is not None:
             self.history = cnn.history.history
@@ -129,8 +143,8 @@ class Visualize(object):
             return ax
 
         # GETS THE TABLE & VALIDATION DATA FOR THE MATRIX
-        df = self.cnn.create_df(threshold, mode="confusion")
-        x_val = self.cnn.val_data + 0.0
+        df = self.cnn.create_df(threshold, mode="confusion", data_set=self.set)
+        x_val = self.data_set + 0.0
 
         # INDICES FOR THE CONFUSION MATRIX
         ind_tn = np.where( (df['pred_round'] == 0) & (df['gt'] == 0) )[0]
