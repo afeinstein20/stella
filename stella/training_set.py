@@ -6,10 +6,10 @@ from scipy.interpolate import interp1d
 
 from .utils import fill_in
 
-__all__ = ['TrainingSet']
+__all__ = ['DataSet']
 
 
-class TrainingSet(object):
+class DataSet(object):
     """
     Given a directory of files, reformat data to
     create a training set for the convolutional

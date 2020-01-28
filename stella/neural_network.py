@@ -17,7 +17,7 @@ class ConvNN(object):
     def __init__(self, ts, training=0.80, validation=0.90,
                  layers=None, optimizer='adam',
                  loss='binary_crossentropy', 
-                 metrics=None, seed=2, output_dir=None):
+                 metrics=None, output_dir=None):
         """
         Creates and trains a Tensorflow keras model
         with either layers that have been passed in
@@ -68,7 +68,7 @@ class ConvNN(object):
         self.training_matrix = np.copy(ts.training_matrix)
         self.labels = np.copy(ts.labels)
         self.cadences = np.copy(ts.cadences)
-        self.seed = seed
+
         self.frac_balance = ts.frac_balance + 0.0
 
         self.tpeaks = ts.training_peaks
@@ -88,10 +88,8 @@ class ConvNN(object):
         self.train_cutoff = int(training * len(self.labels))
         self.val_cutoff   = int(validation * len(self.labels))
 
-        self.create_model()
 
-
-    def create_model(self):
+    def create_model(self, seed):
         """
         Creates the Tensorflow keras model with appropriate layers.
         
@@ -100,8 +98,8 @@ class ConvNN(object):
         model : tensorflow.python.keras.engine.sequential.Sequential
         """
         # SETS RANDOM SEED FOR REPRODUCABLE RESULTS
-        np.random.seed(self.seed)
-        tf.random.set_seed(self.seed)
+        np.random.seed(seed)
+        tf.random.set_seed(seed)
 
         # INITIALIZE CLEAN MODEL
         keras.backend.clear_session()
@@ -153,12 +151,15 @@ class ConvNN(object):
         model.summary()
 
 
-    def train_model(self, epochs=350, batch_size=64, shuffle=True, kfolds=False):
+    def train_model(self, seed=2, epochs=350, batch_size=64, 
+                    shuffle=True, kfolds=False):
         """
         Trains the model using the training set from stella.TrainingData.
 
         Parameters
         ---------- 
+        seed : int, optional
+             Sets random model seed. Default is 2.
         epochs : int, optional 
              The number of epochs to train for.
              Default is 350.
@@ -178,6 +179,8 @@ class ConvNN(object):
         test_labels : np.array
              The labels for the testing data set.
         """
+        self.create_model(seed)
+
         if kfolds is False:
             x_train = self.training_matrix[0:self.train_cutoff]
             y_train = self.labels[0:self.train_cutoff]
@@ -260,11 +263,10 @@ class ConvNN(object):
             pred_fn = os.path.join(self.output_dir,'{0:09d}_seed{1:03d}.npy')
 
             for seed in seeds:
-                self.seed = seed
                 keras.backend.clear_session()
 
                 # CREATES MODEL BASED ON GIVEN RANDOM SEED
-                self.create_model()
+                self.create_model(seed)
                 self.train_model(epochs=epochs, batch_size=batch_size)
 
                 col_names = list(self.history.history.keys())
@@ -303,7 +305,7 @@ class ConvNN(object):
 
             df = self.create_df(metric_threshold)
             self.ensemble_metrics(df)
-#            df = self.calibration(df, metric_threshold)
+
 
     def create_df(self, threshold, mode='metrics', data_set='validation'):
         """
