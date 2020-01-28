@@ -18,7 +18,7 @@ class Visualize(object):
         ----------
         cnn : stella.ConvNN
         """
-        self.cnn     = cnn
+        self.cnn = cnn
 
         if cnn.history is not None:
             self.history = cnn.history.history

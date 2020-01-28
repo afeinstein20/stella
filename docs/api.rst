@@ -5,8 +5,11 @@ API
 .. automodule:: stella
     :members:
 
-.. autoclass:: SimulateLightCurves
+.. autoclass:: TrainingSet
     :members:
 
-.. autoclass:: NeuralNetwork
+.. autoclass:: ConvNN
+    :members:
+
+.. autoclass:: Visualize
     :members:
