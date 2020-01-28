@@ -422,6 +422,7 @@ class ConvNN(object):
                          n_splits=5, shuffle=True):
         """
         Performs cross validation for a given number of K-folds.
+        Reassigns the training and validation sets for each fold.
 
         Parameters
         ----------
@@ -434,6 +435,11 @@ class ConvNN(object):
         shuffle : bool, optional
              Allows for shuffling in scikitlearn.model_slection.KFold.
              Default is True.
+
+        Attributes
+        ----------
+        kfolds_table : astropy.Table.table
+             Table of history values from the model run on each fold.
         """
         from sklearn.model_selection import KFold
         from sklearn.metrics import precision_recall_curve
@@ -442,13 +448,15 @@ class ConvNN(object):
         num_flares = len(self.labels)
         trainval_cutoff = int(0.90 * num_flares)
 
+        tab = Table()
+
         x_trainval = self.training_matrix[0:trainval_cutoff]
         y_trainval = self.labels[0:trainval_cutoff]
         p_trainval = self.tpeaks[0:trainval_cutoff]
         t_trainval = self.training_ids[0:trainval_cutoff]
 
-        print("Partitioned {} out of {} flares into train-val set".format(len(y_trainval), 
-                                                                          num_flares))
+#        print("Partitioned {} out of {} flares into train-val set".format(len(y_trainval), 
+#                                                                          num_flares))
         
         kfolds_histories = []
         kfolds_predictions = []
@@ -462,7 +470,6 @@ class ConvNN(object):
 
         i = 0
         for ti, vi in kf.split(y_trainval):
-            print(len(ti), len(vi))
             # CREATES TRAINING AND VALIDATION SETS
             x_train   = x_trainval[ti]
             self.kfolds_train_labels = y_trainval[ti]
@@ -477,10 +484,10 @@ class ConvNN(object):
             self.kfolds_train_data = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
             self.kfolds_val_data = x_val.reshape(x_val.shape[0], x_val.shape[1], 1)
             
-            print("x_train shape:", self.kfolds_train_data.shape, 
-                  "y_train shape:", self.kfolds_train_labels.shape)
-            print("x_val shape:", self.kfolds_val_data.shape, 
-                  "y_val shape:", self.kfolds_val_labels.shape)
+#            print("x_train shape:", self.kfolds_train_data.shape, 
+#                  "y_train shape:", self.kfolds_train_labels.shape)
+#            print("x_val shape:", self.kfolds_val_data.shape, 
+#                  "y_val shape:", self.kfolds_val_labels.shape)
 
             self.create_model()
             self.train_model(epochs=epochs, batch_size=batch_size,
@@ -492,19 +499,25 @@ class ConvNN(object):
             ap_final = average_precision_score(self.kfolds_val_labels, 
                                                pred_val, average=None)
 
-            print("Final Average Precision: ", round(ap_final, 3))
-            print("Final Accuracy: ", round(self.model.history.history['val_accuracy'][-1], 3))
+#            print("Final Average Precision: ", round(ap_final, 3))
+#            print("Final Accuracy: ", round(self.model.history.history['val_accuracy'][-1], 3))
             
             kfolds_histories.append(self.model.history.history)
 
             # SAVES KFOLDS PREDICTIONS
-            broken
             np.savetxt(os.path.join(self.output_dir, kfolds_fmt.format(i)),
                        np.column_stack((t_val, pred_val, self.kfolds_val_labels, p_val)), 
                        fmt=['%.0f', '%.6f', '%.6f', '%.10f'], 
                        delimiter=',', header="tic,pred,gt,tpeak")
+
+            col_names = list(self.model.history.history.keys())
+            for cn in col_names:
+                col = Column(self.model.history.history[cn], name=cn+'{0:03d}'.format(i))
+                tab.add_column(col)
+
             i += 1
 
+        self.kfolds_table = tab
         self.kfolds_histories = kfolds_histories
 
 
