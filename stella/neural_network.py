@@ -146,9 +146,6 @@ class ConvNN(object):
 
         self.model = model
         
-        # PRINTS THE MODEL SUMMARY FOR THE USER
-        model.summary()
-
 
     def train_model(self, epochs=350, batch_size=64, shuffle=True):
         """
