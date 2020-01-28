@@ -232,57 +232,56 @@ class ConvNN(object):
         """
         self.epochs = epochs
 
-        else:
-            table = Table()
-            all_predictions = []
+        table = Table()
+        all_predictions = []
+        
+        pred_fn = os.path.join(self.output_dir,'{0:09d}_seed{1:03d}.npy')
+        
+        for seed in seeds:
+            keras.backend.clear_session()
             
-            pred_fn = os.path.join(self.output_dir,'{0:09d}_seed{1:03d}.npy')
+            # CREATES MODEL BASED ON GIVEN RANDOM SEED
+            self.create_model(seed)
+            self.train_model(epochs=epochs, batch_size=batch_size)
 
-            for seed in seeds:
-                keras.backend.clear_session()
+            col_names = list(self.history.history.keys())
+            for cn in col_names:
+                col = Column(self.history.history[cn], name=cn+'{0:04d}'.format(seed))
+                table.add_column(col)
 
-                # CREATES MODEL BASED ON GIVEN RANDOM SEED
-                self.create_model(seed)
-                self.train_model(epochs=epochs, batch_size=batch_size)
+            # SAVES THE MODEL TO OUTPUT DIRECTORY
+            self.model.save(os.path.join(self.output_dir, 'model_s{0:04d}_i{1:04d}_b{2}.h5'.format(int(seed),
+                                                                                                   int(epochs),
+                                                                                                   self.frac_balance)))
 
-                col_names = list(self.history.history.keys())
-                for cn in col_names:
-                    col = Column(self.history.history[cn], name=cn+'{0:04d}'.format(seed))
-                    table.add_column(col)
+            # GETS PREDICTIONS FOR EACH LIGHT CURVE
+            val_preds = self.model.predict(self.val_data)
+            
+            np.savetxt(os.path.join(self.output_dir, self.predval_fmt.format(int(seed), 
+                                                                             int(epochs),
+                                                                             self.frac_balance)),
+                       np.column_stack((self.val_ids, val_preds, self.val_labels,
+                                        self.val_tpeaks)),
+                       fmt=['%.0f', '%0.6f', '%0.6f', '%.10f'], delimiter=',', 
+                       header='tic,pred,gt,tpeak')
 
-                # SAVES THE MODEL TO OUTPUT DIRECTORY
-                self.model.save(os.path.join(self.output_dir, 'model_s{0:04d}_i{1:04d}_b{2}.h5'.format(int(seed),
-                                                                                                       int(epochs),
-                                                                                                       self.frac_balance)))
+            test_preds = self.model.predict(self.test_data)
 
-                # GETS PREDICTIONS FOR EACH LIGHT CURVE
-                val_preds = self.model.predict(self.val_data)
+            np.savetxt(os.path.join(self.output_dir, self.predtest_fmt.format(int(seed), 
+                                                                              int(epochs),
+                                                                              self.frac_balance)),
+                       np.column_stack((self.test_ids, test_preds, self.test_labels,
+                                        self.test_tpeaks)),
+                       fmt=['%.0f','%0.6f', '%0.6f', '%.10f'], delimiter=',',
+                       header='tic,pred,gt,tpeak')
 
-                np.savetxt(os.path.join(self.output_dir, self.predval_fmt.format(int(seed), 
-                                                                                 int(epochs),
-                                                                                 self.frac_balance)),
-                           np.column_stack((self.val_ids, val_preds, self.val_labels,
-                                            self.val_tpeaks)),
-                           fmt=['%.0f', '%0.6f', '%0.6f', '%.10f'], delimiter=',', 
-                           header='tic,pred,gt,tpeak')
+        self.history_table = table
+        self.multi_predictions = all_predictions
 
-                test_preds = self.model.predict(self.test_data)
-
-                np.savetxt(os.path.join(self.output_dir, self.predtest_fmt.format(int(seed), 
-                                                                                  int(epochs),
-                                                                                  self.frac_balance)),
-                           np.column_stack((self.test_ids, test_preds, self.test_labels,
-                                            self.test_tpeaks)),
-                           fmt=['%.0f','%0.6f', '%0.6f', '%.10f'], delimiter=',',
-                           header='tic,pred,gt,tpeak')
-
-            self.history_table = table
-            self.multi_predictions = all_predictions
-
-            table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
-
-            df = self.create_df(metric_threshold)
-            self.ensemble_metrics(df)
+        table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
+        
+        df = self.create_df(metric_threshold)
+        self.ensemble_metrics(df)
 
 
     def create_df(self, threshold, mode='metrics', data_set='validation'):

@@ -62,7 +62,7 @@ class DataSet(object):
         self.frac_balance = frac_balance
         self.load_files()
         self.reformat_data()
-        self.split_data()
+        self.split_data(training, validation)
 
 
     def load_files(self, id_keyword='tic_id', ft_keyword='tpeak',
