@@ -145,7 +145,10 @@ class ConvNN(object):
                           metrics=self.metrics)
 
         self.model = model
-        
+
+        # PRINTS MODEL SUMMARY
+        model.summary()
+
 
     def train_model(self, epochs=350, batch_size=64, shuffle=True):
         """
