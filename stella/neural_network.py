@@ -455,9 +455,6 @@ class ConvNN(object):
         p_trainval = self.tpeaks[0:trainval_cutoff]
         t_trainval = self.training_ids[0:trainval_cutoff]
 
-#        print("Partitioned {} out of {} flares into train-val set".format(len(y_trainval), 
-#                                                                          num_flares))
-        
         kfolds_histories = []
         kfolds_predictions = []
 
@@ -473,7 +470,6 @@ class ConvNN(object):
             # CREATES TRAINING AND VALIDATION SETS
             x_train   = x_trainval[ti]
             self.kfolds_train_labels = y_trainval[ti]
-            
             x_val   = x_trainval[vi]
             self.kfolds_val_labels = y_trainval[vi]
 
@@ -484,11 +480,7 @@ class ConvNN(object):
             self.kfolds_train_data = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
             self.kfolds_val_data = x_val.reshape(x_val.shape[0], x_val.shape[1], 1)
             
-#            print("x_train shape:", self.kfolds_train_data.shape, 
-#                  "y_train shape:", self.kfolds_train_labels.shape)
-#            print("x_val shape:", self.kfolds_val_data.shape, 
-#                  "y_val shape:", self.kfolds_val_labels.shape)
-
+            # CREATES MODEL AND RUNS ON REFOLDED TRAINING AND VALIDATION SETS
             self.create_model()
             self.train_model(epochs=epochs, batch_size=batch_size,
                              shuffle=shuffle, kfolds=True)
@@ -499,9 +491,6 @@ class ConvNN(object):
             ap_final = average_precision_score(self.kfolds_val_labels, 
                                                pred_val, average=None)
 
-#            print("Final Average Precision: ", round(ap_final, 3))
-#            print("Final Accuracy: ", round(self.model.history.history['val_accuracy'][-1], 3))
-            
             kfolds_histories.append(self.model.history.history)
 
             # SAVES KFOLDS PREDICTIONS
