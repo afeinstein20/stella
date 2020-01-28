@@ -14,7 +14,7 @@ class ConvNN(object):
     neural network.
     """
 
-    def __init__(self, ts, training=0.80, validation=0.90,
+    def __init__(self, ts, 
                  layers=None, optimizer='adam',
                  loss='binary_crossentropy', 
                  metrics=None, output_dir=None):
@@ -61,6 +61,7 @@ class ConvNN(object):
         labels : stella.TrainingSet.labels
         image_fmt : stella.TrainingSet.cadences
         """
+        self.ds = ts
         self.layers = layers
         self.optimizer = optimizer
         self.loss = loss
@@ -84,9 +85,6 @@ class ConvNN(object):
             self.fetch_dir()
         else:
             self.output_dir = output_dir
-
-        self.train_cutoff = int(training * len(self.labels))
-        self.val_cutoff   = int(validation * len(self.labels))
 
 
     def create_model(self, seed):
@@ -183,33 +181,15 @@ class ConvNN(object):
         self.epochs = epochs
 
         if kfolds is False:
-            x_train = self.training_matrix[0:self.train_cutoff]
-            y_train = self.labels[0:self.train_cutoff]
+            x_train = self.ds.train_data
+            y_train = self.ds.train_labels
 
-            x_val = self.training_matrix[self.train_cutoff:self.val_cutoff]
-            y_val = self.labels[self.train_cutoff:self.val_cutoff]
+            x_val = self.ds.val_data
+            y_val = self.ds.val_labels
 
-            x_test = self.training_matrix[self.val_cutoff:] 
-            y_test = self.labels[self.val_cutoff:]
+            x_test = self.ds.test_data
+            y_test = self.ds.test_labels
 
-            x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
-            x_val   = x_val.reshape(x_val.shape[0], x_train.shape[1], 1)
-            x_test  = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
-            
-            self.train_data = x_train
-            self.train_labels = y_train
-        
-            self.test_data = x_test
-            self.test_labels = y_test
-            self.test_ids = self.training_ids[self.val_cutoff:]
-            self.test_tpeaks = self.tpeaks[self.val_cutoff:]
-
-            self.val_data = x_val
-            self.val_labels = y_val
-            self.val_ids = self.training_ids[self.train_cutoff:self.val_cutoff]
-            self.val_tpeaks = self.tpeaks[self.train_cutoff:self.val_cutoff]
-
-            
         else:
             x_train = self.kfolds_train_data
             y_train = self.kfolds_train_labels
