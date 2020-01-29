@@ -273,58 +273,8 @@ class ConvNN(object):
                                  fast_writer=False)
 
 
-    def create_df(self, threshold, data_set, mode):
-        """
-        Creates an astropy.Table.table for the ensemble metrics.
 
-        Parameters
-        ----------
-        threshold : float
-             Percentage cutoff for the ensemble metrics. Recommended 0.5.
-        data_set : str
-             Allows the user to look at either the validation or test
-             set metrics. 'validation' or 'test' are the options.
-        mode : str
-             Sets which table is to be used to calculate metrics.
-
-        Returns
-        -------
-        df : astropy.Table.table
-             Table of predicted values from each model run.
-        """
         
-        if data_set.lower() == 'validation':
-            if mode == 'ensemble':
-                r = Table.read(os.path.join(self.output_dir, 'predval_i{0:04d}_b{1}.txt'.format(int(self.epochs),
-                                                                                                self.frac_balance)),
-                               format='ascii')
-            elif mode == 'crossval':
-                r = Table.read(os.path.join(self.output_dir, 'crossval_predval_i{0:04d}_b{i}'.format(int(self.epochs),
-                                                                                                     self.frac_balance)),
-                               format='ascii')
-                
-        elif data_set.lower() == 'test':
-            if mode == 'ensemble':
-                r = Table.read(os.path.join(self.output_dir, 'predtest_i{0:04d}_b{1}.txt'.format(int(self.epochs),
-                                                                                                 self.frac_balance)),
-                               format='ascii')
-            else:
-                r = Table.read(os.path.join(self.output_dir, ))
-
-        mean_arr = []
-        colnames = [i for i in r.colnames if 'pred' in i]
-        for cn in colnames: 
-            mean_arr.append(np.round(r[cn].data, 3))
-            
-        r.add_column(Column(np.nanmean(mean_arr, axis=0), name='mean_pred'))
-        
-        pred_round = np.zeros(len(r))
-        pred_round[r['mean_pred'] >= threshold] = 1
-        pred_round[r['mean_pred'] < threshold]  = 0
-        r.add_column(Column(pred_round, name='pred_round'), index=0)
-
-        return r
-
     def ensemble_metrics(self, threshold=0.5, data_set='validation', mode='ensemble'):
         """
         Calculates the metrics and average metrics when ensemble training.
@@ -479,18 +429,21 @@ class ConvNN(object):
             # CALCULATE METRICS FOR VALIDATION SET
             pred_val = self.model.predict(x_val)
 
-            # PREDICTS ON TEST SET IS PRED_TEST IS TRUE
-            if pred_test is True:
-                preds = self.model.predict(self.ds.test_data)
-                pred_test_table.add_column(Column(preds, name='pred_f{0:03d}'.format(i)))
-                self.crossval_predtest = pred_test_table
-
             # SAVES PREDS FOR VALIDATION SET
             tab_names = ['id', 'gt', 'peak', 'pred']
             data = [t_val, y_val, p_val, pred_val]
             for j, tn in enumerate(tab_names):
                 col = Column(data[j], name=tn+'_f{0:03d}'.format(i))
                 predtab.add_column(col)
+
+            # PREDICTS ON TEST SET IF PRED_TEST IS TRUE
+            if pred_test is True:
+                preds = self.model.predict(self.ds.test_data)
+                data = [self.ds.test_ids, self.ds.test_labels, self.ds.test_tpeaks, preds]
+                for j, tn in enumerate(tab_names):
+                    col = Column(data[j], name=tn+'_f{0:03d}'.format(i))
+                    pred_test_table.add_column(col)
+                self.crossval_predtest = pred_test_table
 
             precision, recall, _ = precision_recall_curve(y_val, pred_val)
             ap_final = average_precision_score(y_val, pred_val, average=None)
