@@ -273,7 +273,8 @@ class ConvNN(object):
 
             if len(test_table.colnames) > 3:
                 test_fmt = 'predtest' + fmt_table
-                test_table.write(os.path.join(self.output_dir, test_fmt), format='ascii')
+                test_table.write(os.path.join(self.output_dir, test_fmt), format='ascii',
+                                 fast_writer=False)
 
 
     def create_df(self, threshold, mode='metrics', data_set='validation'):
