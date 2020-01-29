@@ -271,7 +271,7 @@ class ConvNN(object):
             val_table.write(os.path.join(self.output_dir, pred_fmt), format='ascii',
                             fast_writer=False)
 
-            if len(test_table.colnames) > 3:
+            if pred_test is True:
                 test_fmt = 'predtest' + fmt_table
                 test_table.write(os.path.join(self.output_dir, test_fmt), format='ascii',
                                  fast_writer=False)
@@ -390,14 +390,16 @@ class ConvNN(object):
         self.prec_recall_curve = np.array([rec_curve, prec_curve])
  
 
-    def cross_validation(self, epochs=350, batch_size=64,
-                         n_splits=5, shuffle=True):
+    def cross_validation(self, seed=2, epochs=350, batch_size=64,
+                         n_splits=5, shuffle=True, save=False):
         """
         Performs cross validation for a given number of K-folds.
         Reassigns the training and validation sets for each fold.
 
         Parameters
         ----------
+        seed : int, optional
+             Sets random seed for creating CNN model. Default is 2.
         epochs : int, optional
              Number of epochs to run each folded model on. Default is 350.
         batch_size : int, optional
@@ -407,6 +409,9 @@ class ConvNN(object):
         shuffle : bool, optional
              Allows for shuffling in scikitlearn.model_slection.KFold.
              Default is True.
+        save : bool, optional
+             Allows the user to save the kfolds table of predictions.
+             Defaul it False.
 
         Attributes
         ----------
@@ -421,65 +426,70 @@ class ConvNN(object):
         trainval_cutoff = int(0.90 * num_flares)
 
         tab = Table()
+        predtab = Table()
 
         x_trainval = self.training_matrix[0:trainval_cutoff]
         y_trainval = self.labels[0:trainval_cutoff]
         p_trainval = self.tpeaks[0:trainval_cutoff]
         t_trainval = self.training_ids[0:trainval_cutoff]
 
-        kfolds_histories = []
-        kfolds_predictions = []
-
         kf = KFold(n_splits=n_splits, shuffle=shuffle)
-
-        broken = self.predval_fmt.split('.')
-        kfolds_fmt = broken[0].format(int(self.seed),
-                                      int(epochs),
-                                      self.frac_balance) + '_kfold{0:02d}.txt'
 
         i = 0
         for ti, vi in kf.split(y_trainval):
             # CREATES TRAINING AND VALIDATION SETS
             x_train   = x_trainval[ti]
-            self.kfolds_train_labels = y_trainval[ti]
+            y_train = y_trainval[ti]
             x_val   = x_trainval[vi]
-            self.kfolds_val_labels = y_trainval[vi]
+            y_val = y_trainval[vi]
 
             p_val = p_trainval[vi]
             t_val = t_trainval[vi]
             
             # REFORMAT TO ADD ADDITIONAL CHANNEL TO DATA
-            self.kfolds_train_data = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
-            self.kfolds_val_data = x_val.reshape(x_val.shape[0], x_val.shape[1], 1)
+            x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
+            x_val = x_val.reshape(x_val.shape[0], x_val.shape[1], 1)
             
             # CREATES MODEL AND RUNS ON REFOLDED TRAINING AND VALIDATION SETS
-            self.create_model()
-            self.train_model(epochs=epochs, batch_size=batch_size,
-                             shuffle=shuffle, kfolds=True)
+            self.create_model(seed)
+            history = self.model.fit(x_train, y_train,
+                                     epochs=epochs,
+                                     batch_size=batch_size, shuffle=shuffle,
+                                     validation_data=(x_val, y_val))
 
             # CALCULATE METRICS FOR VALIDATION SET
-            pred_val = self.model.predict(self.kfolds_val_data)
-            precision, recall, _ = precision_recall_curve(self.kfolds_val_labels, pred_val)
-            ap_final = average_precision_score(self.kfolds_val_labels, 
-                                               pred_val, average=None)
+            pred_val = self.model.predict(x_val)
 
-            kfolds_histories.append(self.model.history.history)
+            tab_names = ['id', 'gt', 'peak', 'pred']
+            data = [t_val, y_val, p_val, pred_val]
+            for j, tn in enumerate(tab_names):
+                col = Column(data[j], name=tn+'_f{0:03d}'.format(i))
+                predtab.add_column(col)
 
-            # SAVES KFOLDS PREDICTIONS
-            np.savetxt(os.path.join(self.output_dir, kfolds_fmt.format(i)),
-                       np.column_stack((t_val, pred_val, self.kfolds_val_labels, p_val)), 
-                       fmt=['%.0f', '%.6f', '%.6f', '%.10f'], 
-                       delimiter=',', header="tic,pred,gt,tpeak")
+            precision, recall, _ = precision_recall_curve(y_val, pred_val)
+            ap_final = average_precision_score(y_val, pred_val, average=None)
 
-            col_names = list(self.model.history.history.keys())
+            # SAVES HISTORIES TO A TABLE
+            col_names = list(history.history.keys())
             for cn in col_names:
-                col = Column(self.model.history.history[cn], name=cn+'{0:03d}'.format(i))
+                col = Column(history.history[cn], name=cn+'_f{0:03d}'.format(i))
                 tab.add_column(col)
 
             i += 1
 
-        self.kfolds_table = tab
-        self.kfolds_histories = kfolds_histories
+        # SETS TABLES AS ATTRIBUTES
+        self.kfolds_table = predtab
+        self.kfolds_histories = tab
+
+        # IF SAVE IS TRUE, SAVES TABLES TO OUTPUT DIRECTORY
+        if save is True:
+            fmt = 'kfolds_{0}_s{1:04d}_i{2:04d}_b{3}.txt'
+            predtab.write(os.path.join(self.output_dir, fmt.format('preds', int(seed),
+                                                                   int(epochs), self.frac_balance)), format='ascii',
+                          fast_writer=False)
+            tab.write(os.path.join(self.output_dir, fmt.format('histories', int(seed),
+                                                               int(epochs), self.frac_balance)), format='ascii',
+                      fast_writer=False)
 
 
     def calibration(self, df, metric_threshold):
