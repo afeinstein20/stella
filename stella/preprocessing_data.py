@@ -4,8 +4,6 @@ from tqdm import tqdm
 from astropy.table import Table
 from scipy.interpolate import interp1d
 
-from .utils import fill_in
-
 __all__ = ['DataSet']
 
 

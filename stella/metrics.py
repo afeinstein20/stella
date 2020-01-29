@@ -129,6 +129,15 @@ class ModelMetrics(object):
              Sets which data set to look at. Default is 'validation'.
              Other option is 'test'. DO NOT LOOK AT THE TEST SET UNTIL
              YOU ARE COMPLETELY HAPPY WITH YOUR MODEL.
+
+        Attributes
+        ----------
+        average_precision : float
+        accuracy : float
+        recall_score : float
+        precision_score : float
+        prec_recall_curve : np.array
+             2D array of precision and recall for plotting purposes.
         """
         if data_set is 'validation':
             table = self.predval_table
