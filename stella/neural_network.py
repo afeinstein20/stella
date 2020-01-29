@@ -161,7 +161,7 @@ class ConvNN(object):
             pred = model.predict(self.ds.test_data)
         elif mode == 'validation':
             pred = model.predict(self.ds.val_data)
-
+        pred = np.reshape(pred, len(pred))
         
         ## Calculate metrics from here
         return 
@@ -244,12 +244,14 @@ class ConvNN(object):
 
             # GETS PREDICTIONS FOR EACH VALIDATION SET LIGHT CURVE
             val_preds = self.model.predict(self.ds.val_data)
+            val_preds = np.reshape(val_preds, len(val_preds))
             val_table.add_column(Column(val_preds, name='pred_s{0:04d}'.format(int(seed))))
             
 
             # GETS PREDICTIONS FOR EACH TEST SET LIGHT CURVE IF PRED_TEST IS TRUE
             if pred_test is True:
                 test_preds = self.model.predict(self.ds.test_data)
+                test_preds = np.reshape(test_preds, len(test_preds))
                 test_table.add_column(Column(test_preds, name='pred_s{0:04d}'.format(int(seed))))
                 
         # SETS TABLE ATTRIBUTES
@@ -427,6 +429,7 @@ class ConvNN(object):
 
             # CALCULATE METRICS FOR VALIDATION SET
             pred_val = self.model.predict(x_val)
+            pred_val = np.reshape(pred_val, len(pred_val))
 
             # SAVES PREDS FOR VALIDATION SET
             tab_names = ['id', 'gt', 'peak', 'pred']
@@ -438,7 +441,9 @@ class ConvNN(object):
             # PREDICTS ON TEST SET IF PRED_TEST IS TRUE
             if pred_test is True:
                 preds = self.model.predict(self.ds.test_data)
-                data = [self.ds.test_ids, self.ds.test_labels, self.ds.test_tpeaks, preds]
+                preds = np.reshape(preds, len(preds))
+                data = [self.ds.test_ids, self.ds.test_labels, self.ds.test_tpeaks, 
+                        np.reshape(preds, len(preds))]
                 for j, tn in enumerate(tab_names):
                     col = Column(data[j], name=tn+'_f{0:03d}'.format(i))
                     pred_test_table.add_column(col)
