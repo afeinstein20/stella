@@ -211,7 +211,7 @@ class ConvNN(object):
              pred_test = True, or else it is an empty table.
         """
 
-        if type(seeds) == int or type(seeds) == float or type(seed) == np.int64: 
+        if type(seeds) == int or type(seeds) == float or type(seeds) == np.int64: 
             seeds = np.array([seeds])
 
         self.epochs = epochs
@@ -223,9 +223,12 @@ class ConvNN(object):
         test_table = Table([self.ds.test_ids, self.ds.test_labels, self.ds.test_tpeaks],
                            names=['tic', 'gt', 'tpeak'])
         
-        fmt_tail = '_s{0:04d}_i{1:04d}_b{2}'
         
         for seed in seeds:
+            
+            fmt_tail = '_s{0:04d}_i{1:04d}_b{2}'.format(int(seed), int(epochs), self.frac_balance)
+            model_fmt = 'model' + fmt_tail + '.h5'
+
             keras.backend.clear_session()
             
             # CREATES MODEL BASED ON GIVEN RANDOM SEED
@@ -241,9 +244,7 @@ class ConvNN(object):
                 table.add_column(col)
 
             # SAVES THE MODEL TO OUTPUT DIRECTORY
-            self.model.save(os.path.join(self.output_dir, 'model' + fmt_tail.format(int(seed),
-                                                                                    int(epochs),
-                                                                                    self.frac_balance) + '.h5'))
+            self.model.save(os.path.join(self.output_dir, model_fmt))
 
             # GETS PREDICTIONS FOR EACH VALIDATION SET LIGHT CURVE
             val_preds = self.model.predict(self.ds.val_data)
@@ -262,9 +263,17 @@ class ConvNN(object):
 
         # SAVES TABLE IS SAVE IS TRUE
         if save is True:
-            table.write(os.path.join(self.output_dir, 'histories' + fmt_tail.format(int(seed), int(epochs), self.frac_balance) + '.txt'), format='ascii')
-            val_table.write(os.path.join(self.output_dir, 'predval' + fmt_tail.format(int(seed), int(epochs), self.frac_balance) + '.txt'), format='ascii')
-            test_table.write(os.path.join(self.output_dir, 'predtest' + fmt_tail.format(int(seed), int(epochs), self.frac_balance) +  '.txt'), format='ascii')
+            fmt_table = '_i{0:04d}_b{1}.txt'.format(int(epochs), self.frac_balance)
+            hist_fmt = 'histories' + fmt_table
+            pred_fmt = 'predval' + fmt_table
+
+            table.write(os.path.join(self.output_dir, hist_fmt), format='ascii')
+            val_table.write(os.path.join(self.output_dir, pred_fmt), format='ascii',
+                            fast_writer=False)
+
+            if len(test_table.colnames) > 3:
+                test_fmt = 'predtest' + fmt_table
+                test_table.write(os.path.join(self.output_dir, test_fmt), format='ascii')
 
 
     def create_df(self, threshold, mode='metrics', data_set='validation'):
