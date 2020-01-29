@@ -166,7 +166,7 @@ class ConvNN(object):
         elif mode == 'validation':
             pred = model.predict(self.ds.val_data)
 
-
+        
         ## Calculate metrics from here
         return 
         
@@ -277,7 +277,7 @@ class ConvNN(object):
                                  fast_writer=False)
 
 
-    def create_df(self, threshold, mode='metrics', data_set='validation'):
+    def create_df(self, threshold, data_set, mode):
         """
         Creates an astropy.Table.table for the ensemble metrics.
 
@@ -285,12 +285,11 @@ class ConvNN(object):
         ----------
         threshold : float
              Percentage cutoff for the ensemble metrics. Recommended 0.5.
-        mode : str, optional
-             Makes sure there are models to run metric calculations
-             on. Default is 'metrics'.
-        data_set : str, optional
+        data_set : str
              Allows the user to look at either the validation or test
-             set metrics. Default is 'validation'. The other option is 'test'.
+             set metrics. 'validation' or 'test' are the options.
+        mode : str
+             Sets which table is to be used to calculate metrics.
 
         Returns
         -------
@@ -299,50 +298,48 @@ class ConvNN(object):
         """
         
         if data_set.lower() == 'validation':
-            files = np.sort(glob.glob(os.path.join(self.output_dir,
-                                                   "predval*i{0:04d}*_b{1}.txt".format(self.epochs,
-                                                                                       self.frac_balance))))
+            if mode == 'ensemble':
+                r = Table.read(os.path.join(self.output_dir, 'predval_i{0:04d}_b{1}.txt'.format(int(self.epochs),
+                                                                                                self.frac_balance)),
+                               format='ascii')
+                
         elif data_set.lower() == 'test':
-            files = np.sort(glob.glob(os.path.join(self.output_dir,
-                                                   "predtest*i{0:04d}*_b{1}.txt".format(self.epochs,
-                                                                                        self.frac_balance))))
+            if mode == 'ensemble':
+                r = Table.read(os.path.join(self.output_dir, 'predtest_i{0:04d}_b{1}.txt'.format(int(self.epochs),
+                                                                                                 self.frac_balance)),
+                               format='ascii')
+            else:
+                r = Table.read(os.path.join(self.output_dir, ))
 
-        if mode is 'metrics' and len(files) < 2:
-            raise ValueError("Can only calculate metrics for multiple models.")
-        
-        
-        df= Table()
         mean_arr = []
+        colnames = [i for i in r.colnames if 'pred' in i]
+        for cn in colnames: 
+            mean_arr.append(np.round(r[cn].data, 3))
+            
+        r.add_column(Column(np.nanmean(mean_arr, axis=0), name='mean_pred'))
         
-        for i, val in enumerate(files):
-            r = Table.read(val, format="csv")
-            
-            df.add_column(Column(np.round(r['pred'].data, 3),
-                                 name='s'+(val.split('_s')[-1]).split('_')[0]))
-            
-            mean_arr.append(np.round(r['pred'].data, 3))
-            
-        df.add_column(Column(np.nanmean(mean_arr, axis=0), name='pred'))
-        
-        df.add_column(Column(r['gt'].data, name='gt'), index=0)
-        df.add_column(Column(r['tpeak'].data, name='peak'), index=0)
-        df.add_column(Column(r['# tic'].data, name='tic'), index=0)
+        pred_round = np.zeros(len(r))
+        pred_round[r['mean_pred'] >= threshold] = 1
+        pred_round[r['mean_pred'] < threshold]  = 0
+        r.add_column(Column(pred_round, name='pred_round'), index=0)
 
-        pred_round = np.zeros(len(df))
-        pred_round[df['pred'] >= threshold] = 1
-        pred_round[df['pred'] < threshold]  = 0
-        df.add_column(Column(pred_round, name='pred_round'), index=0)
+        return r
 
-        return df
-
-    def ensemble_metrics(self, df):
+    def ensemble_metrics(self, threshold=0.5, data_set='validation', mode='ensemble'):
         """
         Calculates the metrics and average metrics when ensemble training.
 
         Parameters
         ----------
-        df : astropy.Table.table
-             Table of output predictions from the validation set.
+        threshold : float, optional
+             Percentage cutoff for the ensemble metrics. Default is 0.5.
+        data_set : str, optional
+             Allows the user to look at either the validation or test
+             set metrics. Default is 'validation'. The other option is 'test'. 
+        mode : str, optional
+             Calculates the metrics for either your ensemble of models or your
+             cross validation models. Options are 'ensemble' or 'crossval'.
+             Default is 'ensemble'.
 
         Attributes
         ----------
@@ -353,6 +350,8 @@ class ConvNN(object):
         prec_recall_curve : np.array
              2D array of precision and recall for plotting purposes.
         """
+        df = self.create_df(threshold, data_set, mode)
+
         from sklearn.metrics import precision_recall_curve
         from sklearn.metrics import average_precision_score
         from sklearn.metrics import precision_score
@@ -381,7 +380,7 @@ class ConvNN(object):
         ps = np.round(precision_score(df['gt'], df['pred_round']), 4)
 
         # PRECISION RECALL CURVE
-        prec_curve, rec_curve, _ = precision_recall_curve(df['gt'], df['pred'])
+        prec_curve, rec_curve, _ = precision_recall_curve(df['gt'], df['mean_pred'])
 
         self.average_precision = ap[-1]
         self.accuracy = ac[-1]
@@ -391,7 +390,7 @@ class ConvNN(object):
  
 
     def cross_validation(self, seed=2, epochs=350, batch_size=64,
-                         n_splits=5, shuffle=True, save=False):
+                         n_splits=5, shuffle=True, pred_test=False, save=False):
         """
         Performs cross validation for a given number of K-folds.
         Reassigns the training and validation sets for each fold.
@@ -409,6 +408,9 @@ class ConvNN(object):
         shuffle : bool, optional
              Allows for shuffling in scikitlearn.model_slection.KFold.
              Default is True.
+        pred_test : bool, optional
+             Allows for predicting on the test set. DO NOT SET TO TRUE UNTIL
+             YOU ARE HAPPY WITH YOUR FINAL MODEL. Default is False.
         save : bool, optional
              Allows the user to save the kfolds table of predictions.
              Defaul it False.
@@ -435,6 +437,9 @@ class ConvNN(object):
 
         kf = KFold(n_splits=n_splits, shuffle=shuffle)
 
+        if pred_test is True:
+            
+
         i = 0
         for ti, vi in kf.split(y_trainval):
             # CREATES TRAINING AND VALIDATION SETS
@@ -457,9 +462,24 @@ class ConvNN(object):
                                      batch_size=batch_size, shuffle=shuffle,
                                      validation_data=(x_val, y_val))
 
+            # SAVES THE MODEL BY DEFAULT
+            self.model.save(os.path.join(self.output_dir, 'crossval_s{0:04d}_i{1:04d}_b{2}_f{3:04d}.h5'.format(int(seed),
+                                                                                                               int(epochs),
+                                                                                                               self.frac_balance,
+                                                                                                               i)))
+            
+
+            tab_names = ['id', 'gt', 'peak', 'pred']
+
             # CALCULATE METRICS FOR VALIDATION SET
             pred_val = self.model.predict(x_val)
 
+            # PREDICTS ON TEST SET IS PRED_TEST IS TRUE
+            if pred_test is True:
+                preds = self.model.predict(self.ds.test_data)
+                data = [self.ds.
+
+            # SAVES PREDS FOR VALIDATION AND TEST (IF TRUE) SETS
             tab_names = ['id', 'gt', 'peak', 'pred']
             data = [t_val, y_val, p_val, pred_val]
             for j, tn in enumerate(tab_names):
