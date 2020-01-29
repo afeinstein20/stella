@@ -188,36 +188,44 @@ class ConvNN(object):
         batch_size : int, optional
              Setting the batch size for the training. Default
              is 64.
+        shuffle : bool, optional
+             Allows for shuffling of the training set when fitting
+             the model. Default is True.
+        pred_test : bool, optional
+             Allows for predictions on the test set. DO NOT SET TO
+             TRUE UNTIL YOU'VE DECIDED ON YOUR FINAL MODEL. Default
+             is False.
+        save : bool, optional
+             Saves the predictions and histories of from each model
+             in an ascii table to the specified output directory.
+             Default is False.
 
         Attributes
         ----------
         history_table : Astropy.table.Table
              Saves the metric values for each model run.
-        multi_predictions : np.ndarray
-             Array of all the predictions from each model run.
         val_pred_table : Astropy.table.Table
              Predictions on the validation set from each run.
         test_pred_table : Astropy.table.Table
              Predictions on the test set from each run. Must set
              pred_test = True, or else it is an empty table.
         """
-        if type(seeds) == int or type(seeds) == float:
+
+        if type(seeds) == int or type(seeds) == float or type(seed) == np.int64: 
             seeds = np.array([seeds])
 
         self.epochs = epochs
 
+        # CREATES TABLES FOR SAVING DATA
         table = Table()
         val_table  = Table([self.ds.val_ids, self.ds.val_labels, self.ds.val_tpeaks],
                            names=['tic', 'gt', 'tpeak'])
         test_table = Table([self.ds.test_ids, self.ds.test_labels, self.ds.test_tpeaks],
                            names=['tic', 'gt', 'tpeak'])
-
-        all_predictions = []
         
-        pred_fn = os.path.join(self.output_dir,'{0:09d}_seed{1:03d}.npy')
+        fmt_tail = '_s{0:04d}_i{1:04d}_b{2}'
         
         for seed in seeds:
-            print(seed, type(seed))
             keras.backend.clear_session()
             
             # CREATES MODEL BASED ON GIVEN RANDOM SEED
@@ -233,9 +241,9 @@ class ConvNN(object):
                 table.add_column(col)
 
             # SAVES THE MODEL TO OUTPUT DIRECTORY
-            self.model.save(os.path.join(self.output_dir, 'model_s{0:04d}_i{1:04d}_b{2}.h5'.format(int(seed),
-                                                                                                   int(epochs),
-                                                                                                   self.frac_balance)))
+            self.model.save(os.path.join(self.output_dir, 'model' + fmt_tail.format(int(seed),
+                                                                                    int(epochs),
+                                                                                    self.frac_balance) + '.h5'))
 
             # GETS PREDICTIONS FOR EACH VALIDATION SET LIGHT CURVE
             val_preds = self.model.predict(self.ds.val_data)
@@ -247,16 +255,16 @@ class ConvNN(object):
                 test_preds = self.model.predict(self.ds.test_data)
                 test_table.add_column(Column(test_preds, name='test_s{0:04d}'.format(int(seed))))
                 
-                
+        # SETS TABLE ATTRIBUTES
         self.history_table = table
-        self.multi_predictions = all_predictions
         self.val_pred_table = val_table
         self.test_pred_table = test_table
 
+        # SAVES TABLE IS SAVE IS TRUE
         if save is True:
-            table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
-            val_table.write(os.path.join(self.output_dir, 'val_set_preds.txt'), format='ascii')
-            test_table.write(os.path.join(self.output_dir, 'test_set_preds.txt'), format='ascii')
+            table.write(os.path.join(self.output_dir, 'histories' + fmt_tail.format(int(seed), int(epochs), self.frac_balance) + '.txt'), format='ascii')
+            val_table.write(os.path.join(self.output_dir, 'predval' + fmt_tail.format(int(seed), int(epochs), self.frac_balance) + '.txt'), format='ascii')
+            test_table.write(os.path.join(self.output_dir, 'predtest' + fmt_tail.format(int(seed), int(epochs), self.frac_balance) +  '.txt'), format='ascii')
 
 
     def create_df(self, threshold, mode='metrics', data_set='validation'):
