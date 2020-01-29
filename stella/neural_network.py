@@ -438,7 +438,8 @@ class ConvNN(object):
         kf = KFold(n_splits=n_splits, shuffle=shuffle)
 
         if pred_test is True:
-            
+            pred_test_table = Table([self.ds.test_ids, self.ds.test_labels, self.ds.test_peaks],
+                                    names=['id', 'gt', 'peak'])
 
         i = 0
         for ti, vi in kf.split(y_trainval):
@@ -469,17 +470,15 @@ class ConvNN(object):
                                                                                                                i)))
             
 
-            tab_names = ['id', 'gt', 'peak', 'pred']
-
             # CALCULATE METRICS FOR VALIDATION SET
             pred_val = self.model.predict(x_val)
 
             # PREDICTS ON TEST SET IS PRED_TEST IS TRUE
             if pred_test is True:
                 preds = self.model.predict(self.ds.test_data)
-                data = [self.ds.
+                pred_test_table.add_column(Column(preds, name='pred_f{0:03d}'.format(i)))
 
-            # SAVES PREDS FOR VALIDATION AND TEST (IF TRUE) SETS
+            # SAVES PREDS FOR VALIDATION SET
             tab_names = ['id', 'gt', 'peak', 'pred']
             data = [t_val, y_val, p_val, pred_val]
             for j, tn in enumerate(tab_names):
