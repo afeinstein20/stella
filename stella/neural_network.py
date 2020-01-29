@@ -149,61 +149,30 @@ class ConvNN(object):
         model.summary()
 
 
-    def train_model(self, seed=2, epochs=350, batch_size=64, 
-                    shuffle=True, kfolds=False):
+    def load_model(self, modelname, mode='validation'):
         """
-        Trains the model using the training set from stella.TrainingData.
+        Loads an already created model. 
 
         Parameters
-        ---------- 
-        seed : int, optional
-             Sets random model seed. Default is 2.
-        epochs : int, optional 
-             The number of epochs to train for.
-             Default is 350.
-        batch_size : int, optional
-             The batch size fro training.
-             Default is 64.
-        shuffle : bool, optional
-             Whether or not to shuffle the training set batches.
-             Default is True.
-
-        Attributes
-        ---------- 
-        history : tensorflow.python.keras.callbacks.History
-        test_data : np.array
-             The remaining data in training_matrix that is used
-             for testing.
-        test_labels : np.array
-             The labels for the testing data set.
+        ----------
+        modelname : str
+        mode : str, optional
         """
-        self.create_model(seed)
-        self.epochs = epochs
-
-        if kfolds is False:
-            x_train = self.ds.train_data
-            y_train = self.ds.train_labels
-
-            x_val = self.ds.val_data
-            y_val = self.ds.val_labels
-
-            x_test = self.ds.test_data
-            y_test = self.ds.test_labels
-
-        else:
-            x_train = self.kfolds_train_data
-            y_train = self.kfolds_train_labels
-            
-            x_val = self.kfolds_val_data
-            y_val = self.kfolds_val_labels
-
-        self.history = self.model.fit(x_train, y_train, epochs=epochs, 
-                                      batch_size=batch_size, shuffle=shuffle,
-                                      validation_data=(x_val, y_val))
+        model = keras.models.load_model(modelname)
+        self.model = model
+        
+        if mode == 'test':
+            pred = model.predict(self.ds.test_data)
+        elif mode == 'validation':
+            pred = model.predict(self.ds.val_data)
 
 
-    def train_multi_models(self, seeds=None, epochs=350, batch_size=64,
-                           metric_threshold=0.5):
+        ## Calculate metrics from here
+        return 
+        
+
+    def train_models(self, seeds=[2], epochs=350, batch_size=64, shuffle=True,
+                     pred_test=False, save=False):
         """
         Runs n number of models with given initial random seeds of
         length n. Also saves each model run to a hidden ~/.stella 
@@ -211,7 +180,7 @@ class ConvNN(object):
 
         Parameters
         ----------
-        seeds : np.array, optional
+        seeds : np.array
              Array of random seed starters of length n, where
              n is the number of models you want to run.
         epochs : int, optional
@@ -219,9 +188,6 @@ class ConvNN(object):
         batch_size : int, optional
              Setting the batch size for the training. Default
              is 64.
-        metric_threshold : float, optional
-             Defines the threshold for positive vs. negative cases. Default
-             is 0.5 (50%). 
 
         Attributes
         ----------
@@ -229,24 +195,41 @@ class ConvNN(object):
              Saves the metric values for each model run.
         multi_predictions : np.ndarray
              Array of all the predictions from each model run.
+        val_pred_table : Astropy.table.Table
+             Predictions on the validation set from each run.
+        test_pred_table : Astropy.table.Table
+             Predictions on the test set from each run. Must set
+             pred_test = True, or else it is an empty table.
         """
+        if type(seeds) == int or type(seeds) == float:
+            seeds = np.array([seeds])
+
         self.epochs = epochs
 
         table = Table()
+        val_table  = Table([self.ds.val_ids, self.ds.val_labels, self.ds.val_tpeaks],
+                           names=['tic', 'gt', 'tpeak'])
+        test_table = Table([self.ds.test_ids, self.ds.test_labels, self.ds.test_tpeaks],
+                           names=['tic', 'gt', 'tpeak'])
+
         all_predictions = []
         
         pred_fn = os.path.join(self.output_dir,'{0:09d}_seed{1:03d}.npy')
         
         for seed in seeds:
+            print(seed, type(seed))
             keras.backend.clear_session()
             
             # CREATES MODEL BASED ON GIVEN RANDOM SEED
             self.create_model(seed)
-            self.train_model(epochs=epochs, batch_size=batch_size)
+            self.history = self.model.fit(self.ds.train_data, self.ds.train_labels, 
+                                          epochs=epochs,
+                                          batch_size=batch_size, shuffle=shuffle,
+                                          validation_data=(self.ds.val_data, self.ds.val_labels))
 
             col_names = list(self.history.history.keys())
             for cn in col_names:
-                col = Column(self.history.history[cn], name=cn+'{0:04d}'.format(seed))
+                col = Column(self.history.history[cn], name=cn+'_s{0:04d}'.format(int(seed)))
                 table.add_column(col)
 
             # SAVES THE MODEL TO OUTPUT DIRECTORY
@@ -254,34 +237,26 @@ class ConvNN(object):
                                                                                                    int(epochs),
                                                                                                    self.frac_balance)))
 
-            # GETS PREDICTIONS FOR EACH LIGHT CURVE
-            val_preds = self.model.predict(self.val_data)
+            # GETS PREDICTIONS FOR EACH VALIDATION SET LIGHT CURVE
+            val_preds = self.model.predict(self.ds.val_data)
+            val_table.add_column(Column(val_preds, name='pred_s{0:04d}'.format(int(seed))))
             
-            np.savetxt(os.path.join(self.output_dir, self.predval_fmt.format(int(seed), 
-                                                                             int(epochs),
-                                                                             self.frac_balance)),
-                       np.column_stack((self.val_ids, val_preds, self.val_labels,
-                                        self.val_tpeaks)),
-                       fmt=['%.0f', '%0.6f', '%0.6f', '%.10f'], delimiter=',', 
-                       header='tic,pred,gt,tpeak')
 
-            test_preds = self.model.predict(self.test_data)
-
-            np.savetxt(os.path.join(self.output_dir, self.predtest_fmt.format(int(seed), 
-                                                                              int(epochs),
-                                                                              self.frac_balance)),
-                       np.column_stack((self.test_ids, test_preds, self.test_labels,
-                                        self.test_tpeaks)),
-                       fmt=['%.0f','%0.6f', '%0.6f', '%.10f'], delimiter=',',
-                       header='tic,pred,gt,tpeak')
-
+            # GETS PREDICTIONS FOR EACH TEST SET LIGHT CURVE IF PRED_TEST IS TRUE
+            if pred_test is True:
+                test_preds = self.model.predict(self.ds.test_data)
+                test_table.add_column(Column(test_preds, name='test_s{0:04d}'.format(int(seed))))
+                
+                
         self.history_table = table
         self.multi_predictions = all_predictions
+        self.val_pred_table = val_table
+        self.test_pred_table = test_table
 
-        table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
-        
-        df = self.create_df(metric_threshold)
-        self.ensemble_metrics(df)
+        if save is True:
+            table.write(os.path.join(self.output_dir, 'model_histories.txt'), format='ascii')
+            val_table.write(os.path.join(self.output_dir, 'val_set_preds.txt'), format='ascii')
+            test_table.write(os.path.join(self.output_dir, 'test_set_preds.txt'), format='ascii')
 
 
     def create_df(self, threshold, mode='metrics', data_set='validation'):

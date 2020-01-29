@@ -355,10 +355,10 @@ class DataSet(object):
         self.test_labels = y_test
 
         self.test_ids = self.training_ids[val_cutoff:]
-        self.test_tpeaks = self.tpeaks[val_cutoff:]
+        self.test_tpeaks = self.training_peaks[val_cutoff:]
         
         self.val_data = x_val
         self.val_labels = y_val
 
         self.val_ids = self.training_ids[train_cutoff:val_cutoff]
-        self.val_tpeaks = self.tpeaks[train_cutoff:val_cutoff]
+        self.val_tpeaks = self.training_peaks[train_cutoff:val_cutoff]
