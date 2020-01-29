@@ -444,7 +444,7 @@ class ConvNN(object):
         kf = KFold(n_splits=n_splits, shuffle=shuffle)
 
         if pred_test is True:
-            pred_test_table = Table([self.ds.test_ids, self.ds.test_labels, self.ds.test_peaks],
+            pred_test_table = Table([self.ds.test_ids, self.ds.test_labels, self.ds.test_tpeaks],
                                     names=['id', 'gt', 'peak'])
 
         i = 0
