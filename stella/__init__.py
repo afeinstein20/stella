@@ -6,3 +6,4 @@ from .neural_network            import *
 from .preprocessing_data        import *
 from .recovery                  import *
 from .visualize                 import *
+from .metrics                   import *

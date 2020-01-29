@@ -14,10 +14,10 @@ class ConvNN(object):
     neural network.
     """
 
-    def __init__(self, ts, 
+    def __init__(self, ds, output_dir,
                  layers=None, optimizer='adam',
                  loss='binary_crossentropy', 
-                 metrics=None, output_dir=None):
+                 metrics=None):
         """
         Creates and trains a Tensorflow keras model
         with either layers that have been passed in
@@ -26,7 +26,9 @@ class ConvNN(object):
 
         Parameters
         ----------
-        ts : stella.TrainingSet object
+        ds : stella.DataSet object
+        output_dir : str
+             Path to a given output directory for files.
         training : float, optional
              Assigns the percentage of training set data for training.
              Default is 80%.
@@ -61,30 +63,24 @@ class ConvNN(object):
         labels : stella.TrainingSet.labels
         image_fmt : stella.TrainingSet.cadences
         """
-        self.ds = ts
+        self.ds = ds
         self.layers = layers
         self.optimizer = optimizer
         self.loss = loss
         self.metrics = metrics
-        self.training_matrix = np.copy(ts.training_matrix)
-        self.labels = np.copy(ts.labels)
-        self.cadences = np.copy(ts.cadences)
+        self.training_matrix = np.copy(ds.training_matrix)
+        self.labels = np.copy(ds.labels)
+        self.cadences = np.copy(ds.cadences)
 
-        self.frac_balance = ts.frac_balance + 0.0
+        self.frac_balance = ds.frac_balance + 0.0
 
-        self.tpeaks = ts.training_peaks
-        self.training_ids = ts.training_ids
+        self.tpeaks = ds.training_peaks
+        self.training_ids = ds.training_ids
         self.prec_recall_curve = None
         self.history = None
         self.history_table = None
 
-        self.predval_fmt = 'predval_s{0:04d}_i{1:04d}_b{2}.txt'
-        self.predtest_fmt = 'predtest_s{0:04d}_i{1:04d}_b{2}.txt'
-
-        if output_dir is None:
-            self.fetch_dir()
-        else:
-            self.output_dir = output_dir
+        self.output_dir = output_dir
 
 
     def create_model(self, seed):
@@ -171,7 +167,7 @@ class ConvNN(object):
         return 
         
 
-    def train_models(self, seeds=[2], epochs=350, batch_size=64, shuffle=True,
+    def train_models(self, seeds=[2], epochs=350, batch_size=64, shuffle=False,
                      pred_test=False, save=False):
         """
         Runs n number of models with given initial random seeds of
@@ -190,7 +186,7 @@ class ConvNN(object):
              is 64.
         shuffle : bool, optional
              Allows for shuffling of the training set when fitting
-             the model. Default is True.
+             the model. Default is False.
         pred_test : bool, optional
              Allows for predictions on the test set. DO NOT SET TO
              TRUE UNTIL YOU'VE DECIDED ON YOUR FINAL MODEL. Default
@@ -227,7 +223,7 @@ class ConvNN(object):
         for seed in seeds:
             
             fmt_tail = '_s{0:04d}_i{1:04d}_b{2}'.format(int(seed), int(epochs), self.frac_balance)
-            model_fmt = 'model' + fmt_tail + '.h5'
+            model_fmt = 'ensemble' + fmt_tail + '.h5'
 
             keras.backend.clear_session()
             
@@ -254,7 +250,7 @@ class ConvNN(object):
             # GETS PREDICTIONS FOR EACH TEST SET LIGHT CURVE IF PRED_TEST IS TRUE
             if pred_test is True:
                 test_preds = self.model.predict(self.ds.test_data)
-                test_table.add_column(Column(test_preds, name='test_s{0:04d}'.format(int(seed))))
+                test_table.add_column(Column(test_preds, name='pred_s{0:04d}'.format(int(seed))))
                 
         # SETS TABLE ATTRIBUTES
         self.history_table = table
@@ -264,15 +260,15 @@ class ConvNN(object):
         # SAVES TABLE IS SAVE IS TRUE
         if save is True:
             fmt_table = '_i{0:04d}_b{1}.txt'.format(int(epochs), self.frac_balance)
-            hist_fmt = 'histories' + fmt_table
-            pred_fmt = 'predval' + fmt_table
+            hist_fmt = 'ensemble_histories' + fmt_table
+            pred_fmt = 'ensemble_predval' + fmt_table
 
             table.write(os.path.join(self.output_dir, hist_fmt), format='ascii')
             val_table.write(os.path.join(self.output_dir, pred_fmt), format='ascii',
                             fast_writer=False)
 
             if pred_test is True:
-                test_fmt = 'predtest' + fmt_table
+                test_fmt = 'ensemble_predtest' + fmt_table
                 test_table.write(os.path.join(self.output_dir, test_fmt), format='ascii',
                                  fast_writer=False)
 
@@ -301,6 +297,10 @@ class ConvNN(object):
             if mode == 'ensemble':
                 r = Table.read(os.path.join(self.output_dir, 'predval_i{0:04d}_b{1}.txt'.format(int(self.epochs),
                                                                                                 self.frac_balance)),
+                               format='ascii')
+            elif mode == 'crossval':
+                r = Table.read(os.path.join(self.output_dir, 'crossval_predval_i{0:04d}_b{i}'.format(int(self.epochs),
+                                                                                                     self.frac_balance)),
                                format='ascii')
                 
         elif data_set.lower() == 'test':
@@ -390,7 +390,7 @@ class ConvNN(object):
  
 
     def cross_validation(self, seed=2, epochs=350, batch_size=64,
-                         n_splits=5, shuffle=True, pred_test=False, save=False):
+                         n_splits=5, shuffle=False, pred_test=False, save=False):
         """
         Performs cross validation for a given number of K-folds.
         Reassigns the training and validation sets for each fold.
@@ -407,7 +407,7 @@ class ConvNN(object):
              Number of folds to perform. Default is 5.
         shuffle : bool, optional
              Allows for shuffling in scikitlearn.model_slection.KFold.
-             Default is True.
+             Default is False.
         pred_test : bool, optional
              Allows for predicting on the test set. DO NOT SET TO TRUE UNTIL
              YOU ARE HAPPY WITH YOUR FINAL MODEL. Default is False.
@@ -417,9 +417,15 @@ class ConvNN(object):
 
         Attributes
         ----------
-        kfolds_table : astropy.Table.table
+        crossval_predval : astropy.table.Table
+             Table of predictions on the validation set from each fold.
+        crossval_predtest : astropy.table.Table
+             Table of predictions on the test set from each fold. ONLY 
+             EXISTS IF PRED_TEST IS TRUE.
+        crossval_histories : astropy.table.Table
              Table of history values from the model run on each fold.
         """
+
         from sklearn.model_selection import KFold
         from sklearn.metrics import precision_recall_curve
         from sklearn.metrics import average_precision_score
@@ -477,6 +483,7 @@ class ConvNN(object):
             if pred_test is True:
                 preds = self.model.predict(self.ds.test_data)
                 pred_test_table.add_column(Column(preds, name='pred_f{0:03d}'.format(i)))
+                self.crossval_predtest = pred_test_table
 
             # SAVES PREDS FOR VALIDATION SET
             tab_names = ['id', 'gt', 'peak', 'pred']
@@ -494,21 +501,28 @@ class ConvNN(object):
                 col = Column(history.history[cn], name=cn+'_f{0:03d}'.format(i))
                 tab.add_column(col)
 
+            # KEEPS TRACK OF WHICH FOLD
             i += 1
 
         # SETS TABLES AS ATTRIBUTES
-        self.kfolds_table = predtab
-        self.kfolds_histories = tab
+        self.crossval_predval = predtab
+        self.crossval_histories = tab
 
         # IF SAVE IS TRUE, SAVES TABLES TO OUTPUT DIRECTORY
         if save is True:
-            fmt = 'kfolds_{0}_s{1:04d}_i{2:04d}_b{3}.txt'
-            predtab.write(os.path.join(self.output_dir, fmt.format('preds', int(seed),
+            fmt = 'crossval_{0}_s{1:04d}_i{2:04d}_b{3}.txt'
+            predtab.write(os.path.join(self.output_dir, fmt.format('predval', int(seed),
                                                                    int(epochs), self.frac_balance)), format='ascii',
                           fast_writer=False)
             tab.write(os.path.join(self.output_dir, fmt.format('histories', int(seed),
                                                                int(epochs), self.frac_balance)), format='ascii',
                       fast_writer=False)
+
+            # SAVES TEST SET PREDICTIONS IF TRUE
+            if pred_test is True:
+                pred_test_table.write(os.path.join(self.output_dir, fmt.format('predtest', int(seed),
+                                                                               int(epochs), self.frac_balance)),
+                                      format='ascii', fast_writer=False)
 
 
     def calibration(self, df, metric_threshold):
@@ -657,33 +671,3 @@ class ConvNN(object):
             predictions.append(preds)
             
         return predictions
-
-
-    def fetch_dir(self):
-        """
-        Returns the default path to the directory where files will be saved
-        or loaded.
-        By default, this method will return "~/.stella" and create
-        this directory if it does not exist.  If the directory cannot be
-        access or created, then it returns the local directory (".").
-        
-        Attributes
-        -------
-        output_dir : str
-        Path to location of saved CNN models.
-        """
-        download_dir    = os.path.join(os.path.expanduser('~'), '.stella')
-        if os.path.isdir(download_dir):
-            self.output_dir = download_dir
-        else:
-            # if it doesn't exist, make a new cache directory
-            try:
-                os.mkdir(download_dir)
-                # downloads locally if OS error occurs
-            except OSError:
-                download_dir = '.'
-                warnings.warn('Warning: unable to create {}. '
-                              'Saving models to the current '
-                              'working directory instead.'.format(download_dir))
-                    
-            self.output_dir = download_dir
