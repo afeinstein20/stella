@@ -14,7 +14,8 @@ class ConvNN(object):
     neural network.
     """
 
-    def __init__(self, ds, output_dir,
+    def __init__(self, output_dir, ds=None,
+                 modelname=None,
                  layers=None, optimizer='adam',
                  loss='binary_crossentropy', 
                  metrics=None):
@@ -26,15 +27,9 @@ class ConvNN(object):
 
         Parameters
         ----------
-        ds : stella.DataSet object
         output_dir : str
              Path to a given output directory for files.
-        training : float, optional
-             Assigns the percentage of training set data for training.
-             Default is 80%.
-        validation : float, optional
-             Assigns the percentage of training set data for validation.
-             Default is 10%.
+        ds : stella.DataSet object, optional
         layers : np.array, optional
              An array of keras.layers for the ConvNN.
         optimizer : str, optional
@@ -45,13 +40,6 @@ class ConvNN(object):
         metrics: np.array, optional
              Metrics used to train the keras model on. If None, metrics are
              [accuracy, precision, recall].
-        epochs : int, optional
-             Number of epochs to train the keras model on. Default is 15.
-        seed : int, optional
-             Sets random seed for reproducable results. Default is 2.
-        output_dir : path, optional
-             The path to save models/histories/predictions to. Default is
-             to create a hidden ~/.stella directory.
 
         Attributes
         ----------
@@ -64,23 +52,35 @@ class ConvNN(object):
         image_fmt : stella.TrainingSet.cadences
         """
         self.ds = ds
-        self.layers = layers
-        self.optimizer = optimizer
-        self.loss = loss
-        self.metrics = metrics
-        self.training_matrix = np.copy(ds.training_matrix)
-        self.labels = np.copy(ds.labels)
-        self.cadences = np.copy(ds.cadences)
 
-        self.frac_balance = ds.frac_balance + 0.0
-
-        self.tpeaks = ds.training_peaks
-        self.training_ids = ds.training_ids
+        if ds is not None:
+            self.layers = layers
+            self.optimizer = optimizer
+            self.loss = loss
+            self.metrics = metrics
+            self.training_matrix = np.copy(ds.training_matrix)
+            self.labels = np.copy(ds.labels)
+            self.cadences = np.copy(ds.cadences)
+            self.tpeaks = ds.training_peaks
+            self.training_ids = ds.training_ids
+            self.frac_balance = ds.frac_balance + 0.0
+        else:
+            print("No stella.DataSet object found. Can only call stella.ConvNN.predict()")
+        
         self.prec_recall_curve = None
         self.history = None
         self.history_table = None
 
         self.output_dir = output_dir
+
+
+    def check_ds(self):
+        """
+        Spits back warning if user does not pass in a 
+        stella.DataSet object.
+        """
+        if self.ds is None:
+            raise ValueError("No stella.DataSet object passed in. Cannot continue.")
 
 
     def create_model(self, seed):
@@ -91,6 +91,8 @@ class ConvNN(object):
         ----------
         model : tensorflow.python.keras.engine.sequential.Sequential
         """
+        self.check_ds()
+
         # SETS RANDOM SEED FOR REPRODUCABLE RESULTS
         np.random.seed(seed)
         tf.random.set_seed(seed)
@@ -206,6 +208,7 @@ class ConvNN(object):
              Predictions on the test set from each run. Must set
              pred_test = True, or else it is an empty table.
         """
+        self.check_ds()
 
         if type(seeds) == int or type(seeds) == float or type(seeds) == np.int64: 
             seeds = np.array([seeds])
@@ -261,18 +264,27 @@ class ConvNN(object):
 
         # SAVES TABLE IS SAVE IS TRUE
         if save is True:
-            fmt_table = '_i{0:04d}_b{1}.txt'.format(int(epochs), self.frac_balance)
+            self.save_tables()
+
+
+    def save_tables(self):
+        """
+        Allows for easy saving of the history and validation (and potentially test) set
+        metrics tables. Only works if the tables exist.
+        """
+        if self.history_table:
+            fmt_table = '_i{0:04d}_b{1}.txt'.format(int(self.epochs), self.frac_balance)
             hist_fmt = 'ensemble_histories' + fmt_table
             pred_fmt = 'ensemble_predval' + fmt_table
-
-            table.write(os.path.join(self.output_dir, hist_fmt), format='ascii')
-            val_table.write(os.path.join(self.output_dir, pred_fmt), format='ascii',
-                            fast_writer=False)
-
-            if pred_test is True:
+            
+            self.history_table.write(os.path.join(self.output_dir, hist_fmt), format='ascii')
+            self.val_pred_table.write(os.path.join(self.output_dir, pred_fmt), format='ascii',
+                                      fast_writer=False)
+            
+            if self.test_pred_table:
                 test_fmt = 'ensemble_predtest' + fmt_table
-                test_table.write(os.path.join(self.output_dir, test_fmt), format='ascii',
-                                 fast_writer=False)
+                self.test_pred_table.write(os.path.join(self.output_dir, test_fmt), format='ascii',
+                                           fast_writer=False)
 
 
     def cross_validation(self, seed=2, epochs=350, batch_size=64,
@@ -311,6 +323,7 @@ class ConvNN(object):
         crossval_histories : astropy.table.Table
              Table of history values from the model run on each fold.
         """
+        self.check_ds()
 
         from sklearn.model_selection import KFold
         from sklearn.metrics import precision_recall_curve
@@ -445,13 +458,15 @@ class ConvNN(object):
         return df
                        
         
-    def predict(self, times, fluxes, errs, injected=False):
+    def predict(self, modelname, times, fluxes, errs, injected=False):
         """
         Takes in arrays of time and flux and predicts where the flares 
         are based on the keras model created and trained.
 
         Parameters
         ----------
+        modelname : str
+             Path and filename of a model to load.
         times : np.ndarray
              Array of times to predict flares in.
         fluxes : np.ndarray
@@ -464,101 +479,96 @@ class ConvNN(object):
              
         Attributes
         ----------
-        predict_times : np.ndarray
+        predict_time : np.ndarray
              The input times array.
-        predict_fluxes : np.ndarray
+        predict_flux : np.ndarray
              The input fluxes array.
-        predict_errs : np.ndarray
+        predict_err : np.ndarray
              The input flux errors array.
         predictions : np.ndarray
              An array of predictions from the model.
         """
-        def fill_in_sample(t, f, e, sigma=2.5):
-            # FILLS IN GAPS IN THE DATA FOR CHUNKING TO FIND FLARES
-            t, f = np.array(t), np.array(f)
-            
-            diff = np.diff(t)
-            
-            diff_ind = np.where( diff >= (np.nanmedian(diff) + sigma*np.nanstd(diff)) )[0]
-            avg_noise = np.nanstd(f) / 2.0
-            
-            if len(diff_ind) > 0:
-                for i in diff_ind:
-                    start = i
-                    stop  = int(i + 2)
-                    func = interp1d(t[start:stop], f[start:stop])
-                    new_time = np.arange(t[start], 
-                                         t[int(start+1)],
-                                         np.nanmedian(diff))
-                    new_flux = func(new_time) + np.random.normal(0, avg_noise,
-                                                                 len(new_time))
-                    t = np.insert(t, i, new_time)
-                    f = np.insert(f, i, new_flux)
-                    e = np.insert(e, i,
-                                  np.full(len(new_time), avg_noise))
-            t, f = zip(*sorted(zip(t, f)))
-            return t, f, e
 
+        def identify_gaps(t):
+            """
+            Identifies which cadences can be predicted on given
+            locations of gaps in the data. Will always stay 
+            cadences/2 away from the gaps.
+
+            Returns lists of good indices to predict on.
+            """
+            nonlocal cad_pad
+
+            # SETS ALL CADENCES AVAILABLE
+            all_inds = np.arange(0, len(t), 1, dtype=int)
+
+            # REMOVES BEGINNING AND ENDS
+            bad_inds = np.arange(0,cad_pad,1,dtype=int)
+            bad_inds = np.append(bad_inds, np.arange(len(t)-cad_pad,
+                                                     len(t), 1, dtype=int))
+
+            diff = np.diff(t)
+            med, std = np.nanmedian(diff), np.nanstd(diff)
+            
+            bad = np.where(np.abs(diff) >= med + 1.5*std)[0]
+            for b in bad:
+                bad_inds = np.append(bad_inds, np.arange(b-cad_pad,
+                                                         b+cad_pad,
+                                                         1, dtype=int))
+            bad_inds = np.sort(bad_inds)
+            return np.delete(all_inds, bad_inds)
+
+        model = keras.models.load_model(modelname)
+
+        # GETS REQUIRED INPUT SHAPE FROM MODEL
+        cadences = model.input.shape[1]
+        cad_pad  = cadences/2
+
+        # REFORMATS FOR A SINGLE LIGHT CURVE PASSED IN
+        try:
+            times[0][0]
+        except:
+            times  = [times]
+            fluxes = [fluxes]
+            errs   = [errs]
+        
 
         predictions = []
-
-        cadences = self.cadences + 0
-        
-        new_time = []
-        new_flux = []
+        pred_t, pred_f, pred_e = [], [], []
     
         for j in tqdm(range(len(times))):
-            q = np.isnan(fluxes[j]) == False
-            time = times[j]#[q]
-            lc   = fluxes[j]#[q]
-            err  = errs[j]#[q]
+            time = times[j] + 0.0
+            lc   = fluxes[j] / np.nanmedian(fluxes[j]) # MUST BE NORMALIZED
+            err  = errs[j] + 0.0
+
+            q = ( (np.isnan(time) == False) & (np.isnan(lc) == False))
+            time, lc, err = time[q], lc[q], err[q]
             
-            time, lc, err = fill_in_sample(time, lc, err)
-        
-            # LIGHT CURVE MUST BE NORMALIZED
-            lc = lc/np.nanmedian(lc)
-    
-            new_time.append(time)
-            new_flux.append(lc)
-            
+            # APPENDS MASKED LIGHT CURVES TO KEEP TRACK OF
+            pred_t.append(time)
+            pred_f.append(lc)
+            pred_e.append(err)
+
+            good_inds = identify_gaps(time)
+                
             reshaped_data = np.zeros((len(lc), cadences))
-            
-            padding       = np.nanmedian(lc)
-            std           = np.std(lc)/4.5
-            cadence_pad   = int(cadences/2)
-            
-            for i in range(len(lc)):
-                if i <= cadences/2:
-                    fill_length   = int(cadence_pad-i)
-                    padding_array = np.zeros( (fill_length,))
-                    f = np.append(padding_array, lc[0:int(i+cadence_pad)])
-                    
-                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
-                    tstep_padding = np.flip(time[i] - tsteps)
-                    t = np.append(tstep_padding, time[0:int(i+cadence_pad)])
-                    
-                elif i >= (len(lc)-cadence_pad):
-                    loc = [int(i-cadence_pad), int(len(lc))]
-                    fill_length   = int(np.abs(cadences - len(lc[loc[0]:loc[1]])))
-                    padding_array = np.zeros( (fill_length,))
-                    f = np.append(lc[loc[0]:loc[1]], padding_array)
-                    
-                    tsteps = np.std(np.diff(time)) * np.arange(0,fill_length,1)
-                    tstep_padding = time[i] - tsteps
-                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
-                    
-                else:
-                    loc = [int(i-cadence_pad), int(i+cadence_pad)]
-                    f = lc[loc[0]:loc[1]]
-                    t = np.append(time[loc[0]:loc[1]], tstep_padding)
-                    
+
+            for i in good_inds:
+                loc = [int(i-cad_pad), int(i+cad_pad)]
+                f = lc[loc[0]:loc[1]]
+                t = time[loc[0]:loc[1]]                    
                 reshaped_data[i] = f
             
             reshaped_data = reshaped_data.reshape(reshaped_data.shape[0], 
                                                   reshaped_data.shape[1], 1)
             
-            preds = self.model.predict(reshaped_data)
+            # Take in a model
+            preds = model.predict(reshaped_data)
             preds = np.reshape(preds, (len(preds),))
+
             predictions.append(preds)
             
-        return predictions
+        self.predict_time = np.array(pred_t)
+        self.predict_flux = np.array(pred_f)
+        self.predict_err  = np.array(pred_e)
+        self.predictions  = np.array(predictions)
