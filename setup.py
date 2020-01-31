@@ -36,7 +36,7 @@ setup(
         'tqdm', 'astropy',
         'astroquery', 'sklearn', 
         'setuptools>=41.0.0', 
-        'tensorflow>=2.1.0', 'vaneska', 'beautifulsoup4>=4.6.0'],
+        'tensorflow>=2.0.0', 'vaneska', 'beautifulsoup4>=4.6.0'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
