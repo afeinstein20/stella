@@ -157,6 +157,7 @@ class ModelMetrics(object):
         if self.mode is 'ensemble':
             gt  = table['gt'].data
             key = 'pred_s'
+            key = 'pred'
             pred_round[table['mean_pred'].data >= threshold] = 1
             pred_round[table['mean_pred'].data <  threshold] = 0
 
