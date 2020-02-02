@@ -156,7 +156,6 @@ class ModelMetrics(object):
         # SETS KEYS TO LOOK FOR IN TABLE FOR EITHER METHOD
         if self.mode is 'ensemble':
             gt  = table['gt'].data
-            key = 'pred_s'
             key = 'pred'
             pred_round[table['mean_pred'].data >= threshold] = 1
             pred_round[table['mean_pred'].data <  threshold] = 0
@@ -172,7 +171,7 @@ class ModelMetrics(object):
 
             # CALCULATES AVERAGE PRECISION SCORE
             ap.append( np.round( average_precision_score(gt,
-                                                         table[val],
+                                                         table[val].data,
                                                          average=None), 4))
             # ROUNDED BASED ON THRESHOLD
             arr = np.copy(table[val].data)
