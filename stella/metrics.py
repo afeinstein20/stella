@@ -275,6 +275,11 @@ class ModelMetrics(object):
             df = self.predtest_table
             x_val = ds.test_data
 
+        try:
+            df['pred_round']
+        except:
+            df = self.pred_round(df, threshold)
+
         # INDICES FOR THE CONFUSION MATRIX
         ind_tn = np.where( (df['pred_round'] == 0) & (df['gt'] == 0) )[0]
         ind_fn = np.where( (df['pred_round'] == 0) & (df['gt'] == 1) )[0]
