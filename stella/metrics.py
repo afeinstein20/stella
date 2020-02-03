@@ -105,7 +105,7 @@ class ModelMetrics(object):
         for cn in colnames:
             mean_arr.append(np.round(self.predval_table[cn].data, 3))
         self.predval_table.add_column(Column(np.nanmean(mean_arr, axis=0),
-                                             name='mean_pred'))
+                                             name='pred_mean'))
 
         if self.predtest_table is not None:
             mean_arr = []
@@ -113,15 +113,15 @@ class ModelMetrics(object):
             for cn in colnames:
                 mean_arr.append(np.round(self.predtest_table[cn].data, 3))
             self.predtest_table.add_column(Column(np.nanmean(mean_arr, axis=0),
-                                                  name='mean_pred'))
+                                                  name='pred_mean'))
 
 
     def pred_round(self, table, threshold):
         """ Rounds the average prediction based on a threshold. """
         pr = np.zeros(len(table))
-        pr[table['mean_pred'].data >= threshold] = 1
-        pr[table['mean_pred'].data <  threshold] = 0
-        table.add_column(Column(pr, name='pred_round'))
+        pr[table['pred_mean'].data >= threshold] = 1
+        pr[table['pred_mean'].data <  threshold] = 0
+        table.add_column(Column(pr, name='round_pred'))
         return table
 
 
@@ -164,7 +164,7 @@ class ModelMetrics(object):
         # SETS KEYS TO LOOK FOR IN TABLE FOR EITHER METHOD
         if self.mode is 'ensemble':
             gt  = table['gt'].data
-            key = 'pred'
+            key = 'pred_'
             table = self.pred_round(table, threshold)
             self.predval_table = table
 
@@ -173,6 +173,7 @@ class ModelMetrics(object):
             key = 'pred_f'
 
         for i, val in enumerate([i for i in table.colnames if key in i]):
+
             if self.mode is 'cross_val':
                 gt_key = 'gt_' + val.split('_')[1]
                 gt = table[gt_key].data
@@ -185,7 +186,7 @@ class ModelMetrics(object):
             arr = np.copy(table[val].data)
             arr[arr >= threshold] = 1.0
             arr[arr <  threshold] = 0.0
-
+                
             # CALCULATES ACCURACY
             ac.append( np.round( np.sum(arr == gt) / len(table), 4))
 
@@ -202,9 +203,9 @@ class ModelMetrics(object):
                 r_cur.append(rec_curve)
 
         if self.mode is 'ensemble':
-            rs = np.round( recall_score( gt, table['pred_round']), 4)
-            ps = np.round( precision_score( gt, table['pred_round']), 4)
-            p_cur, r_cur, _ = precision_recall_curve(gt, table['mean_pred'].data)
+            rs = np.round( recall_score( gt, table['round_pred']), 4)
+            ps = np.round( precision_score( gt, table['round_pred']), 4)
+            p_cur, r_cur, _ = precision_recall_curve(gt, table['pred_mean'].data)
 
             self.average_precision = ap[-1]
             self.accuracy = ac[-1]
@@ -276,15 +277,15 @@ class ModelMetrics(object):
             x_val = ds.test_data
 
         try:
-            df['pred_round']
+            df['round_pred']
         except:
             df = self.pred_round(df, threshold)
 
         # INDICES FOR THE CONFUSION MATRIX
-        ind_tn = np.where( (df['pred_round'] == 0) & (df['gt'] == 0) )[0]
-        ind_fn = np.where( (df['pred_round'] == 0) & (df['gt'] == 1) )[0]
-        ind_tp = np.where( (df['pred_round'] == 1) & (df['gt'] == 1) )[0]
-        ind_fp = np.where( (df['pred_round'] == 1) & (df['gt'] == 0) )[0]
+        ind_tn = np.where( (df['round_pred'] == 0) & (df['gt'] == 0) )[0]
+        ind_fn = np.where( (df['round_pred'] == 0) & (df['gt'] == 1) )[0]
+        ind_tp = np.where( (df['round_pred'] == 1) & (df['gt'] == 1) )[0]
+        ind_fp = np.where( (df['round_pred'] == 1) & (df['gt'] == 0) )[0]
 
         order = [ind_tn, ind_fp, ind_fn, ind_tp]
         titles = ['True Negatives', 'False Positives',
