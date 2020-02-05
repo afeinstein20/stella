@@ -15,7 +15,6 @@ class ConvNN(object):
     """
 
     def __init__(self, output_dir, ds=None,
-                 modelname=None,
                  layers=None, optimizer='adam',
                  loss='binary_crossentropy', 
                  metrics=None):
@@ -27,9 +26,15 @@ class ConvNN(object):
 
         Parameters
         ----------
+        ds : stella.DataSet object
         output_dir : str
              Path to a given output directory for files.
-        ds : stella.DataSet object, optional
+        training : float, optional
+             Assigns the percentage of training set data for training.
+             Default is 80%.
+        validation : float, optional
+             Assigns the percentage of training set data for validation.
+             Default is 10%.
         layers : np.array, optional
              An array of keras.layers for the ConvNN.
         optimizer : str, optional
@@ -40,6 +45,13 @@ class ConvNN(object):
         metrics: np.array, optional
              Metrics used to train the keras model on. If None, metrics are
              [accuracy, precision, recall].
+        epochs : int, optional
+             Number of epochs to train the keras model on. Default is 15.
+        seed : int, optional
+             Sets random seed for reproducable results. Default is 2.
+        output_dir : path, optional
+             The path to save models/histories/predictions to. Default is
+             to create a hidden ~/.stella directory.
 
         Attributes
         ----------
@@ -52,21 +64,23 @@ class ConvNN(object):
         image_fmt : stella.TrainingSet.cadences
         """
         self.ds = ds
+        self.layers = layers
+        self.optimizer = optimizer
+        self.loss = loss
+        self.metrics = metrics
 
         if ds is not None:
-            self.layers = layers
-            self.optimizer = optimizer
-            self.loss = loss
-            self.metrics = metrics
             self.training_matrix = np.copy(ds.training_matrix)
             self.labels = np.copy(ds.labels)
             self.cadences = np.copy(ds.cadences)
+
+            self.frac_balance = ds.frac_balance + 0.0
+
             self.tpeaks = ds.training_peaks
             self.training_ids = ds.training_ids
-            self.frac_balance = ds.frac_balance + 0.0
         else:
             print("No stella.DataSet object found. Can only call stella.ConvNN.predict()")
-        
+
         self.prec_recall_curve = None
         self.history = None
         self.history_table = None
@@ -75,13 +89,9 @@ class ConvNN(object):
 
 
     def check_ds(self):
-        """
-        Spits back warning if user does not pass in a 
-        stella.DataSet object.
-        """
+        """ Checks to see is stella.DataSet passed in."""
         if self.ds is None:
             raise ValueError("No stella.DataSet object passed in. Cannot continue.")
-
 
     def create_model(self, seed):
         """
@@ -110,7 +120,7 @@ class ConvNN(object):
             dropout = 0.1
 
             # CONVOLUTIONAL LAYERS
-            model.add(tf.keras.layers.Conv1D(filters=filter1, kernel_size=3, 
+            model.add(tf.keras.layers.Conv1D(filters=filter1, kernel_size=10, 
                                              activation='relu', padding='same', 
                                              input_shape=(self.cadences, 1)))
             model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
@@ -266,26 +276,24 @@ class ConvNN(object):
         if save is True:
             self.save_tables()
 
-
     def save_tables(self):
         """
-        Allows for easy saving of the history and validation (and potentially test) set
-        metrics tables. Only works if the tables exist.
+        Allows for easy saving of history and prediction tables. Only works
+        if tables exist.
         """
         if self.history_table:
             fmt_table = '_i{0:04d}_b{1}.txt'.format(int(self.epochs), self.frac_balance)
             hist_fmt = 'ensemble_histories' + fmt_table
             pred_fmt = 'ensemble_predval' + fmt_table
-            
+
             self.history_table.write(os.path.join(self.output_dir, hist_fmt), format='ascii')
             self.val_pred_table.write(os.path.join(self.output_dir, pred_fmt), format='ascii',
                                       fast_writer=False)
-            
+
             if self.test_pred_table:
                 test_fmt = 'ensemble_predtest' + fmt_table
                 self.test_pred_table.write(os.path.join(self.output_dir, test_fmt), format='ascii',
                                            fast_writer=False)
-
 
     def cross_validation(self, seed=2, epochs=350, batch_size=64,
                          n_splits=5, shuffle=False, pred_test=False, save=False):
@@ -479,16 +487,15 @@ class ConvNN(object):
              
         Attributes
         ----------
-        predict_time : np.ndarray
+        predict_times : np.ndarray
              The input times array.
-        predict_flux : np.ndarray
+        predict_fluxes : np.ndarray
              The input fluxes array.
-        predict_err : np.ndarray
+        predict_errs : np.ndarray
              The input flux errors array.
         predictions : np.ndarray
              An array of predictions from the model.
         """
-
         def identify_gaps(t):
             """
             Identifies which cadences can be predicted on given
@@ -506,7 +513,6 @@ class ConvNN(object):
             bad_inds = np.arange(0,cad_pad,1,dtype=int)
             bad_inds = np.append(bad_inds, np.arange(len(t)-cad_pad,
                                                      len(t), 1, dtype=int))
-
             diff = np.diff(t)
             med, std = np.nanmedian(diff), np.nanstd(diff)
             
@@ -518,12 +524,13 @@ class ConvNN(object):
             bad_inds = np.sort(bad_inds)
             return np.delete(all_inds, bad_inds)
 
+        # LOADS IN MODEL
         model = keras.models.load_model(modelname)
 
         # GETS REQUIRED INPUT SHAPE FROM MODEL
         cadences = model.input.shape[1]
         cad_pad  = cadences/2
-
+        
         # REFORMATS FOR A SINGLE LIGHT CURVE PASSED IN
         try:
             times[0][0]
@@ -532,7 +539,6 @@ class ConvNN(object):
             fluxes = [fluxes]
             errs   = [errs]
         
-
         predictions = []
         pred_t, pred_f, pred_e = [], [], []
     
@@ -540,35 +546,36 @@ class ConvNN(object):
             time = times[j] + 0.0
             lc   = fluxes[j] / np.nanmedian(fluxes[j]) # MUST BE NORMALIZED
             err  = errs[j] + 0.0
-
+            
             q = ( (np.isnan(time) == False) & (np.isnan(lc) == False))
             time, lc, err = time[q], lc[q], err[q]
-            
+
             # APPENDS MASKED LIGHT CURVES TO KEEP TRACK OF
             pred_t.append(time)
             pred_f.append(lc)
             pred_e.append(err)
-
-            good_inds = identify_gaps(time)
-                
+            
             reshaped_data = np.zeros((len(lc), cadences))
-
+            
             for i in good_inds:
                 loc = [int(i-cad_pad), int(i+cad_pad)]
                 f = lc[loc[0]:loc[1]]
-                t = time[loc[0]:loc[1]]                    
+                t = time[loc[0]:loc[1]]  
+
                 reshaped_data[i] = f
             
+            # RESHAPES FOR PREDICTING
             reshaped_data = reshaped_data.reshape(reshaped_data.shape[0], 
                                                   reshaped_data.shape[1], 1)
             
-            # Take in a model
             preds = model.predict(reshaped_data)
             preds = np.reshape(preds, (len(preds),))
-
             predictions.append(preds)
             
+
         self.predict_time = np.array(pred_t)
         self.predict_flux = np.array(pred_f)
         self.predict_err  = np.array(pred_e)
         self.predictions  = np.array(predictions)
+
+        return predictions
