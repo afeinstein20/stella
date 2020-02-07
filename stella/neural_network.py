@@ -108,7 +108,7 @@ class ConvNN(object):
             dropout = 0.1
 
             # CONVOLUTIONAL LAYERS
-            model.add(tf.keras.layers.Conv1D(filters=filter1, kernel_size=10, 
+            model.add(tf.keras.layers.Conv1D(filters=filter1, kernel_size=7, 
                                              activation='relu', padding='same', 
                                              input_shape=(self.cadences, 1)))
             model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
