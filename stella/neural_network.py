@@ -14,7 +14,7 @@ class ConvNN(object):
     neural network.
     """
 
-    def __init__(self, ds, output_dir,
+    def __init__(self, output_dir, ds=None,
                  layers=None, optimizer='adam',
                  loss='binary_crossentropy', 
                  metrics=None):
@@ -68,14 +68,21 @@ class ConvNN(object):
         self.optimizer = optimizer
         self.loss = loss
         self.metrics = metrics
-        self.training_matrix = np.copy(ds.training_matrix)
-        self.labels = np.copy(ds.labels)
-        self.cadences = np.copy(ds.cadences)
 
-        self.frac_balance = ds.frac_balance + 0.0
+        if ds is not None:
+            self.training_matrix = np.copy(ds.training_matrix)
+            self.labels = np.copy(ds.labels)
+            self.cadences = np.copy(ds.cadences)
 
-        self.tpeaks = ds.training_peaks
-        self.training_ids = ds.training_ids
+            self.frac_balance = ds.frac_balance + 0.0
+
+            self.tpeaks = ds.training_peaks
+            self.training_ids = ds.training_ids
+
+        else:
+            print("WARNING: No stella.DataSet object passed in.")
+            print("Can only use stella.ConvNN.predict().")
+
         self.prec_recall_curve = None
         self.history = None
         self.history_table = None
