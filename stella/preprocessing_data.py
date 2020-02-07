@@ -101,7 +101,7 @@ class DataSet(object):
 
         files = os.listdir(self.fn_dir)
         
-        files = [i for i in files if i.endswith('.npy') and 'sector' in i]
+        files = np.sort([i for i in files if i.endswith('.npy') and 'sector' in i])
     
         tics, time, flux, err, tpeaks = [], [], [], [], []
         
