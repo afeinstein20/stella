@@ -126,7 +126,77 @@ class ModelMetrics(object):
         return table
 
 
-    def calculate_metrics(self, threshold=0.5, data_set='validation'):
+    def set_table(self, data_set):
+        """ Sets table for metric calculation."""
+        if data_set is 'validation':
+            table = self.predval_table
+        elif data_set is 'test':
+            if self.predtest_table is not None:
+                table = self.predtest_table
+            else:
+                raise ValueError("No test set predictions found.")
+        return table
+
+
+    def calculate_ensemble_metrics(self, threshold=0.5, data_set='validation'):
+        """
+        Calculates average precision, accuracy, recall, and precision-recall curve
+        for flares above a given threshold value.
+
+        Parameters
+        ----------
+        threshold : float, optional
+             The value above which something is considered a flare.
+             Default is 0.5.
+        data_set : str, optional
+             Sets which data set to look at. Default is 'validation'.
+             Other option is 'test'. DO NOT LOOK AT THE TEST SET UNTIL
+             YOU ARE COMPLETELY HAPPY WITH YOUR MODEL.
+
+        Attributes
+        ----------
+        ensemble_avg_precision : float
+        ensemble_accuracy : float
+        ensemble_recall_score : float
+        ensemble_precision_score : float
+        ensemble_curve : np.array
+             2D array of precision and recall for plotting purposes.
+        """
+        tab = self.set_table(data_set)
+        tab = self.pred_round(tab, threshold)
+
+        # SETS ARRS FOR AVG PRECISION, ACC., RECALL SCORE, PREC. SCORE
+        ap, ac, rs, ps = [], [], [], []
+        p_cur, r_cur = [], []
+
+        gt = tab['gt'].data
+        
+        keys = [i for i in tab.colnames if 'pred_' in i]
+        for i, val in enumerate(keys):
+            ap.append( np.round(average_precision_score(gt, tab[val].data, 
+                                                        average=None), 4))
+            arr = np.copy(tab[val].data)
+            arr[arr >= threshold] = 1.0
+            arr[arr < threshold]  = 0.0
+
+            ac.append( np.round(np.sum(arr == gt) / len(tab), 4))
+
+        prec, rec, _ = precision_recall_curve(gt, tab['pred_mean'].data)
+
+        ind = keys == 'pred_mean'
+        self.ensemble_avg_precision = ap[-1]
+        self.ensemble_accuracy = ac[-1]
+        self.ensemble_recall_score = np.round(recall_score(gt, tab['round_pred'].data), 4)
+        self.ensemble_precision_score = np.round(precision_score(gt, tab['round_pred'].data), 4)
+        self.ensemble_curve = np.array([rec, prec])
+
+        if data_set == 'validation':
+            self.predval_table = tab
+        else:
+            self.predtest_table = tab
+
+
+    def calculate_cross_val_metrics(self, threshold=0.5, data_set='validation'):
         """
         Calculates average precision, accuracy, recall, and precision-recall
         curve for flares above a given threshold value.
@@ -142,94 +212,58 @@ class ModelMetrics(object):
              YOU ARE COMPLETELY HAPPY WITH YOUR MODEL.
         Attributes
         ----------
-        average_precision : float
-        accuracy : float
-        recall_score : float
-        precision_score : float
-        prec_recall_curve : np.array
+        cross_val_avg_precision : float
+        cross_val_accuracy : float
+        cross_val_recall_score : float
+        cross_val_precision_score : float
+        cross_val_curve : np.array
              2D array of precision and recall for plotting purposes.
         """
-        if data_set is 'validation':
-            table = self.predval_table
-        elif data_set is 'test':
-            if self.predtest_table is not None:
-                table = self.predtest_table
-            else:
-                raise ValueError("No test set predictions found.")
+        tab = self.set_table(data_set)
 
         # SETS ARRS FOR AVG PRECISION, ACC., RECALL SCORE, PREC. SCORE
         ap, ac, rs, ps = [], [], [], []
         p_cur, r_cur = [], []
 
-        # SETS KEYS TO LOOK FOR IN TABLE FOR EITHER METHOD
-        if self.mode is 'ensemble':
-            gt  = table['gt'].data
-            key = 'pred_'
+        keys = np.sort([i for i in tab.colnames if 'pred_f' in i])
 
-            try:
-                table = self.pred_round(table, threshold)
-            except:
-                print('weird except?')
-                pass # PROBLEM WITH REPEAT COLUMNS
-
-        elif self.mode is 'cross_val':
-            gt  = None
-            key = 'pred_f'
-
-        for i, val in enumerate([i for i in table.colnames if key in i]):
-            if self.mode is 'cross_val':
-                gt_key = 'gt_' + val.split('_')[1]
+        for i, val in enumerate(keys):
+            gt_key = 'gt_' + val.split('_')[1]
 
             # ROUNDED BASED ON THRESHOLD
-            arr = np.copy(table[val].data)
+            arr = np.copy(tab[val].data)
             arr[arr >= threshold] = 1.0
             arr[arr <  threshold] = 0.0
 
-            # CALCULATES ACCURACY & AVERAGE PRECISION SCORE
-            if self.mode is 'ensemble':
-                ac.append(np.round(np.sum(arr == table['gt'].data) / len(table), 4))
-                ap.append(np.round(average_precision_score(table['gt'].data,
-                                                           table[val].data,
-                                                           average=None), 4))
-
-            if self.mode is 'cross_val':
-                ac.append(np.round(np.sum(arr == table[gt_key].data) / len(table), 4))
+            ac.append(np.round(np.sum(arr == tab[gt_key].data) / len(tab), 4))
                 
-                ap.append(np.round(average_precision_score(table[gt_key].data,
-                                                           table[val].data,
-                                                           average=None), 4))
-
-                # CALCULATES RECALL SCORE
-                rs.append( np.round( recall_score(table[gt_key].data, arr), 4))
+            ap.append(np.round(average_precision_score(tab[gt_key].data,
+                                                       tab[val].data,
+                                                       average=None), 4))
             
-                # CALCULATES PRECISION SCORE
-                ps.append( np.round( precision_score(table[gt_key].data, arr), 4))
+            # CALCULATES RECALL SCORE
+            rs.append( np.round( recall_score(tab[gt_key].data, arr), 4))
+            
+            # CALCULATES PRECISION SCORE
+            ps.append( np.round( precision_score(tab[gt_key].data, arr), 4))
 
-                # CREATES PRECISION RECALL CURVE
-                prec_curve, rec_curve, _ = precision_recall_curve(table[gt_key].data, table[val].data)
-                p_cur.append(prec_curve)
-                r_cur.append(rec_curve)
+            # CREATES PRECISION RECALL CURVE
+            prec_curve, rec_curve, _ = precision_recall_curve(tab[gt_key].data, tab[val].data)
+            p_cur.append(prec_curve)
+            r_cur.append(rec_curve)
 
-        if self.mode is 'ensemble':
-            rs = np.round( recall_score( gt, table['round_pred']), 4)
-            ps = np.round( precision_score( gt, table['round_pred']), 4)
-            p_cur, r_cur, _ = precision_recall_curve(gt, table['pred_mean'].data)
+                
+        self.cross_val_avg_precision = ap
+        self.cross_val_accuracy = ac
 
-            self.average_precision = ap[-1]
-            self.accuracy = ac[-1]
-
-        else:
-            self.average_precision = ap
-            self.accuracy = ac
-
-        self.recall_score = rs
-        self.precision_score = ps
-        self.prec_recall_curve = np.array([r_cur, p_cur])
+        self.cross_val_recall_score = rs
+        self.cross_val_precision_score = ps
+        self.cross_val_curve = np.array([r_cur, p_cur])
 
         if data_set == 'validation':
-            self.predval_table = table
+            self.predval_table = tab
         else:
-            self.predtest_table = table
+            self.predtest_table = tab
 
     
     def confusion_matrix(self, ds, threshold=0.5, colormap='inferno', 
