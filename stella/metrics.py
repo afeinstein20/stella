@@ -122,7 +122,7 @@ class ModelMetrics(object):
         pr = np.zeros(len(table))
         pr[table['pred_mean'].data >= threshold] = 1
         pr[table['pred_mean'].data <  threshold] = 0
-        table.add_column(Column(pr, name='round_pred'))
+        table.add_column(Column(pr, name='round_pred'), index=3)
         return table
 
 
@@ -169,6 +169,7 @@ class ModelMetrics(object):
             try:
                 table = self.pred_round(table, threshold)
             except:
+                print('weird except?')
                 pass # PROBLEM WITH REPEAT COLUMNS
 
         elif self.mode is 'cross_val':
@@ -224,6 +225,11 @@ class ModelMetrics(object):
         self.recall_score = rs
         self.precision_score = ps
         self.prec_recall_curve = np.array([r_cur, p_cur])
+
+        if data_set == 'validation':
+            self.predval_table = table
+        else:
+            self.predtest_table = table
 
     
     def confusion_matrix(self, ds, threshold=0.5, colormap='inferno', 
