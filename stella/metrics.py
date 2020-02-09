@@ -64,6 +64,7 @@ class ModelMetrics(object):
 
         predval = [i for i in files if 'predval' in i][0]
         history = [i for i in files if 'histories' in i][0]
+
         try:
             predtest = [i for i in files if 'predtest' in i][0]
             self.predtest_table = Table.read(os.path.join(self.dir, predtest),
@@ -164,8 +165,11 @@ class ModelMetrics(object):
         if self.mode is 'ensemble':
             gt  = table['gt'].data
             key = 'pred_'
-            table = self.pred_round(table, threshold)
-            self.predval_table = table
+
+            try:
+                table = self.pred_round(table, threshold)
+            except:
+                pass # PROBLEM WITH REPEAT COLUMNS
 
         elif self.mode is 'cross_val':
             gt  = None
@@ -174,29 +178,34 @@ class ModelMetrics(object):
         for i, val in enumerate([i for i in table.colnames if key in i]):
             if self.mode is 'cross_val':
                 gt_key = 'gt_' + val.split('_')[1]
-                gt = table[gt_key].data
 
-            # CALCULATES AVERAGE PRECISION SCORE
-            ap.append(np.round(average_precision_score(table['gt'].data, 
-                                                       table[val].data, 
-                                                       average=None), 4))
             # ROUNDED BASED ON THRESHOLD
             arr = np.copy(table[val].data)
             arr[arr >= threshold] = 1.0
             arr[arr <  threshold] = 0.0
-                
-            # CALCULATES ACCURACY
-            ac.append(np.round(np.sum(arr == table['gt'].data) / len(table), 4))
+
+            # CALCULATES ACCURACY & AVERAGE PRECISION SCORE
+            if self.mode is 'ensemble':
+                ac.append(np.round(np.sum(arr == table['gt'].data) / len(table), 4))
+                ap.append(np.round(average_precision_score(table['gt'].data,
+                                                           table[val].data,
+                                                           average=None), 4))
 
             if self.mode is 'cross_val':
+                ac.append(np.round(np.sum(arr == table[gt_key].data) / len(table), 4))
+                
+                ap.append(np.round(average_precision_score(table[gt_key].data,
+                                                           table[val].data,
+                                                           average=None), 4))
+
                 # CALCULATES RECALL SCORE
-                rs.append( np.round( recall_score(gt, arr), 4))
+                rs.append( np.round( recall_score(table[gt_key].data, arr), 4))
             
                 # CALCULATES PRECISION SCORE
-                ps.append( np.round( precision_score(gt, arr), 4))
+                ps.append( np.round( precision_score(table[gt_key].data, arr), 4))
 
                 # CREATES PRECISION RECALL CURVE
-                prec_curve, rec_curve, _ = precision_recall_curve(gt, table[val].data)
+                prec_curve, rec_curve, _ = precision_recall_curve(table[gt_key].data, table[val].data)
                 p_cur.append(prec_curve)
                 r_cur.append(rec_curve)
 
