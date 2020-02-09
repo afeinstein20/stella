@@ -171,8 +171,9 @@ class ModelMetrics(object):
 
         gt = tab['gt'].data
         
-        keys = [i for i in tab.colnames if 'pred_' in i]
+        keys = np.sort([i for i in tab.colnames if 'pred_' in i])
         for i, val in enumerate(keys):
+            print(val)
             ap.append( np.round(average_precision_score(gt, tab[val].data, 
                                                         average=None), 4))
             arr = np.copy(tab[val].data)
