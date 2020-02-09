@@ -61,6 +61,7 @@ class ModelMetrics(object):
             seeds = []
 
         self.models  = [i for i in files if i.endswith('.h5')]
+
         predval = [i for i in files if 'predval' in i][0]
         history = [i for i in files if 'histories' in i][0]
         try:
@@ -100,6 +101,7 @@ class ModelMetrics(object):
         mean_arr = []
         
         colnames = [i for i in self.predval_table.colnames if 'pred' in i]
+
         for cn in colnames:
             mean_arr.append(np.round(self.predval_table[cn].data, 3))
         self.predval_table.add_column(Column(np.nanmean(mean_arr, axis=0),
@@ -170,22 +172,21 @@ class ModelMetrics(object):
             key = 'pred_f'
 
         for i, val in enumerate([i for i in table.colnames if key in i]):
-
             if self.mode is 'cross_val':
                 gt_key = 'gt_' + val.split('_')[1]
                 gt = table[gt_key].data
 
             # CALCULATES AVERAGE PRECISION SCORE
-            ap.append( np.round( average_precision_score(gt,
-                                                         table[val].data,
-                                                         average=None), 4))
+            ap.append(np.round(average_precision_score(table['gt'].data, 
+                                                       table[val].data, 
+                                                       average=None), 4))
             # ROUNDED BASED ON THRESHOLD
             arr = np.copy(table[val].data)
             arr[arr >= threshold] = 1.0
             arr[arr <  threshold] = 0.0
                 
             # CALCULATES ACCURACY
-            ac.append( np.round( np.sum(arr == gt) / len(table), 4))
+            ac.append(np.round(np.sum(arr == table['gt'].data) / len(table), 4))
 
             if self.mode is 'cross_val':
                 # CALCULATES RECALL SCORE
