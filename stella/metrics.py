@@ -173,7 +173,6 @@ class ModelMetrics(object):
         
         keys = np.sort([i for i in tab.colnames if 'pred_' in i])
         for i, val in enumerate(keys):
-            print(val)
             ap.append( np.round(average_precision_score(gt, tab[val].data, 
                                                         average=None), 4))
             arr = np.copy(tab[val].data)
@@ -185,8 +184,8 @@ class ModelMetrics(object):
         prec, rec, _ = precision_recall_curve(gt, tab['pred_mean'].data)
 
         ind = keys == 'pred_mean'
-        self.ensemble_avg_precision = ap[-1]
-        self.ensemble_accuracy = ac[-1]
+        self.ensemble_avg_precision = ap[0]
+        self.ensemble_accuracy = ac[0]
         self.ensemble_recall_score = np.round(recall_score(gt, tab['round_pred'].data), 4)
         self.ensemble_precision_score = np.round(precision_score(gt, tab['round_pred'].data), 4)
         self.ensemble_curve = np.array([rec, prec])
