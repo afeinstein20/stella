@@ -2,9 +2,9 @@ import numpy as np
 from tqdm import tqdm
 from astropy import units as u
 from scipy.signal import medfilt
+from scipy.optimize import curve_fit
 from astropy.table import Table, Column
 from astropy.timeseries import LombScargle
-from scipy.optimize import minimize, curve_fit
 
 __all__ = ['FindTheSpots']
 
