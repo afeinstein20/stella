@@ -4,10 +4,12 @@ from tqdm import tqdm
 from astropy.table import Table
 from scipy.interpolate import interp1d
 
-__all__ = ['DataSet']
+from .utils import break_rest, do_the_shuffle, split_data
+
+__all__ = ['FlareDataSet']
 
 
-class DataSet(object):
+class FlareDataSet(object):
     """
     Given a directory of files, reformat data to
     create a training set for the convolutional
@@ -21,7 +23,7 @@ class DataSet(object):
     This class additionally requires a catalog of flare
     start times for labeling. The flare catalog can be
     in either '.txt' or '.csv' file format. This class will
-    be passed into the stella.neural_networ() class to 
+    be passed into the stella.neural_network() class to 
     create and train the neural network.
     """
 
@@ -60,7 +62,24 @@ class DataSet(object):
         self.frac_balance = frac_balance
         self.load_files()
         self.reformat_data()
-        self.split_data(training, validation)
+
+        misc = split_data(self.labels, self.training_matrix, 
+                          self.training_ids, self.training_peaks,
+                          training, validation)
+
+        self.train_data   = misc[0]
+        self.train_labels = misc[1]
+
+        self.val_data = misc[2]
+        self.val_labels = misc[3]
+        self.val_ids = misc[4]
+        self.val_tpeaks = misc[5]
+
+        self.test_data = misc[6]
+        self.test_labels = misc[7]
+
+        self.test_ids = misc[8]
+        self.test_tpeaks = misc[9]
 
 
     def load_files(self, id_keyword='tic_id', ft_keyword='tpeak',
@@ -127,75 +146,6 @@ class DataSet(object):
         self.tpeaks   = np.array(tpeaks) # in TBJD
 
 
-    def break_rest(self, time, flux, flux_err):
-        """
-        Breaks up the non-flare cases into bite-sized cadence-length chunks.  
-        """
-        # BREAKING UP REST OF LIGHT CURVE INTO CADENCE SIZED BITES
-        diff = np.diff(time)
-        breaking_points = np.where(diff > (np.nanmedian(diff) + 1.5*np.nanstd(diff)))[0]
-    
-        tot = 100
-        ss  = 1000
-        nonflare_time = np.zeros((ss,self.cadences))
-        nonflare_flux = np.zeros((ss,self.cadences))
-        nonflare_err = np.zeros((ss,self.cadences))
-        
-        x = 0
-        for j in range(len(breaking_points)+1):
-            if j == 0:
-                start = 0
-                end = breaking_points[j]
-            elif j < len(breaking_points):
-                start = breaking_points[j-1]
-                end = breaking_points[j]
-            else:
-                start = breaking_points[-1]
-                end = len(time)
-
-            if np.abs(end-start) > (2*self.cadences):
-                broken_time = time[start:end]
-                broken_flux = flux[start:end]
-                broken_err  = flux_err[start:end]
-                
-                # DIVIDE LIGHTCURVE INTO EVEN BINS
-                c = 0
-                while (len(broken_time) - c) % self.cadences != 0:
-                    c += 1
-                        
-                # REMOVING CADENCES TO BIN EVENLY INTO CADENCES
-                temp_time = np.delete(broken_time, np.arange(len(broken_time)-c, 
-                                                             len(broken_time), 1, dtype=int) )
-                temp_flux = np.delete(broken_flux, np.arange(len(broken_flux)-c, 
-                                                             len(broken_flux), 1, dtype=int) )
-                temp_err = np.delete(broken_err, np.arange(len(broken_err)-c, 
-                                                           len(broken_err), 1, dtype=int) )
-                
-                # RESHAPE ARRAY FOR INPUT INTO MATRIX
-                temp_time = np.reshape(temp_time, 
-                                       (int(len(temp_time) / self.cadences), self.cadences) )
-                temp_flux = np.reshape(temp_flux, 
-                                       (int(len(temp_flux) / self.cadences), self.cadences) )
-                temp_err  = np.reshape(temp_err, 
-                                       (int(len(temp_err) / self.cadences), self.cadences) )
-                
-                # APPENDS TO BIGGER MATRIX 
-                for f in range(len(temp_flux)):
-                    if x >= ss:
-                        break
-                    else:
-                        nonflare_time[x] = temp_time[f]
-                        nonflare_flux[x] = temp_flux[f]
-                        nonflare_err[x] = temp_err[f]
-                        x += 1
-
-        nonflare_time = np.delete(nonflare_time, np.arange(x, ss, 1, dtype=int), axis=0)
-        nonflare_flux = np.delete(nonflare_flux, np.arange(x, ss, 1, dtype=int), axis=0)
-        nonflare_err  = np.delete(nonflare_err,  np.arange(x, ss, 1, dtype=int), axis=0)
-        
-        return nonflare_time, nonflare_flux, nonflare_err
-
-
     def reformat_data(self, random_seed=321):
         """
         Reformats the data into `cadences`-sized array and assigns
@@ -255,8 +205,8 @@ class DataSet(object):
             flux_removed = np.delete(self.flux[i], flares)
             flux_err_removed = np.delete(self.flux_err[i], flares)
         
-            nontime, nonflux, nonerr = self.break_rest(time_removed, flux_removed, 
-                                                       flux_err_removed)
+            nontime, nonflux, nonerr = break_rest(time_removed, flux_removed, 
+                                                  flux_err_removed, self.cadences)
             for j in range(len(nonflux)):
                 if x >= ss:
                     break
@@ -273,90 +223,10 @@ class DataSet(object):
         training_peaks  = np.delete(training_peaks, np.arange(x, ss, 1, dtype=int))
         training_ids    = np.delete(training_ids, np.arange(x, ss, 1, dtype=int))
 
-        self.do_the_shuffle(training_matrix, labels, training_peaks, 
-                            training_ids)
+        ids, matrix, label, peaks = do_the_shuffle(training_matrix, labels, training_peaks, 
+                                                   training_ids, self.frac_balance)
+        self.labels = label
+        self.training_peaks  = peaks
+        self.training_ids    = ids
+        self.training_matrix = matrix
         
-
-    def do_the_shuffle(self, training_matrix, labels, training_peaks, training_ids):
-        """
-        Shuffles the data in a random order and fixes data inbalance based on
-        frac_balance.
-        """
-        np.random.seed(321)
-        ind_shuffle = np.random.permutation(training_matrix.shape[0])
-
-        labels2 = np.copy(labels[ind_shuffle])
-        matrix2 = np.copy(training_matrix[ind_shuffle])
-        peaks2  = np.copy(training_peaks[ind_shuffle])
-        ids2    = np.copy(training_ids[ind_shuffle])
-
-        # INDEX OF NEGATIVE CLASS
-        ind_nc = np.where(labels2 == 0)
-        
-        # RANDOMIZE INDEXES
-        np.random.seed(123)
-        ind_nc_rand = np.random.permutation(ind_nc[0])
-
-        # REMOVE FRAC_BALANCE% OF NEGATIVE CLASS
-        length = int(self.frac_balance * len(ind_nc_rand))
-
-        self.labels = np.delete(labels2, ind_nc_rand[0:length])
-        self.training_peaks  = np.delete(peaks2 , ind_nc_rand[0:length])
-        self.training_ids    = np.delete(ids2   , ind_nc_rand[0:length])
-        self.training_matrix = np.delete(matrix2, ind_nc_rand[0:length], axis=0)
-        
-        ind_pc = np.where(self.labels==1)
-        ind_nc = np.where(self.labels==0)
-        print("{} positive classes (flare)".format(len(ind_pc[0])))
-        print("{} negative classes (no flare)".format(len(ind_nc[0])))
-        print("{}% class imbalance\n".format(np.round(100 * len(ind_pc[0]) / len(ind_nc[0]))))
-
-
-    def split_data(self, training, validation):
-        """
-        Splits the data matrix into a training, validation, and testing set.
-
-        Attributes
-        ----------
-        train_data : np.ndarray
-        train_labels : np.array
-        val_data : np.ndarray
-        val_labels : np.array
-        val_ids : np.array
-        val_tpeaks : np.array
-        test_data : np.ndarray
-        test_labels : np.array
-        test_ids : np.array
-        test_tpeaks : np.array
-        """
-
-        train_cutoff = int(training * len(self.labels))
-        val_cutoff   = int(validation * len(self.labels))
-
-        x_train = self.training_matrix[0:train_cutoff]
-        y_train = self.labels[0:train_cutoff]
-
-        x_val = self.training_matrix[train_cutoff:val_cutoff]
-        y_val = self.labels[train_cutoff:val_cutoff]
-
-        x_test = self.training_matrix[val_cutoff:]
-        y_test = self.labels[val_cutoff:]
-
-        x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], 1)
-        x_val   = x_val.reshape(x_val.shape[0], x_train.shape[1], 1)
-        x_test  = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
-
-        self.train_data = x_train
-        self.train_labels = y_train
-        
-        self.test_data = x_test
-        self.test_labels = y_test
-
-        self.test_ids = self.training_ids[val_cutoff:]
-        self.test_tpeaks = self.training_peaks[val_cutoff:]
-        
-        self.val_data = x_val
-        self.val_labels = y_val
-
-        self.val_ids = self.training_ids[train_cutoff:val_cutoff]
-        self.val_tpeaks = self.training_peaks[train_cutoff:val_cutoff]
