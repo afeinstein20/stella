@@ -3,16 +3,17 @@ from tqdm import tqdm
 import more_itertools as mit
 from astropy import units as u
 from astropy.table import Table
+from scipy.signal import medfilt
 from scipy.signal import find_peaks
 from scipy.optimize import minimize
 from scipy.interpolate import interp1d
 
 from .utils import *
 
-__all__ = ['FindTheFlares']
+__all__ = ['FitFlares']
 
 
-class FindTheFlares(object):
+class FitFlares(object):
     """
     Uses the predictions from the neural network
     and identifies flaring events based on consecutive
@@ -148,7 +149,7 @@ class FindTheFlares(object):
 
                     # FINDS HIGHEST "PROBABILITY" IN FLARE
                     if len(np.where(subp > threshold)[0]) > 1:
-                        fpeak = np.nanmax(subf[np.where(subprob > threshold)[0]))
+                        fpeak = np.nanmax(subf[np.where(subp > threshold)[0]])
                         t0 = np.where(subf==fpeak)[0]
                         if len(t0) > 1:
                             t0 = int(np.argmax(subf[t0]))
@@ -167,10 +168,10 @@ class FindTheFlares(object):
                 sube = err[ where-region:where+region]
                 subp = prob[where-region:where+region]
                 
-                amp_ind = where
+                amp_ind = int(len(subf)/2)
                 
-                mask = np.append(np.arange(0,amp_ind-maskregion,1,dtype=int),
-                                 np.arange(amp_ind+maskregion,len(subf),1,dtype=int))
+                mask = np.append(np.arange(0,len(subt)/2-maskregion,1,dtype=int),
+                                 np.arange(len(subt)/2+maskregion,len(subt),1,dtype=int))
 
                 func = interp1d(subt[mask], medfilt(subf[mask], kernel_size=kernel_size))
 
@@ -195,7 +196,7 @@ class FindTheFlares(object):
                         
                         params[1] += 1
                         params[2] = (params[2] * u.min).value / 2
-                        params = np.append(params, subprob[amp_ind])
+                        params = np.append(params, subp[amp_ind])
                         params = np.append(np.array([self.IDs[i]]), params)
                         table.add_row(params)
 
