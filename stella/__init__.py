@@ -5,7 +5,7 @@ from .version import __version__
 from .neural_network            import *
 from .preprocessing_flares      import *
 #from .preprocessing_transits    import *
-#from .recovery                  import *
+from .mark_flares               import *
 from .visualize                 import *
 from .metrics                   import *
 from .rotations                 import *
