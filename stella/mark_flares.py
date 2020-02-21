@@ -92,7 +92,6 @@ class FitFlares(object):
         return np.array(results)
 
 
-
     def identify_flare_peaks(self, threshold=0.5):
         """
         Finds where the predicted value is above the threshold
