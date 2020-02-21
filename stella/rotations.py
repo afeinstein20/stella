@@ -1,12 +1,14 @@
 import numpy as np
 from tqdm import tqdm
+from astropy import units as u
+from scipy.signal import medfilt
 from astropy.table import Table, Column
 from astropy.timeseries import LombScargle
 from scipy.optimize import minimize, curve_fit
 
-__all__ = ['MeasureRotations']
+__all__ = ['FindTheSpots']
 
-class MeasureRotations(object):
+class FindTheSpots(object):
     """
     Used for measuring rotation periods.
     """
@@ -21,7 +23,6 @@ class MeasureRotations(object):
         self.flux = flux
         self.flux_err = flux_err
 
-        self.run_LS()
 
 
     def gauss_curve(self, x, std, scale, mu):
@@ -143,7 +144,7 @@ class MeasureRotations(object):
         peak_power2 = np.zeros(len(self.time))
 
 
-        for i in tqdm(range(len(self.flux))):
+        for i in tqdm(range(len(self.flux)), desc="Finding most likely periods"):
 
             time, flux, flux_err = self.time[i], self.flux[i], self.flux_err[i]
             
@@ -199,6 +200,10 @@ class MeasureRotations(object):
             which period measured is likely the best period. Adds a column
             to MeasureRotations.LS_results of 'true_period_days' for the 
             results.
+
+        Returns
+        -------
+        astropy.table.Table
         """
         def assign_flag(per, pow, width, avg, secpow):
             """ Assigns a flag in the table for which periods are reliable.
@@ -212,7 +217,7 @@ class MeasureRotations(object):
         averaged_periods = np.zeros(len(tab))
         flagging = np.zeros(len(tab), dtype=int)
 
-        for i in tqdm(np.unique(self.IDs)):
+        for i in tqdm(self.IDs, desc="Averaging over different sectors"):
             
             subind = np.where(tab['Target_ID'] == i)[0]
 
@@ -257,3 +262,137 @@ class MeasureRotations(object):
         tab.add_column(Column(averaged_periods, name='avg_period_days'))
         tab.add_column(Column(flagging, name='flags'))
         return tab
+
+
+    def phase_lightcurve(self, table=None, trough=-0.5, peak=0.5, kernel_size=15):
+        """ 
+        Finds and creates a phase light curve that traces the spots.
+        Uses only complete rotations and extrapolates outwards until the
+        entire light curve is covered.
+
+        Parameters
+        ----------
+        table : astropy.table.Table, optional
+             Used for getting the periods of each light curve. Allows users
+             to use already created tables. Default = None. Will search for 
+             stella.FindTheSpots.LS_results.
+        trough : float, optional
+             Sets the phase value at the minimum. Default = -0.5.
+        peak : float, optional
+             Sets the phase value t the maximum. Default = 0.5.
+        kernel_size : odd float, optional
+             Sets kernel size for median filter smoothing. Default = 15.
+
+        Attributes
+        ----------
+        phases : np.ndarray
+        """
+        def medfilt_phase(f, ks, phase_order, localmin):
+            """ Finds minimum of filtered rotation curve. """
+            mf = medfilt(f, kernel_size=25)
+            minimum = np.argmin(mf[localmin:-localmin])
+            p = np.append( np.linspace(phase_order[0], 0, minimum),
+                           np.linspace(0, phase_order[1], len(f)-minimum) )
+            return minimum, p
+
+        if table is None:
+            table = self.LS_results
+
+        PHASES   = np.copy(self.flux)
+        localmin = 20
+        which_inds = []
+
+        for i in tqdm(range(len(table['Target_ID'])), desc='Getting Phases'):
+            prot = table['avg_period_days'].data[i]
+
+            # MAKES SURE PROT PASSED PREVIOUS TESTS
+            if table['flags'].data[i] == 1 and prot < 8.0:
+
+                which_inds.append(i)
+
+                time = self.time[i]
+                flux = self.flux[i]
+                err  = self.flux_err[i]
+                
+                phase = np.zeros(len(flux))
+
+                # CREATES LIST OF ITERATIONS OF ROTATION PERIODS AND FINDS
+                # WHICH ONES ARE IN THE LIGHT CURVE
+                start = np.argmax(flux[np.where(time<=time[0]+prot)[0]])
+                rots  = np.arange(-1,200,1) * prot + time[start]
+                inlc  = ((rots > time[0]) & (rots < time[-1]))
+                rots  = rots[inlc]
+
+                start_ind = np.where( (time>=rots[0]) & (time<rots[1]))[0]
+                if ( (flux[int(np.nanmedian(start_ind)/2)] > flux[start_ind][0]) and
+                     (flux[int(np.nanmedian(start_ind)/2)] > flux[start_ind][-1])):
+                    phase_order = [trough, peak]
+                else:
+                    phase_order = [peak, trough]
+
+                # FINDS ORBITAL BREAKS TO IGNORE
+                diff = np.diff(time)
+                orbit_break = np.where(diff > (np.nanmedian(diff) + 12*np.nanstd(diff)))[0]
+
+                # FINDS WHICH PROT STARTS COMPLETE 1 FULL ROTATION
+                rfull, rall = np.array([]), np.array([])
+                for r in rots:
+                    if len(time[((time>=r) & (time<=r+0.1))]) > 0:
+                        rall = np.append(rall, r)
+                        for o in orbit_break:
+                            rall = np.append(rall, np.array([time[o], time[o+1]]))
+
+                            # FOR FULL ROTATIONS
+                            if ( ((r < time[o]-prot/5) or (r>time[o+1]+prot/5)) and
+                                 (r<time[-1]-prot/5) and (r>time[0]+prot/5)):
+                                rfull = np.append(rfull, r)
+                rall = np.append(rall, np.array([time[0], time[-1]]))
+                rall, rfull = np.sort(np.unique(rall)), np.sort(np.unique(rfull))
+
+                prot_cadences = int(((prot*u.day).to(u.min)/2).value)
+
+                troughs, regions = np.array([], dtype=int), np.array([], dtype=int)
+                
+                for r in range(len(rfull)):
+                    region = np.where((time>=rfull[r]) & (time<rfull[r]+prot))[0]
+                    if len(region) >= 100:
+                        minimum, p = medfilt_phase(flux[region], kernel_size,
+                                                   phase_order, localmin)
+                        regions = np.append(regions, len(region))
+                        troughs = np.append(troughs, minimum)
+                        phase[region] = p
+                        
+
+                prot_cadences = int(((prot*u.day).to(u.min)/2).value)
+                
+                # FINDS AN APPROXIMATE MINIMUM CADENCE
+                averaged_trough = int(np.round(np.nanmedian(troughs)/np.nanmedian(regions) * prot_cadences))
+                interpphase = np.append( np.linspace(phase_order[0], (trough+peak)/2, averaged_trough),
+                                         np.linspace((trough+peak)/2, phase_order[1], prot_cadences-averaged_trough))
+
+                # FINDS PHASES FOR NOT COMPLETE ROTATION PERIODS OR 
+                # FULL ONES TOO CLOSE TO LARGE GAPS
+                for r in range(len(rall)):
+                    if r not in rfull and r != len(rall)-1:
+                        region = np.where( (time >= rall[r]) & (time <= rall[r+1]))[0]
+
+                        if len(region) > prot_cadences:
+                            diff = len(region) - prot_cadences
+                            ip = np.zeros(len(region))
+                            ip[0:averaged_trough+diff] = np.linspace(phase_order[0], (trough+peak)/2,
+                                                                     averaged_trough+diff)
+                            ip[averaged_trough+diff:]  = np.linspace((trough+peak)/2, phase_order[1],
+                                                                     len(region)-averaged_trough-diff)
+                            phase[region] = ip
+                        else:
+                            if flux[region][-1] > flux[region][0]:
+                                phase[region] = interpphase[prot_cadences-len(region):]
+                            else:
+                                phase[region] = interpphase[:len(region)]
+                                
+                PHASES[i] = phase
+                
+            else:
+                PHASES[i] = np.zeros(self.flux[i].shape)
+
+        self.phases = PHASES
