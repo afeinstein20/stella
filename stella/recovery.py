@@ -5,13 +5,14 @@ from astropy import units as u
 from astropy.table import Table
 from scipy.signal import find_peaks
 from scipy.optimize import minimize
+from scipy.interpolate import interp1d
 
 from .utils import *
 
-__all__ = ['FlareParameters']
+__all__ = ['FindTheFlares']
 
 
-class FlareParameters(object):
+class FindTheFlares(object):
     """
     Uses the predictions from the neural network
     and identifies flaring events based on consecutive
@@ -19,7 +20,7 @@ class FlareParameters(object):
     for accpeting a flare event as real.
     """
 
-    def __init__(self, cnn):
+    def __init__(self, id, time, flux, flux_err, predictions):
         """
         Uses the times, fluxes, and predictions defined
         in stella.ConvNN to identify and fit flares, as
@@ -27,22 +28,29 @@ class FlareParameters(object):
         
         Parameters
         ----------
-        cnn : stella.ConvNN object
+        time : np.array
+             Array of times to find flares on.
+        flux : np.array
+             Array of light curves.
+        flux_err : np.array
+             Array of errors on light curves.
+        predictions : np.array
+             Array of predictions for each light curve
+             passed in.
         
         Attributes
         ----------
         ids : np.array
-        model : tensorflow.python.keras.engine.sequential.Sequential
-        times : np.ndarray
-        fluxes : np.ndarray
+        time : np.ndarray
+        flux : np.ndarray
+        flux_err : np.ndarray
         predictions : np.ndarray
         """
-        self.ids         = cnn.predict_ids
-        self.model       = cnn
-        self.times       = cnn.predict_times
-        self.fluxes      = cnn.predict_fluxes
-        self.flux_errs   = cnn.predict_errs
-        self.predictions = cnn.predictions
+        self.IDs        = id
+        self.time       = time
+        self.flux       = flux
+        self.flux_err   = flux_err
+        self.predictions = predictions
 
 
     def group_inds(self, values):
@@ -84,9 +92,7 @@ class FlareParameters(object):
 
 
 
-    def identify_flare_peaks(self, threshold=0.75, cut_ends=30, injected=False,
-                             ids=None, times=None, fluxes=None, flux_errs=None,
-                             predictions=None):
+    def identify_flare_peaks(self, threshold=0.5):
         """
         Finds where the predicted value is above the threshold
         as a flare candidate. Groups consecutive indices as one
@@ -96,13 +102,7 @@ class FlareParameters(object):
         ----------
         threshold : float, optional
              The probability threshold for believing an event
-             is a flare. Default is 0.75.
-        cut_ends : int, optional
-             Allows for ignoring the ends of a given light curve.
-             Default is 30 cadences are cut.
-        injected : bool, optional
-             Returns table of recovered flares instead of setting attribute.
-             Used for injection-recovery. Default is False.
+             is a flare. Default is 0.5.
 
         Attributes
         ----------
@@ -110,153 +110,93 @@ class FlareParameters(object):
              A table of flare times, amplitudes, and equivalent
              durations. Equivalent duration given in units of days.
         """
+        
+        def chiSquare(var, x, y, yerr, t0_ind):
+            """ Chi-square fit for flare parameters. """
+            amp, rise, decay = var
+            m, p = flare_lightcurve(x, t0_ind, amp, rise, decay)
+            return np.sum( (y-m)**2.0 / yerr**2.0 )
 
-        def chiSquare(var, x, y, yerr, model):
-            """
-            Used in scipy.optimize.minimize to compute chi-square
-            on a flare model.
-            """
-            amp, rise, decay = var            
-            m = flare_lightcurve(x, int(len(x)/2), amp, rise,
-                                 decay, y=model)[0]
+        table = Table(names=['Target_ID', 'tpeak', 'amp', 'dur',
+                             'rise', 'fall', 'prob'])
 
-            return np.sum( (y-m)**2 / yerr**2)        
+        # SETS VARIABLES FOR FITTING FLARE & SURROUNDING REGION
+        region = 50
+        maskregion = 2
+        kernel_size= 7
 
-        if injected is False:
-            times          = self.times
-            ids            = self.ids
-            fluxes         = self.fluxes
-            flux_errs      = self.flux_errs
-            predictions    = self.predictions
-            self.threshold = threshold
-            self.cut_ends  = cut_ends
+        for i in tqdm(range(len(self.IDs)), desc='Finding & Fitting Flares'):
+            time, flux = self.time[i], self.flux[i]
+            err, prob  = self.flux_err[i], self.predictions[i]
             
-        # INITIALIZES ASTROPY TABLE
-        tab = Table(names=['ID', 'tpeak', 'amp', 'amp_err',
-                           'ed', 'ed_err', 'prob'])
-
-        fit_to_region = 50
-
-        # REGION AROUND FLARE TO FIT TO
-        for i in range(len(times)):
-
-            time = times[i][cut_ends:len(times[i])-cut_ends] + 0.0
-            flux = fluxes[i][cut_ends:len(fluxes[i])-cut_ends] + 0.0
-            flux /= np.nanmedian(flux)
-
-            err  = flux_errs[i][cut_ends:len(flux_errs[i])-cut_ends] + 0.0
-            prob = predictions[i][cut_ends:len(predictions[i])-cut_ends] + 0.0
-
             where_prob_higher = np.where(prob >= threshold)[0]
-
             groupings = self.group_inds(where_prob_higher)
 
+            # GETS ALL THE TPEAKS
+            tpeaks = np.array([])
             if len(groupings) > 0:
                 for g in groupings:
-                    argmax = g[np.argmax(flux[g])]
-                    amp = flux[argmax]
-                    tpeak = time[argmax]
-                    prob  = prob[argmax]
+                    gmin, gmax = g[0], g[-1]
+                    
+                    # LOOKS AT REGION AROUND FLARE
+                    subt = time[gmin-region:gmax+region]
+                    subf = flux[gmin-region:gmax+region]
+                    sube = err[ gmin-region:gmax+region]
+                    subp = prob[gmin-region:gmax+region]
 
-                    fit_min = argmax - fit_to_region
-                    fit_max = argmax + fit_to_region
+                    inflare = prob[gmin-maskregion:gmax+maskregion]
 
-                    # FITS UNDERLYING POLYNOMIAL (MASKS FLARE)
-                    mask_inds = np.append(np.arange(argmax-fit_to_region, argmax-4, 1, dtype=int),
-                                          np.arange(argmax+4, argmax+fit_to_region, 1, dtype=int))
-                    underfit = np.polyfit(time[mask_inds], flux[mask_inds], deg=6)
-                    model = np.poly1d(underfit)
-                    model = model(flux[fit_min:fit_max])
-                                  
-                    x = minimize(chiSquare, x0=[amp, 0.0001, 0.0005],
-                                     args=(time[fit_min:fit_max], 
-                                           flux[fit_min:fit_max], 
-                                           err[fit_min:fit_max], model), method='L-BFGS-B')
-                        
-#                        norm_flux = (ff - model) / model
-                        
-#                        ed = np.abs(np.sum(norm_flux[:-1] * np.diff(ft) )) * u.day
-#                        ed_err = np.sum( (fe/model)**2 )
-                        
-#                        row = [id, tpeak, amp, err[peak], ed, ed_err, prob[peak]]
-#                        tab.add_row(row)
-
-
-
-    def injection_recovery(self, amps=[0.001, 0.1], flares_per_inj=20, iters=5):
-        """
-        Completes injection recovery based on a set of flare parameters. A tqdm
-        loading bar will appear that will track each light curve. 
-
-        Parameters
-        ----------
-        amps : list, optional
-             Minimum and maximum flare amplitude to recover. Default is [0.001, 0.1].
-        flares_per_inj : int, optional
-             Number of flares injected per recovery. Default is 20.
-        iters : int, optional
-             Number of iterations per each light curve. Default is 5. 
-
-        Attributes
-        ----------
-        inj_table : astropy.table.Table
-             Table of injected flare parameters.
-
-        """
-        inj_tab = Table(names=['ID', 'tpeak', 'rec_amp', 'inj_amp', 'prob', 'recovered'])
-        
-        predictions = []
-
-        for i in tqdm(range(len(self.times))):
-
-            ids = np.full(iters, self.ids[i])
-
-            inj_time = np.full( (iters, len(self.times[i])), self.times[i] )
-            inj_errs = np.full( (iters, len(self.flux_errs[i])), self.flux_errs[i] )
-            inj_model = np.full( (iters, len(self.fluxes[i])), self.fluxes[i] )
-            inj_preds = np.zeros( (iters, len(self.fluxes[i])) )
-
-            t0s, inj_amps, rises, decays = flare_parameters(size=int(iters*flares_per_inj),
-                                                            time=inj_time[0],
-                                                            amps=amps,
-                                                            cut_ends=self.cut_ends)
-
-            x = 0
-
-            # LOOPS THROUGH HOWEVER MANY ITERATIONS SPECIFIED
-            for n in range(iters):            
-
-                x_start = x + 0
-                model = np.zeros(len(self.fluxes[i]))
-                for f in range(flares_per_inj):
-                    m, p = flare_lightcurve(inj_time[n], t0s[x], inj_amps[x],
-                                            rises[x], decays[x])
-                    model = model + m + 0.0
-                    x += 1
-
-                inj_model[n] = inj_model[n] + model
-                preds = self.model.predict(ids, [inj_time[n]], [inj_model[n]],
-                                           [inj_errs[n]], injected=True)
-
-                inj_preds[n] = preds + 0.0
-
-                tab = self.identify_flare_peaks(injected=True, ids=ids,
-                                                times       = [inj_time[n]],
-                                                fluxes      = [inj_model[n]],
-                                                flux_errs   = [inj_errs[n]],
-                                                predictions = preds)
-
-                for f in np.arange(x_start, x, 1, dtype=int):
-                    subtab = tab[ (tab['tpeak'] >= inj_time[n][t0s[f]]) & 
-                                  (tab['tpeak'] <= inj_time[n][t0s[f]]) ]
-                    if len(subtab) > 0:
-                        row = [subtab['ID'][0], subtab['tpeak'][0], subtab['amp'][0],
-                                inj_amps[f], subtab['prob'][0], 1]
+                    # FINDS HIGHEST "PROBABILITY" IN FLARE
+                    if len(np.where(subp > threshold)[0]) > 1:
+                        fpeak = np.nanmax(subf[np.where(subprob > threshold)[0]))
+                        t0 = np.where(subf==fpeak)[0]
+                        if len(t0) > 1:
+                            t0 = int(np.argmax(subf[t0]))
+                            t0 = np.where(subf==subf[t0])[0]
                     else:
-                        row = [ids[0], inj_time[n][t0s[f]], 0, inj_amps[f],
-                               preds[0][t0s[f]], 0]
+                        t0 = np.argmax(inflare)
+                    
+                    tpeaks = np.append(tpeaks, subt[t0])
+            tpeaks = np.unique(tpeaks)
 
-                    inj_tab.add_row(row)
+            # FITS PARAMETERS TO FLARE
+            for tp in tpeaks:
+                where = np.where( (time>=tp) & (time<=tp+0.01) )[0][0]
+                subt = time[where-region:where+region]
+                subf = flux[where-region:where+region]
+                sube = err[ where-region:where+region]
+                subp = prob[where-region:where+region]
+                
+                amp_ind = where
+                
+                mask = np.append(np.arange(0,amp_ind-maskregion,1,dtype=int),
+                                 np.arange(amp_ind+maskregion,len(subf),1,dtype=int))
 
-        self.inj_tab = inj_tab
-        return inj_model, inj_preds
+                func = interp1d(subt[mask], medfilt(subf[mask], kernel_size=kernel_size))
+
+                # REMOVES LOCAL STELLAR VARIABILITY TO FIT FLARE
+                detrended = subf/func(subt)
+                std = np.nanstd(detrended[mask])
+                med = np.nanmedian(detrended[mask])
+
+                # MARKS FLARE AMPLITUDE AND POINTS BEFORE & AFTER
+                amp = detrended[amp_ind]
+                decay  = detrended[amp_ind+1]
+                growth = detrended[amp_ind-1]
+
+                if ( (amp > (med+1.5*std)) and (decay >= (med+std)) and
+                     ((growth-1) < (amp-1)*0.95) ):
+                    x = minimize(chiSquare, x0=[amp-np.nanmedian(detrended[mask]), 0.0001, 0.0005],
+                                 args=(subt, detrended, sube, amp_ind),
+                                 method='L-BFGS-B')
+
+                    if x.x[2] != 0.0005:
+                        fm, params = flare_lightcurve(subt, amp_ind, x.x[0], x.x[1], x.x[2])
+                        
+                        params[1] += 1
+                        params[2] = (params[2] * u.min).value / 2
+                        params = np.append(params, subprob[amp_ind])
+                        params = np.append(np.array([self.IDs[i]]), params)
+                        table.add_row(params)
+
+        self.flare_table = table
