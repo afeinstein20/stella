@@ -209,7 +209,7 @@ class FindTheSpots(object):
             """ Assigns a flag in the table for which periods are reliable.
             """
             if ((pow > 0.02) and (width < (per*0.25)) and 
-                (avg > 0) and (secpow < (0.95*pow))):
+                (avg > 0) and (secpow < (0.96*pow))):
                 return 1
             else:
                 return 0
