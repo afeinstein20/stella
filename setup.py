@@ -28,7 +28,7 @@ setup(
         ],
     include_package_data=True,
     url='http://github.com/afeinstein20/stella',
-    description='For finding flares with a neural network',
+    description='For finding flares in TESS 2-min data with a CNN',
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={'': ['README.md', 'LICENSE']},
