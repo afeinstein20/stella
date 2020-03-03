@@ -117,7 +117,7 @@ class FindTheSpots(object):
         return popt
 
     
-    def run_LS(self, minf=1/20., maxf=1/0.1, spp=50):
+    def run_LS(self, minf=1/12.5, maxf=1/0.1, spp=50):
         """ Runs LS fit for each light curve. 
 
         Parameters
@@ -135,27 +135,26 @@ class FindTheSpots(object):
         """
         tab = Table()
 
-        periods = np.zeros(len(self.time))
-        stds = np.zeros(len(self.time))
-        peak_power = np.zeros(len(self.time))
+        periods = np.zeros(len(self.IDs))
+        stds = np.zeros(len(self.IDs))
+        peak_power = np.zeros(len(self.IDs))
 
-        periods2 = np.zeros(len(self.time))
-        stds2 = np.zeros(len(self.time))
-        peak_power2 = np.zeros(len(self.time))
+        periods2 = np.zeros(len(self.IDs))
+        stds2 = np.zeros(len(self.IDs))
+        peak_power2 = np.zeros(len(self.IDs))
 
 
         for i in tqdm(range(len(self.flux)), desc="Finding most likely periods"):
 
             time, flux, flux_err = self.time[i], self.flux[i], self.flux_err[i]
-            
-            freq, power = LombScargle(time, flux, dy=flux_err).autopower(minimum_frequency=minf,
-                                                                         maximum_frequency=maxf,
-                                                                         method='fast',
-                                                                         samples_per_peak=spp)
-            arg = np.argmax(power)
-            
-            period = 1.0/freq
 
+            ls = LombScargle(time, flux)
+            freq, power = ls.autopower(minimum_frequency=minf,
+                                       maximum_frequency=maxf,
+                                       samples_per_peak=spp)
+            arg = np.argmax(power)
+
+            period = 1.0/freq
             popt = self.fit_LS_peak(period, power, arg)
             
             periods[i] = period[arg]
@@ -165,11 +164,20 @@ class FindTheSpots(object):
             ## SEARCHES & MASKS RESONANCES OF THE BEST-FIT PERIOD
             perlist = period[arg] * np.array([0.5, 1.0, 2.0, 4.0, 8.0])
             remove_res = np.zeros(len(period))
+            maskreg = spp/2
             for p in perlist:
-                where = np.where( (period >= p-0.01) & (period <= p+0.01))[0]
+                where = np.where( (period <= p))[0]
                 if len(where) > 0:
-                    ind = int(np.nanmedian(where))
-                    remove_res[int(ind-spp):int(ind+spp)] = 1
+                    ind = int(where[0])
+                    if ind-maskreg > 0 and ind<len(period)-maskreg:
+                        remove_res[int(ind-maskreg):int(ind+maskreg)] = 1
+                    elif ind < maskreg:
+                        remove_res[0:int(maskreg)] = 1
+                    elif ind > len(period)-maskreg:
+                        remove_res[int(len(period)-maskreg):len(period)] = 1
+            
+            if perlist[1] == 1/minf:
+                remove_res[0:int(spp/2)] = 1
 
             rr = remove_res == 0
 
@@ -208,8 +216,10 @@ class FindTheSpots(object):
         def assign_flag(per, pow, width, avg, secpow):
             """ Assigns a flag in the table for which periods are reliable.
             """
-            if ((pow > 0.02) and (width < (per*0.25)) and 
-                (avg > 0) and (secpow < (0.96*pow))):
+            if ((pow > 0.02) and (width < (per*0.35)) and 
+                (avg > 0) and (np.abs(per-avg) < 1.0) and
+                ((secpow < (0.96*pow)) or (secpow == pow)) and 
+                (per < 12.5)):
                 return 1
             else:
                 return 0
@@ -217,7 +227,7 @@ class FindTheSpots(object):
         averaged_periods = np.zeros(len(tab))
         flagging = np.zeros(len(tab), dtype=int)
 
-        for i in tqdm(self.IDs, desc="Averaging over different sectors"):
+        for i in self.IDs:
             
             subind = np.where(tab['Target_ID'] == i)[0]
 
@@ -236,6 +246,7 @@ class FindTheSpots(object):
                 med_period = np.nanmedian(periods)
                 std = np.nanstd(periods) * 2.0
                 
+                check_res = np.array([])
                 for si, p in enumerate(periods):
                     max_power = tab['max_power'].data[subind[si]]
                     width = tab['gauss_width'].data[subind[si]]
@@ -255,9 +266,16 @@ class FindTheSpots(object):
                     else:
                         avg = 0.0
 
-                    averaged_periods[subind[si]] = avg
+                    check_res = np.append(check_res, avg)
+                averaged_periods[subind] = np.nanmedian(check_res)
+                
+                for si, p in enumerate(periods):
+                    max_power = tab['max_power'].data[subind[si]]
+                    width = tab['gauss_width'].data[subind[si]]
+                    sec_power = tab['secondary_max_power'].data[subind[si]]
                     flagging[subind[si]] = assign_flag(p, max_power, width,
-                                                       avg, sec_power)
+                                                       np.nanmedian(check_res), 
+                                                       sec_power)
 
         tab.add_column(Column(averaged_periods, name='avg_period_days'))
         tab.add_column(Column(flagging, name='flags'))
@@ -304,9 +322,10 @@ class FindTheSpots(object):
 
         for i in tqdm(range(len(table['Target_ID'])), desc='Getting Phases'):
             prot = table['avg_period_days'].data[i]
+            prot_cadences = int(((prot*u.day).to(u.min)/2).value)
 
             # MAKES SURE PROT PASSED PREVIOUS TESTS
-            if table['flags'].data[i] == 1 and prot < 8.0:
+            if table['flags'].data[i] == 1:
 
                 which_inds.append(i)
 
@@ -323,74 +342,83 @@ class FindTheSpots(object):
                 inlc  = ((rots > time[0]) & (rots < time[-1]))
                 rots  = rots[inlc]
 
-                start_ind = np.where( (time>=rots[0]) & (time<rots[1]))[0]
-                if ( (flux[int(np.nanmedian(start_ind)/2)] > flux[start_ind][0]) and
-                     (flux[int(np.nanmedian(start_ind)/2)] > flux[start_ind][-1])):
-                    phase_order = [trough, peak]
+                if len(rots) <= 1:
+                    PHASES[i] = np.zeros(time.shape)
+                    
                 else:
-                    phase_order = [peak, trough]
+                    start_ind = np.where( (time>=rots[0]) & (time<rots[1]))[0]
+                    if ( (flux[int(np.nanmedian(start_ind)/2)] > flux[start_ind][0]) and
+                         (flux[int(np.nanmedian(start_ind)/2)] > flux[start_ind][-1])):
+                        phase_order = [trough, peak]
+                    else:
+                        phase_order = [peak, trough]
 
-                # FINDS ORBITAL BREAKS TO IGNORE
-                diff = np.diff(time)
-                orbit_break = np.where(diff > (np.nanmedian(diff) + 12*np.nanstd(diff)))[0]
+                    # FINDS ORBITAL BREAKS TO IGNORE
+                    diff = np.diff(time)
+                    orbit_break = np.where(diff > (np.nanmedian(diff) + 12*np.nanstd(diff)))[0]
+                    lightcurve = np.diff( np.sort( np.append([0, len(time)], orbit_break)))
 
-                # FINDS WHICH PROT STARTS COMPLETE 1 FULL ROTATION
-                rfull, rall = np.array([]), np.array([])
-                for r in rots:
-                    if len(time[((time>=r) & (time<=r+0.1))]) > 0:
-                        rall = np.append(rall, r)
-                        for o in orbit_break:
-                            rall = np.append(rall, np.array([time[o], time[o+1]]))
+#                if len(np.where(prot_cadences*1.5-lightcurve>0)[0]) > 0:
+#                    PHASES[i] = np.zeros(flux.shape)
 
-                            # FOR FULL ROTATIONS
-                            if ( ((r < time[o]-prot/5) or (r>time[o+1]+prot/5)) and
-                                 (r<time[-1]-prot/5) and (r>time[0]+prot/5)):
-                                rfull = np.append(rfull, r)
-                rall = np.append(rall, np.array([time[0], time[-1]]))
-                rall, rfull = np.sort(np.unique(rall)), np.sort(np.unique(rfull))
+#                else:
+# FINDS WHICH PROT STARTS COMPLETE 1 FULL ROTATION
+                    rfull, rall = np.array([]), np.array([])
+                    for r in rots:
+                        if len(time[((time>=r) & (time<=r+0.1))]) > 0:
+                            rall = np.append(rall, r)
+                            for o in orbit_break:
+                                rall = np.append(rall, np.array([time[o], time[o+1]]))
 
-                prot_cadences = int(((prot*u.day).to(u.min)/2).value)
+                                # FOR FULL ROTATIONS
+                                if ( ((r < time[o]-prot/5) or (r>time[o+1]+prot/5)) and
+                                     (r<time[-1]-prot/5) and (r>time[0]+prot/5)):
+                                    rfull = np.append(rfull, r)
+                    rall = np.append(rall, np.array([time[0], time[-1]]))
+                    rall, rfull = np.sort(np.unique(rall)), np.sort(np.unique(rfull))
 
-                troughs, regions = np.array([], dtype=int), np.array([], dtype=int)
-                
-                for r in range(len(rfull)):
-                    region = np.where((time>=rfull[r]) & (time<rfull[r]+prot))[0]
-                    if len(region) >= 100:
-                        minimum, p = medfilt_phase(flux[region], kernel_size,
-                                                   phase_order, localmin)
-                        regions = np.append(regions, len(region))
-                        troughs = np.append(troughs, minimum)
-                        phase[region] = p
+                    if len(rfull) <= 1:
+                        PHASES[i] = np.zeros(time.shape)
+                    
+                    else:
+                        troughs, regions = np.array([], dtype=int), np.array([], dtype=int)
+
+                        for r in range(len(rfull)):                    
+                            region = np.where((time>=rfull[r]) & (time<rfull[r]+prot))[0]
+                            if len(region) >= 50:
+                                minimum, p = medfilt_phase(flux[region], kernel_size,
+                                                           phase_order, localmin)
+                                regions = np.append(regions, len(region))
+                                troughs = np.append(troughs, minimum)
+                                phase[region] = p
                         
-
-                prot_cadences = int(((prot*u.day).to(u.min)/2).value)
                 
-                # FINDS AN APPROXIMATE MINIMUM CADENCE
-                averaged_trough = int(np.round(np.nanmedian(troughs)/np.nanmedian(regions) * prot_cadences))
-                interpphase = np.append( np.linspace(phase_order[0], (trough+peak)/2, averaged_trough),
-                                         np.linspace((trough+peak)/2, phase_order[1], prot_cadences-averaged_trough))
+                        # FINDS AN APPROXIMATE MINIMUM CADENCE
+                        averaged_trough = int(np.round(np.nanmedian(troughs)/np.nanmedian(regions) * prot_cadences))
+                        interpphase = np.append( np.linspace(phase_order[0], (trough+peak)/2, averaged_trough),
+                                                 np.linspace((trough+peak)/2, phase_order[1], prot_cadences-averaged_trough))
 
-                # FINDS PHASES FOR NOT COMPLETE ROTATION PERIODS OR 
-                # FULL ONES TOO CLOSE TO LARGE GAPS
-                for r in range(len(rall)):
-                    if r not in rfull and r != len(rall)-1:
-                        region = np.where( (time >= rall[r]) & (time <= rall[r+1]))[0]
+                        # FINDS PHASES FOR NOT COMPLETE ROTATION PERIODS OR 
+                        # FULL ONES TOO CLOSE TO LARGE GAPS
+                        for r in range(len(rall)):
+                            if r not in rfull and r != len(rall)-1:
+                                region = np.where( (time >= rall[r]) & (time <= rall[r+1]))[0]
+                            
+                                if len(region) > prot_cadences:
+                                    diff = len(region) - prot_cadences
+                                    ip = np.zeros(len(region))
+                                    ip[0:averaged_trough+diff] = np.linspace(phase_order[0], (trough+peak)/2,
+                                                                             averaged_trough+diff)
+                                    ip[averaged_trough+diff:]  = np.linspace((trough+peak)/2, phase_order[1],
+                                                                             len(region)-averaged_trough-diff)
+                                    phase[region] = ip
+                                else:
+                                    if flux[region][-1] > flux[region][0]:
+                                        phase[region] = interpphase[prot_cadences-len(region):]
+                                    else:
+                                        phase[region] = interpphase[:len(region)]
 
-                        if len(region) > prot_cadences:
-                            diff = len(region) - prot_cadences
-                            ip = np.zeros(len(region))
-                            ip[0:averaged_trough+diff] = np.linspace(phase_order[0], (trough+peak)/2,
-                                                                     averaged_trough+diff)
-                            ip[averaged_trough+diff:]  = np.linspace((trough+peak)/2, phase_order[1],
-                                                                     len(region)-averaged_trough-diff)
-                            phase[region] = ip
-                        else:
-                            if flux[region][-1] > flux[region][0]:
-                                phase[region] = interpphase[prot_cadences-len(region):]
-                            else:
-                                phase[region] = interpphase[:len(region)]
-                                
-                PHASES[i] = phase
+                        PHASES[i] = phase
                 
             else:
                 PHASES[i] = np.zeros(self.flux[i].shape)
