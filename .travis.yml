@@ -19,7 +19,7 @@ before_install:
 
 install:
   - pip install tornado==5.1.1
-  - pip install tensorflow>=2.1.0
+  - pip install tensorflow>=2.0.0
   - pip install astropy
   - pip install astroquery
   - pip install tqdm
