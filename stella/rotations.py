@@ -133,6 +133,52 @@ class FindTheSpots(object):
         ----------
         LS_results : astropy.table.Table
         """
+        def per_orbit(t, f):
+            nonlocal maxf, spp
+
+            minf = 1/(t[-1]-t[0])
+            if minf > 1/12.0:
+                minf = 1/12.0
+
+            freq, power = LombScargle(t, f).autopower(minimum_frequency=minf,
+                                                      maximum_frequency=maxf,
+                                                      samples_per_peak=spp)
+            arg = np.argmax(power)
+            per = 1.0/freq
+            popt = self.fit_LS_peak(per, power, arg)
+            
+            ## SEARCHES & MASKS RESONANCES OF THE BEST-FIT PERIOD
+            perlist = per[arg] * np.array([0.5, 1.0, 2.0, 4.0, 8.0])
+            remove_res = np.zeros(len(per))
+            maskreg = int(spp/1.5)
+            for p in perlist:
+                where = np.where( (per <= p))[0]
+                if len(where) > 0:
+                    ind = int(where[0])
+                    if ind-maskreg > 0 and ind<len(per)-maskreg:
+                        remove_res[int(ind-maskreg):int(ind+maskreg)] = 1
+                    elif ind < maskreg:
+                        remove_res[0:int(maskreg)] = 1
+                    elif ind > len(per)-maskreg:
+                        remove_res[int(len(per)-maskreg):len(per   )] = 1
+            if perlist[1] == 1/minf:
+                remove_res[0:int(spp/2)] = 1
+
+            rr = remove_res == 0
+            arg1 = np.argmax(power[rr])
+            ## REDOS PERIOD ROUTINE FOR SECOND HIGHEST PEAK 
+            popt2 = self.fit_LS_peak(per[rr], power[rr], arg1)
+            
+            maxpower = power[arg]
+            secpower = power[rr][arg1]
+
+            bestperiod = per[arg]
+            secbperiod = per[rr][arg1]
+
+            bestwidth = popt[0]
+
+            return bestperiod, secbperiod, maxpower, secpower, bestwidth
+
         tab = Table()
 
         periods = np.zeros(len(self.IDs))
@@ -140,68 +186,97 @@ class FindTheSpots(object):
         peak_power = np.zeros(len(self.IDs))
 
         periods2 = np.zeros(len(self.IDs))
-        stds2 = np.zeros(len(self.IDs))
         peak_power2 = np.zeros(len(self.IDs))
 
+        orbit_flag = np.zeros(len(self.IDs))
+        orbit_flag1 = np.zeros(len(self.IDs))
+        orbit_flag2 = np.zeros(len(self.IDs))
 
         for i in tqdm(range(len(self.flux)), desc="Finding most likely periods"):
 
             time, flux, flux_err = self.time[i], self.flux[i], self.flux_err[i]
-
-            ls = LombScargle(time, flux)
-            freq, power = ls.autopower(minimum_frequency=minf,
-                                       maximum_frequency=maxf,
-                                       samples_per_peak=spp)
-            arg = np.argmax(power)
-
-            period = 1.0/freq
-            popt = self.fit_LS_peak(period, power, arg)
             
-            periods[i] = period[arg]
-            stds[i] = popt[0]
-            peak_power[i] = power[arg]
-
-            ## SEARCHES & MASKS RESONANCES OF THE BEST-FIT PERIOD
-            perlist = period[arg] * np.array([0.5, 1.0, 2.0, 4.0, 8.0])
-            remove_res = np.zeros(len(period))
-            maskreg = spp/2
-            for p in perlist:
-                where = np.where( (period <= p))[0]
-                if len(where) > 0:
-                    ind = int(where[0])
-                    if ind-maskreg > 0 and ind<len(period)-maskreg:
-                        remove_res[int(ind-maskreg):int(ind+maskreg)] = 1
-                    elif ind < maskreg:
-                        remove_res[0:int(maskreg)] = 1
-                    elif ind > len(period)-maskreg:
-                        remove_res[int(len(period)-maskreg):len(period)] = 1
+            # SPLITS BY ORBIT
+            diff = np.diff(time)
+            brk = np.where(diff >= np.nanmedian(diff)+14*np.nanstd(diff))[0]
             
-            if perlist[1] == 1/minf:
-                remove_res[0:int(spp/2)] = 1
+            if len(brk) > 1:
+                brk_diff = brk - (len(time)/2)
+                try:
+                    brk_diff = np.where(brk_diff<0)[0][-1]
+                except IndexError:
+                    brk_diff = np.argmin(brk_diff)
+                brk = np.array([brk[brk_diff]], dtype=int)
 
-            rr = remove_res == 0
+            # DEFINITELY TRIMS OUT EARTHSHINE MOFO
+            t1, f1 = time[:brk[0]][300:-500], flux[:brk[0]][300:-500]
+            t2, f2 = time[brk[0]:][800:-200], flux[brk[0]:][800:-200]
 
-            arg2 = np.argmax(power[rr])
+            o1_params = per_orbit(t1, f1)
+            o2_params = per_orbit(t2, f2)
 
-            ## REDOS PERIOD ROUTINE FOR SECOND HIGHEST PEAK
-            popt2 = self.fit_LS_peak(period[rr], power[rr], arg2)
-            
-            periods2[i] = period[rr][arg2]
-            stds2[i] = popt2[0]
-            peak_power2[i] = power[rr][arg2]
+            both = np.array([o1_params[0], o2_params[0]])
+            avg_period = np.nanmedian(both[both<11.5])
+
+            flag1 = self.assign_flag(o1_params[0], o1_params[2], o1_params[-1],
+                                    avg_period, o1_params[-2], t1[-1]-t1[0])
+            flag2 = self.assign_flag(o2_params[0], o2_params[2], o2_params[-1],
+                                     avg_period, o2_params[-2], t2[-1]-t2[0])
+
+            if flag1 != 0 and flag2 != 0:
+                orbit_flag[i] = 1.0
+            orbit_flag1[i] = flag1
+            orbit_flag2[i] = flag2
+                
+            if flag1 == 0 or (flag1 != 0 and flag2 != 0):
+                periods[i] = o1_params[0]
+                stds[i]    = o1_params[-1]
+                peak_power[i] = o1_params[2]
+                periods2[i] = o2_params[0]
+                peak_power2[i] = o1_params[-2]
+            elif flag2 == 0:
+                periods[i] = o2_params[0]
+                stds[i]    = o2_params[-1]
+                peak_power[i] = o2_params[2]
+                periods2[i] = o1_params[0]
+                peak_power2[i] = o2_params[-2]
+
 
         tab.add_column(Column(self.IDs, 'Target_ID'))
         tab.add_column(Column(periods, name='period_days'))
+        tab.add_column(Column(periods2, name='secondary_period_days'))
         tab.add_column(Column(stds, name='gauss_width'))
         tab.add_column(Column(peak_power, name='max_power'))
-        tab.add_column(Column(stds2, name='secondary_gauss_width'))
-        tab.add_column(Column(periods2, name='secondary_period_days'))
         tab.add_column(Column(peak_power2, name='secondary_max_power'))
+        tab.add_column(Column(orbit_flag, name='orbit_flag'))
+        tab.add_column(Column(orbit_flag1, name='oflag1'))
+        tab.add_column(Column(orbit_flag2, name='oflag2'))
 
         tab = self.averaged_per_sector(tab)
 
         self.LS_results = tab
+
+
             
+    def assign_flag(self, period, power, width, avg, secpow, 
+                    maxperiod, orbit_flag=0):
+        """ Assigns a flag in the table for which periods are reliable.
+        """
+        flag = 100
+        if period > maxperiod:
+            flag = 3
+        if (period < maxperiod) and (width <= period*0.4):
+            flag = 2
+        if ( (period < maxperiod) and (width <= period*0.4) and
+             (secpow < 0.96*power) ):
+            flag = 1
+        if ( (period < maxperiod) and (width <= period*0.4) and 
+             (secpow < 0.96*power) and (np.abs(period-avg)<1.0)):
+            flag = 0
+        if flag == 100:
+            flag = 4
+        return flag
+
             
     def averaged_per_sector(self, tab):
         """ Looks at targets observed in different sectors and determines
@@ -213,72 +288,49 @@ class FindTheSpots(object):
         -------
         astropy.table.Table
         """
-        def assign_flag(per, pow, width, avg, secpow):
-            """ Assigns a flag in the table for which periods are reliable.
-            """
-            if ((pow > 0.02) and (width < (per*0.35)) and 
-                (avg > 0) and (np.abs(per-avg) < 1.0) and
-                ((secpow < (0.96*pow)) or (secpow == pow)) and 
-                (per < 12.5)):
-                return 1
-            else:
-                return 0
-
         averaged_periods = np.zeros(len(tab))
-        flagging = np.zeros(len(tab), dtype=int)
+        flagging = np.ones(len(tab), dtype=int)
 
-        for i in self.IDs:
+        for tic in np.unique(self.IDs):
+            inds = np.where(tab['Target_ID']==tic)[0]
             
-            subind = np.where(tab['Target_ID'] == i)[0]
+            all_periods = np.append(tab['period_days'].data[inds],
+                                    tab['secondary_period_days'].data[inds])
+            ind_flags = np.append(tab['oflag1'].data[inds],
+                                  tab['oflag2'].data[inds])
 
-            # IF ONLY OBSERVED IN 1 SECTOR
-            if len(subind) == 1:
-                averaged_periods[subind[0]] = tab['period_days'].data[subind]
-                flagging[subind[0]] = assign_flag(tab['period_days'].data[subind],
-                                                  tab['max_power'].data[subind],
-                                                  tab['gauss_width'].data[subind],
-                                                  tab['period_days'].data[subind],
-                                                  tab['secondary_max_power'].data[subind])
-                
-            # IF OBSERVED IN MULTIPLE SECTORS
-            elif len(subind) > 1:
-                periods = tab['period_days'].data[subind]
-                med_period = np.nanmedian(periods)
-                std = np.nanstd(periods) * 2.0
-                
-                check_res = np.array([])
-                for si, p in enumerate(periods):
-                    max_power = tab['max_power'].data[subind[si]]
-                    width = tab['gauss_width'].data[subind[si]]
-                    sec_power = tab['secondary_max_power'].data[subind[si]]
-                    
-                    if (p >= med_period - std) and (p <= med_period + std):
-                        avg = p
-
-                    # CHECKS TO SEE IF TWICE THE PERIOD IS A BETTER FIT
-                    elif (p*2.0 >= med_period-std) and (p*2.0 <= med_period + std):
-                        avg = p * 2.0
-
-                    # CHECKS TO SEE IF HALF THE PERIOD IS A BETTER FIT
-                    elif (p/2.0 >= med_period-std) and (p/2.0 <= med_period + std):
-                        avg = p / 2.0
-
-                    else:
-                        avg = 0.0
-
-                    check_res = np.append(check_res, avg)
-                averaged_periods[subind] = np.nanmedian(check_res)
-                
-                for si, p in enumerate(periods):
-                    max_power = tab['max_power'].data[subind[si]]
-                    width = tab['gauss_width'].data[subind[si]]
-                    sec_power = tab['secondary_max_power'].data[subind[si]]
-                    flagging[subind[si]] = assign_flag(p, max_power, width,
-                                                       np.nanmedian(check_res), 
-                                                       sec_power)
-
-        tab.add_column(Column(averaged_periods, name='avg_period_days'))
-        tab.add_column(Column(flagging, name='flags'))
+            for i in inds:
+                if tab['orbit_flag'].data[i] == 1.0:
+                    # DOESN'T MATTER IF CAN'T MEASURE AT LEAST ONE ORBIT
+                    averaged_periods[i] = np.nanmedian(all_periods)
+                else:
+                    diff = np.diff(all_periods[all_periods<12.0])
+                    if len(np.where(diff<1.0)[0]) == len(all_periods)-1:
+                        averaged_periods[i] = np.nanmedian(all_periods)
+                        flagging[i] = 0
+                    elif len(np.where(np.round(diff) == 2.0)[0]) > 0:
+                        flagging[i] = 0
+                        mini = np.nanmin(all_periods)
+                        where = np.where(all_periods > 1.5*mini)[0]
+                        all_periods[where] = all_periods[where]/2
+                        averaged_periods[i] = np.nanmedian(all_periods)
+                    elif len(np.where(np.round(diff,1) == 0.5)[0]) > 0:
+                        flagging[i] = 0
+                        maxi = np.nanmax(all_periods)
+                        where = np.where(all_periods < 1.5*maxi)[0]
+                        all_periods[where] = all_periods[where] * 2.0
+                        averaged_periods[i] = np.nanmedian(all_periods)
+                    if len(diff) < 1:
+                        which = np.where(all_periods < 12.0)[0]
+                        if ind_flags[which] == 0.0:
+                            flagging[i] = 0
+                            averaged_periods[i] = np.nanmedian(all_periods[which])
+                        else:
+                            flagging[i] = ind_flags[which]
+                            averaged_periods[i] = np.nanmedian(all_periods)
+                        
+        tab.add_column(Column(flagging, 'Flags'))
+        tab.add_column(Column(averaged_periods, 'avg_period_days'))
         return tab
 
 
@@ -325,7 +377,7 @@ class FindTheSpots(object):
             prot_cadences = int(((prot*u.day).to(u.min)/2).value)
 
             # MAKES SURE PROT PASSED PREVIOUS TESTS
-            if table['flags'].data[i] == 1:
+            if table['Flags'].data[i] == 0:
 
                 which_inds.append(i)
 
