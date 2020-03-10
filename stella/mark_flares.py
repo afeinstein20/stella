@@ -74,7 +74,7 @@ class FitFlares(object):
                 temp = [v]
             else:
                 # SETS 4 CADENCE LIMIT
-                if (np.abs(v-maxi) <= 4):
+                if (np.abs(v-maxi) <= 3):
                     temp.append(v)
                     if v > maxi:
                         maxi = v
@@ -140,14 +140,13 @@ class FitFlares(object):
                     peak = np.argmax(subf[doubcheck])
                     t0   = subt[doubcheck[peak]]
                     amp  = subf[doubcheck[peak]]
-
+                    
                 else:
                     t0  = subt[doubcheck]
                     amp = subf[doubcheck]
-                
-                if amp > (np.nanmedian(subf) + np.nanstd(subf)):
-                    tpeaks  = np.append(tpeaks, t0)
-                    ampls   = np.append(ampls,  amp)
+                    
+                tpeaks  = np.append(tpeaks, t0)
+                ampls   = np.append(ampls,  amp)
 
         return tpeaks, ampls
 
@@ -201,7 +200,7 @@ class FitFlares(object):
                     maskregion = 300
                 else:
                     region = 50
-                    maskregion = 2
+                    maskregion = 10
 
                 where = np.where(time >= tp)[0][0]
                 subt = time[where-region:where+region]
@@ -225,29 +224,30 @@ class FitFlares(object):
                     med = np.nanmedian(detrended[mask])
                     
                     # MARKS FLARE AMPLITUDE AND POINTS BEFORE & AFTER
-                    amp1 = detrended[amp_ind] - med
-                    decay  = detrended[amp_ind+1]
-                    growth = detrended[amp_ind-1]
+                    amp1 = detrended[amp_ind] #- med
+                    decay  = subf[amp_ind+2]
+                    growth = subf[amp_ind-2]
                 
                     if amp > 1.5:
                         decay_guess = 0.001
                     else:
                         decay_guess = 0.0005
                         
-                    if ( (amp > (med+1.5*std)) and (decay >= (med+std)) and
-                         ((growth-1) < (amp-1)*0.95) ):
-                        x = minimize(chiSquare, x0=[amp1, 0.0001, decay_guess],
-                                     args=(subt, detrended, sube, amp_ind),
-                                     method='L-BFGS-B')
-                    
-                        fm, params = flare_lightcurve(subt, amp_ind, np.nanmedian([amp1,x.x[0]]), 
-                                                      x.x[1], x.x[2])
-                    
-                        if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
-                            params[1] += 1
-                            params[2] = (params[2] * u.min).value / 2
-                            params = np.append(params, subp[amp_ind])
-                            params = np.append(np.array([self.IDs[i]]), params)
-                            table.add_row(params)
+                    if ( (amp1 > (med+1.5*std) )):
+                        if  (detrended[amp_ind+2] >= med) and (decay <= amp):
+                            if (growth <= amp):
+                                x = minimize(chiSquare, x0=[amp1, 0.0001, decay_guess],
+                                             args=(subt, detrended, sube, amp_ind),
+                                             method='L-BFGS-B')
+                                             
+                                fm, params = flare_lightcurve(subt, amp_ind, np.nanmedian([amp1,x.x[0]]), 
+                                                              x.x[1], x.x[2])
+                        
+                                if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
+                                    params[1] = subf[amp_ind]
+                                    params[2] = (params[2] * u.min).value / 2
+                                    params = np.append(params, subp[amp_ind])
+                                    params = np.append(np.array([self.IDs[i]]), params)
+                                    table.add_row(params)
 
         self.flare_table = table
