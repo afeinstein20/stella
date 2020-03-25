@@ -95,8 +95,27 @@ class FindTheSpots(object):
                                    maxfev = 5000)
             return popt
 
-        m = np.arange(arg-40, arg+40, 1, dtype=int)
-        subm = np.arange(arg-20, arg+20, 1, dtype=int)
+        if arg-40 < 0:
+            start = 0
+        else:
+            start = arg-40
+        if arg+40 > len(period):
+            end = len(period)-1
+        else:
+            end = arg+40
+
+        m = np.arange(start, end, 1, dtype=int)
+
+        if arg-20 < 0:
+            start = 0
+        else:
+            start = arg-20
+        if arg + 20 > len(period):
+            end = len(period)-1
+        else:
+            end = arg+20
+
+        subm = np.arange(start, end, 1, dtype=int)
 
         try:
             popt = fitting_routine()
@@ -167,6 +186,9 @@ class FindTheSpots(object):
             rr = remove_res == 0
             arg1 = np.argmax(power[rr])
             ## REDOS PERIOD ROUTINE FOR SECOND HIGHEST PEAK 
+            if arg1 == len(per[rr]):
+                arg1 = int(arg1-3)
+
             popt2 = self.fit_LS_peak(per[rr], power[rr], arg1)
             
             maxpower = power[arg]
@@ -264,17 +286,19 @@ class FindTheSpots(object):
         """
         flag = 100
         if period > maxperiod:
+            flag = 4
+        if (period < maxperiod) and (power > 0.005):
             flag = 3
-        if (period < maxperiod) and (width <= period*0.4):
+        if (period < maxperiod) and (width <= period*0.4) and (power > 0.005):
             flag = 2
         if ( (period < maxperiod) and (width <= period*0.4) and
-             (secpow < 0.96*power) ):
+             (secpow < 0.96*power) and (power > 0.005)):
             flag = 1
         if ( (period < maxperiod) and (width <= period*0.4) and 
-             (secpow < 0.96*power) and (np.abs(period-avg)<1.0)):
+             (secpow < 0.96*power) and (np.abs(period-avg)<1.0) and (power > 0.005)):
             flag = 0
         if flag == 100:
-            flag = 4
+            flag = 5
         return flag
 
             

@@ -231,9 +231,9 @@ class FitFlares(object):
                     growth = subf[amp_ind-2]
                 
                     if amp > 1.5:
-                        decay_guess = 0.001
+                        decay_guess = 0.002
                     else:
-                        decay_guess = 0.0005
+                        decay_guess = 0.001
                         
                     if ( (amp1 > (med+1.5*std) )):
                         if  (detrended[amp_ind+2] >= med) and (decay <= amp):
@@ -246,10 +246,14 @@ class FitFlares(object):
                                                               x.x[1], x.x[2])
                         
                                 if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
-                                    params[1] = x.x[0]#subf[amp_ind]
-                                    params[2] = (params[2] * u.min).value / 2
-                                    params = np.append(params, subp[amp_ind])
-                                    params = np.append(np.array([self.IDs[i]]), params)
-                                    table.add_row(params)
+                                    # This makes sure it doesn't catch any bad gaps
+                                    if amp > 1.5 and decay >= amp-std*10:
+                                        pass
+                                    else:
+                                        params[1] = subf[amp_ind]
+                                        params[2] = (params[2] * u.min).value / 2
+                                        params = np.append(params, subp[amp_ind])
+                                        params = np.append(np.array([self.IDs[i]]), params)
+                                        table.add_row(params)
 
         self.flare_table = table
