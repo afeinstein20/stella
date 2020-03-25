@@ -183,8 +183,10 @@ class FitFlares(object):
         kernel_size = 7
 
         for i in tqdm(range(len(self.IDs)), desc='Finding & Fitting Flares'):
-            time, flux = self.time[i], self.flux[i]
-            err, prob  = self.flux_err[i], self.predictions[i]
+            time = self.time[i]
+            flux = self.flux[i]
+            err  = self.flux_err[i]
+            prob = self.predictions[i]
             
             where_prob_higher = np.where(prob >= threshold)[0]
             groupings = self.group_inds(where_prob_higher)
@@ -244,7 +246,7 @@ class FitFlares(object):
                                                               x.x[1], x.x[2])
                         
                                 if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
-                                    params[1] = subf[amp_ind]
+                                    params[1] = x.x[0]#subf[amp_ind]
                                     params[2] = (params[2] * u.min).value / 2
                                     params = np.append(params, subp[amp_ind])
                                     params = np.append(np.array([self.IDs[i]]), params)
