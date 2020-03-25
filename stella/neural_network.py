@@ -452,7 +452,8 @@ class ConvNN(object):
         return df
                        
         
-    def predict(self, modelname, times, fluxes, errs, injected=False):
+    def predict(self, modelname, times, fluxes, errs, 
+                multi_models=False, injected=False):
         """
         Takes in arrays of time and flux and predicts where the flares 
         are based on the keras model created and trained.
@@ -556,10 +557,9 @@ class ConvNN(object):
             reshaped_data = reshaped_data.reshape(reshaped_data.shape[0], 
                                                   reshaped_data.shape[1], 1)
             
-            # Take in a model
+
             preds = model.predict(reshaped_data)
             preds = np.reshape(preds, (len(preds),))
-
             predictions.append(preds)
             
         self.predict_time = np.array(pred_t)
