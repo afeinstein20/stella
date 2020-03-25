@@ -326,7 +326,7 @@ class FindTheSpots(object):
                             flagging[i] = 0
                             averaged_periods[i] = np.nanmedian(all_periods[which])
                         else:
-                            flagging[i] = ind_flags[which]
+                            flagging[i] = 5.0
                             averaged_periods[i] = np.nanmedian(all_periods)
                         
         tab.add_column(Column(flagging, 'Flags'))
