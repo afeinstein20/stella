@@ -1,5 +1,6 @@
 import numpy as np
 from tqdm import tqdm
+import statistics as stats
 from astropy import units as u
 from scipy.signal import medfilt
 from scipy.optimize import curve_fit
@@ -312,46 +313,82 @@ class FindTheSpots(object):
         -------
         astropy.table.Table
         """
+        def flag_em(val, mode, lim):
+            if np.abs(val-mode) < lim:
+                return 0
+            else:
+                return 1
+
         averaged_periods = np.zeros(len(tab))
-        flagging = np.ones(len(tab), dtype=int)
+        flagging = np.zeros(len(tab), dtype=int)
+
+        limit = 0.3
 
         for tic in np.unique(self.IDs):
             inds = np.where(tab['Target_ID']==tic)[0]
-            
-            all_periods = np.append(tab['period_days'].data[inds],
-                                    tab['secondary_period_days'].data[inds])
-            ind_flags = np.append(tab['oflag1'].data[inds],
-                                  tab['oflag2'].data[inds])
+            primary = tab['period_days'].data[inds]
+            secondary = tab['secondary_period_days'].data[inds]
+            all_periods = np.append(primary, secondary)
 
-            for i in inds:
-                if tab['orbit_flag'].data[i] == 1.0:
-                    # DOESN'T MATTER IF CAN'T MEASURE AT LEAST ONE ORBIT
-                    averaged_periods[i] = np.nanmedian(all_periods)
-                else:
-                    diff = np.diff(all_periods[all_periods<12.0])
-                    if len(np.where(diff<1.0)[0]) == len(all_periods)-1:
-                        averaged_periods[i] = np.nanmedian(all_periods)
-                        flagging[i] = 0
-                    elif len(np.where(np.round(diff) == 2.0)[0]) > 0:
-                        flagging[i] = 0
-                        mini = np.nanmin(all_periods)
-                        where = np.where(all_periods > 1.5*mini)[0]
-                        all_periods[where] = all_periods[where]/2
-                        averaged_periods[i] = np.nanmedian(all_periods)
-                    elif len(np.where(np.round(diff,1) == 0.5)[0]) > 0:
-                        flagging[i] = 0
-                        maxi = np.nanmax(all_periods)
-                        where = np.where(all_periods < 1.5*maxi)[0]
-                        all_periods[where] = all_periods[where] * 2.0
-                        averaged_periods[i] = np.nanmedian(all_periods)
-                    if len(diff) < 1:
-                        which = np.where(all_periods < 12.0)[0]
-                        if ind_flags[which] == 0.0:
-                            flagging[i] = 0
-                            averaged_periods[i] = np.nanmedian(all_periods[which])
+#            ind_flags = np.append(tab['oflag1'].data[inds],
+#                                  tab['oflag2'].data[inds])
+            avg = np.array([])
+            tflags = np.array([])
+
+            if len(inds) > 1:
+                try:
+                    mode = stats.mode(np.round(all_periods,2))
+                    if mode > 11.5:
+                        avg = np.full(np.nanmean(primary), len(inds))
+                        tflags = np.full(2, len(inds))
+                    else:
+                        for i in range(len(inds)):
+                            if np.abs(primary[i]-mode) < limit:
+                                avg = np.append(avg, primary[i])
+                                tflags = np.append(tflags,0)
+                                
+                            elif np.abs(secondary[i]-mode) < limit:
+                                avg = np.append(avg, secondary[i])
+                                tflags = np.append(tflags,1)
+                                
+                            elif np.abs(primary[i]/2.-mode) < limit:
+                                avg = np.append(avg, primary[i]/2.)
+                                tflags = np.append(tflags,0)
+
+                            elif np.abs(secondary[i]/2.-mode) < limit:
+                                avg = np.append(avg, secondary[i]/2.)
+                                tflags = np.append(tflags,1)
+                                
+                            elif np.abs(primary[i]*2.-mode) < limit:
+                                avg = np.append(avg, primary[i]*2.)
+                                tflags = np.append(tflags,0)
+                                
+                            elif np.abs(secondary[i]*2.-mode) < limit:
+                                avg = np.append(avg, secondary[i]*2.)
+                                tflags = np.append(tflags,1)
+                                
+                            else:
+                                tflags = np.append(tflags, 2)
+
+                except:
+                    for i in range(len(inds)):
+                        if tab['oflag1'].data[inds[i]]==0 and tab['oflag2'].data[inds[i]]==0:
+                            avg = np.append(avg, tab['period_days'].data[inds[i]])
+                            tflags = np.append(tflags, 0)
                         else:
-                            flagging[i] = 5.0
-                            averaged_periods[i] = np.nanmedian(all_periods)
+                            tflags = np.append(tflags,2)
+                            
+                    
+            else:
+                avg = np.nanmean(primary)
+                if tab['oflag1'].data[inds] == 0 and tab['oflag2'].data[inds]==0:
+                    tflags = 0
+                else:
+                    tflags = 2
+
+            averaged_periods[inds] = np.nanmean(avg)
+            flagging[inds] = tflags
+
                         
         tab.add_column(Column(flagging, 'Flags'))
         tab.add_column(Column(averaged_periods, 'avg_period_days'))
@@ -407,19 +444,11 @@ class FindTheSpots(object):
         PHASES = np.copy(self.flux)
 
         for i in tqdm(range(len(table)), desc="Mapping phases"):
-            period = table['avg_period_days'].data[i] * u.day
-            cadences = int(np.round((period.to(u.min)/2).value))
-            secperiod = table['secondary_period_days'].data[i]
-
-            if np.abs(secperiod-period.value)<0.5 and table['Flags'].data[i]!=0:
-                period = secperiod + 0.0
-                table['Flags'].data[i] = 0
-            if period <= 0.0:
-                table['avg_period_days'].data[i] = table['period_days'].data[i] + 0.0
-                period = table['period_days'].data[i] * u.day
+            flag = table['Flags'].data[i]
+            if flag == 0 or flag == 1:
+                period = table['avg_period_days'].data[i] * u.day
                 cadences = int(np.round((period.to(u.min)/2).value))
 
-            if table['Flags'].data[i] == 0 and cadences != 0:
                 all_time = self.time[i]
                 all_flux = self.flux[i]
                 
