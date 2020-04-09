@@ -116,6 +116,7 @@ class FitFlares(object):
         """
         tpeaks = np.array([])
         ampls  = np.array([])
+
         if len(groupings) > 0:
             for g in groupings:
                 gmin, gmax = g[0], g[-1]
@@ -177,10 +178,11 @@ class FitFlares(object):
             amp, rise, decay = var
             m, p = flare_lightcurve(x, t0_ind, amp, rise, decay)
             return np.sum( (y-m)**2.0 / yerr**2.0 )
+            
 
         table = Table(names=['Target_ID', 'tpeak', 'amp', 'dur',
                              'rise', 'fall', 'prob'])
-        kernel_size = 7
+        kernel_size = 15
 
         for i in tqdm(range(len(self.IDs)), desc='Finding & Fitting Flares'):
             time = self.time[i]
@@ -201,32 +203,30 @@ class FitFlares(object):
                     region = 400
                     maskregion = 300
                 else:
-                    region = 50
+                    region = 40
                     maskregion = 10
 
                 where = np.where(time >= tp)[0][0]
+                
                 subt = time[where-region:where+region]
                 subf = flux[where-region:where+region]
                 sube = err[ where-region:where+region]
-                subp = prob[where-region:where+region] 
+                subp = prob[where-region:where+region]
                 amp_ind = int(len(subf)/2)
 
-                mask = np.append(np.arange(0,len(subt)/2-maskregion,1,dtype=int),
-                                np.arange(len(subt)/2+maskregion,len(subt),1,dtype=int))
+                mask = np.append(np.arange(0,amp_ind-maskregion/2.,1,dtype=int),
+                                 np.arange(amp_ind+maskregion*1.5,len(subt),1,dtype=int))
 
-                if len(mask) < 30:
-                    if amp > 5 and tp < time[0]+3:
-                        pass
-                else:
+                if len(mask) > 10:
                     func = interp1d(subt[mask], medfilt(subf[mask], kernel_size=kernel_size))
-
+                
                     # REMOVES LOCAL STELLAR VARIABILITY TO FIT FLARE
                     detrended = subf/func(subt) 
                     std = np.nanstd(detrended[mask])
                     med = np.nanmedian(detrended[mask])
-                    
+                
                     # MARKS FLARE AMPLITUDE AND POINTS BEFORE & AFTER
-                    amp1 = detrended[amp_ind] #- med
+                    amp1 = detrended[amp_ind]# - med
                     decay  = subf[amp_ind+2]
                     growth = subf[amp_ind-2]
                 
@@ -236,24 +236,27 @@ class FitFlares(object):
                         decay_guess = 0.001
                         
                     if ( (amp1 > (med+1.5*std) )):
-                        if  (detrended[amp_ind+2] >= med) and (decay <= amp):
+                        if  (detrended[amp_ind+1] >= med+1.0*std) and (decay <= amp):# and (decay >= med+std):
                             if (growth <= amp):
+                                amp1 -= med
+                                
                                 x = minimize(chiSquare, x0=[amp1, 0.0001, decay_guess],
                                              args=(subt, detrended, sube, amp_ind),
                                              method='L-BFGS-B')
-                                             
-                                fm, params = flare_lightcurve(subt, amp_ind, np.nanmedian([amp1,x.x[0]]), 
-                                                              x.x[1], x.x[2])
-                        
-                                if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
-                                    # This makes sure it doesn't catch any bad gaps
-                                    if amp > 1.5 and decay >= amp-std*10:
-                                        pass
-                                    else:
-                                        params[1] = subf[amp_ind]
-                                        params[2] = (params[2] * u.min).value / 2
-                                        params = np.append(params, subp[amp_ind])
-                                        params = np.append(np.array([self.IDs[i]]), params)
-                                        table.add_row(params)
-
+                                
+                                if x.success == True:
+                                    fm, params = flare_lightcurve(subt, amp_ind, np.nanmedian([amp1, x.x[0]]),
+                                                                  x.x[1], x.x[2])
+                                    
+                                    if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
+                                        # This makes sure it doesn't catch any bad gaps
+                                        if amp > 1.5 and decay >= amp-std*10:
+                                            pass
+                                        else:
+                                            params[1] = subf[amp_ind]
+                                            params[2] = (params[2] * u.min).value / 2
+                                            params = np.append(params, subp[amp_ind])
+                                            params = np.append(np.array([self.IDs[i]]), params)
+                                            table.add_row(params)
+                                        
         self.flare_table = table

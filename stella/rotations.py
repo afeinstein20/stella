@@ -179,7 +179,7 @@ class FindTheSpots(object):
                     elif ind < maskreg:
                         remove_res[0:int(maskreg)] = 1
                     elif ind > len(per)-maskreg:
-                        remove_res[int(len(per)-maskreg):len(per   )] = 1
+                        remove_res[int(len(per)-maskreg):len(per)] = 1
             if perlist[1] == 1/minf:
                 remove_res[0:int(spp/2)] = 1
 
@@ -231,38 +231,38 @@ class FindTheSpots(object):
                 brk = np.array([brk[brk_diff]], dtype=int)
 
             # DEFINITELY TRIMS OUT EARTHSHINE MOFO
-            t1, f1 = time[:brk[0]][300:-500], flux[:brk[0]][300:-500]
-            t2, f2 = time[brk[0]:][800:-200], flux[brk[0]:][800:-200]
+            t1, f1 = time[:brk[0]], flux[:brk[0]]#[300:-500], flux[:brk[0]]#[300:-500]
+            t2, f2 = time[brk[0]:], flux[brk[0]:]#[800:-200], flux[brk[0]:]#[800:-200]
 
             o1_params = per_orbit(t1, f1)
             o2_params = per_orbit(t2, f2)
 
             both = np.array([o1_params[0], o2_params[0]])
-            avg_period = np.nanmedian(both[both<11.5])
+            avg_period = np.nanmedian(both)
+
 
             flag1 = self.assign_flag(o1_params[0], o1_params[2], o1_params[-1],
                                     avg_period, o1_params[-2], t1[-1]-t1[0])
             flag2 = self.assign_flag(o2_params[0], o2_params[2], o2_params[-1],
                                      avg_period, o2_params[-2], t2[-1]-t2[0])
 
+            if np.abs(o1_params[1]-avg_period) < 0.5 and np.abs(o2_params[1]-avg_period)<0.5:
+                flag1 = flag2 = 0.0
+
             if flag1 != 0 and flag2 != 0:
                 orbit_flag[i] = 1.0
+            else:
+                orbit_flag[i] = 0.0
+                
+            periods[i] = np.nanmedian([o1_params[0], o2_params[0]])
+            
             orbit_flag1[i] = flag1
             orbit_flag2[i] = flag2
                 
-            if flag1 == 0 or (flag1 != 0 and flag2 != 0):
-                periods[i] = o1_params[0]
-                stds[i]    = o1_params[-1]
-                peak_power[i] = o1_params[2]
-                periods2[i] = o2_params[0]
-                peak_power2[i] = o1_params[-2]
-            elif flag2 == 0:
-                periods[i] = o2_params[0]
-                stds[i]    = o2_params[-1]
-                peak_power[i] = o2_params[2]
-                periods2[i] = o1_params[0]
-                peak_power2[i] = o2_params[-2]
-
+            stds[i]    = o1_params[-1]
+            peak_power[i] = o1_params[2]
+            periods2[i] = o2_params[0]
+            peak_power2[i] = o1_params[-2]
 
         tab.add_column(Column(self.IDs, 'Target_ID'))
         tab.add_column(Column(periods, name='period_days'))
@@ -358,7 +358,7 @@ class FindTheSpots(object):
         return tab
 
 
-    def phase_lightcurve(self, table=None, trough=-0.5, peak=0.5, kernel_size=15):
+    def phase_lightcurve(self, table=None, trough=-0.5, peak=0.5, kernel_size=101):
         """ 
         Finds and creates a phase light curve that traces the spots.
         Uses only complete rotations and extrapolates outwards until the
@@ -381,122 +381,62 @@ class FindTheSpots(object):
         ----------
         phases : np.ndarray
         """
-        def medfilt_phase(f, ks, phase_order, localmin):
-            """ Finds minimum of filtered rotation curve. """
-            mf = medfilt(f, kernel_size=25)
-            minimum = np.argmin(mf[localmin:-localmin])
-            p = np.append( np.linspace(phase_order[0], 0, minimum),
-                           np.linspace(0, phase_order[1], len(f)-minimum) )
-            return minimum, p
+        def map_per_orbit(time, flux, kernel_size, cadences):
+            mf = medfilt(flux, kernel_size=kernel_size)
+            argmin = np.argmin(mf[:cadences])
+            mapping = np.linspace(0.5,-0.5, cadences)
+            phase = np.ones(len(flux))
+
+            full = int(np.floor(len(time)/cadences))
+            
+            phase[0:argmin] = mapping[len(mapping)-argmin:]
+            
+            points = np.arange(argmin, cadences*(full+1)+argmin, cadences, dtype=int)
+            for i in range(len(points)-1):
+                try:
+                    phase[points[i]:points[i+1]] = mapping            
+                except:
+                    pass
+            remainder = len(np.where(phase==1.0)[0])            
+            phase[len(phase)-remainder:] = mapping[0:remainder]
+            return phase
 
         if table is None:
             table = self.LS_results
 
-        PHASES   = np.copy(self.flux)
-        localmin = 20
-        which_inds = []
+        PHASES = np.copy(self.flux)
 
-        for i in tqdm(range(len(table['Target_ID'])), desc='Getting Phases'):
-            prot = table['avg_period_days'].data[i]
-            prot_cadences = int(((prot*u.day).to(u.min)/2).value)
+        for i in tqdm(range(len(table)), desc="Mapping phases"):
+            period = table['avg_period_days'].data[i] * u.day
+            cadences = int(np.round((period.to(u.min)/2).value))
+            secperiod = table['secondary_period_days'].data[i]
 
-            # MAKES SURE PROT PASSED PREVIOUS TESTS
-            if table['Flags'].data[i] == 0:
+            if np.abs(secperiod-period.value)<0.5 and table['Flags'].data[i]!=0:
+                period = secperiod + 0.0
+                table['Flags'].data[i] = 0
+            if period <= 0.0:
+                table['avg_period_days'].data[i] = table['period_days'].data[i] + 0.0
+                period = table['period_days'].data[i] * u.day
+                cadences = int(np.round((period.to(u.min)/2).value))
 
-                which_inds.append(i)
-
-                time = self.time[i]
-                flux = self.flux[i]
-                err  = self.flux_err[i]
+            if table['Flags'].data[i] == 0 and cadences != 0:
+                all_time = self.time[i]
+                all_flux = self.flux[i]
                 
-                phase = np.zeros(len(flux))
-
-                # CREATES LIST OF ITERATIONS OF ROTATION PERIODS AND FINDS
-                # WHICH ONES ARE IN THE LIGHT CURVE
-                start = np.argmax(flux[np.where(time<=time[0]+prot)[0]])
-                rots  = np.arange(-1,200,1) * prot + time[start]
-                inlc  = ((rots > time[0]) & (rots < time[-1]))
-                rots  = rots[inlc]
-
-                if len(rots) <= 1:
-                    PHASES[i] = np.zeros(time.shape)
-                    
-                else:
-                    start_ind = np.where( (time>=rots[0]) & (time<rots[1]))[0]
-                    if ( (flux[int(np.nanmedian(start_ind)/2)] > flux[start_ind][0]) and
-                         (flux[int(np.nanmedian(start_ind)/2)] > flux[start_ind][-1])):
-                        phase_order = [trough, peak]
-                    else:
-                        phase_order = [peak, trough]
-
-                    # FINDS ORBITAL BREAKS TO IGNORE
-                    diff = np.diff(time)
-                    orbit_break = np.where(diff > (np.nanmedian(diff) + 12*np.nanstd(diff)))[0]
-                    lightcurve = np.diff( np.sort( np.append([0, len(time)], orbit_break)))
-
-#                if len(np.where(prot_cadences*1.5-lightcurve>0)[0]) > 0:
-#                    PHASES[i] = np.zeros(flux.shape)
-
-#                else:
-# FINDS WHICH PROT STARTS COMPLETE 1 FULL ROTATION
-                    rfull, rall = np.array([]), np.array([])
-                    for r in rots:
-                        if len(time[((time>=r) & (time<=r+0.1))]) > 0:
-                            rall = np.append(rall, r)
-                            for o in orbit_break:
-                                rall = np.append(rall, np.array([time[o], time[o+1]]))
-
-                                # FOR FULL ROTATIONS
-                                if ( ((r < time[o]-prot/5) or (r>time[o+1]+prot/5)) and
-                                     (r<time[-1]-prot/5) and (r>time[0]+prot/5)):
-                                    rfull = np.append(rfull, r)
-                    rall = np.append(rall, np.array([time[0], time[-1]]))
-                    rall, rfull = np.sort(np.unique(rall)), np.sort(np.unique(rfull))
-
-                    if len(rfull) <= 1:
-                        PHASES[i] = np.zeros(time.shape)
-                    
-                    else:
-                        troughs, regions = np.array([], dtype=int), np.array([], dtype=int)
-
-                        for r in range(len(rfull)):                    
-                            region = np.where((time>=rfull[r]) & (time<rfull[r]+prot))[0]
-                            if len(region) >= 50:
-                                minimum, p = medfilt_phase(flux[region], kernel_size,
-                                                           phase_order, localmin)
-                                regions = np.append(regions, len(region))
-                                troughs = np.append(troughs, minimum)
-                                phase[region] = p
-                        
+                diff = np.diff(all_time)
+                gaptime = np.where(diff>=np.nanmedian(diff)+12*np.nanstd(diff))[0][0]
                 
-                        # FINDS AN APPROXIMATE MINIMUM CADENCE
-                        averaged_trough = int(np.round(np.nanmedian(troughs)/np.nanmedian(regions) * prot_cadences))
-                        interpphase = np.append( np.linspace(phase_order[0], (trough+peak)/2, averaged_trough),
-                                                 np.linspace((trough+peak)/2, phase_order[1], prot_cadences-averaged_trough))
-
-                        # FINDS PHASES FOR NOT COMPLETE ROTATION PERIODS OR 
-                        # FULL ONES TOO CLOSE TO LARGE GAPS
-                        for r in range(len(rall)):
-                            if r not in rfull and r != len(rall)-1:
-                                region = np.where( (time >= rall[r]) & (time <= rall[r+1]))[0]
-                            
-                                if len(region) > prot_cadences:
-                                    diff = len(region) - prot_cadences
-                                    ip = np.zeros(len(region))
-                                    ip[0:averaged_trough+diff] = np.linspace(phase_order[0], (trough+peak)/2,
-                                                                             averaged_trough+diff)
-                                    ip[averaged_trough+diff:]  = np.linspace((trough+peak)/2, phase_order[1],
-                                                                             len(region)-averaged_trough-diff)
-                                    phase[region] = ip
-                                else:
-                                    if flux[region][-1] > flux[region][0]:
-                                        phase[region] = interpphase[prot_cadences-len(region):]
-                                    else:
-                                        phase[region] = interpphase[:len(region)]
-
-                        PHASES[i] = phase
+                t1, f1 = all_time[:gaptime+1], all_flux[:gaptime+1]
+                t2, f2 = all_time[gaptime+1:], all_flux[gaptime+1:]
                 
+                o1map = map_per_orbit(t1, f1, kernel_size=101, cadences=cadences)
+                o2map = map_per_orbit(t2, f2, kernel_size=101, cadences=cadences)
+                
+                phase = np.append(o1map, o2map)
+
             else:
-                PHASES[i] = np.zeros(self.flux[i].shape)
+                phase = np.zeros(len(self.flux[i]))
+            
+            PHASES[i] = phase
 
         self.phases = PHASES
