@@ -145,7 +145,7 @@ class FitFlares(object):
                 else:
                     t0  = subt[doubcheck]
                     amp = subf[doubcheck]
-                    
+
                 tpeaks  = np.append(tpeaks, t0)
                 ampls   = np.append(ampls,  amp)
 
@@ -199,7 +199,7 @@ class FitFlares(object):
             # FITS PARAMETERS TO FLARE
             for tp, amp in zip(tpeaks,amps):
                 # CASES FOR HANDLING BIG FLARES
-                if amp > 2.0:
+                if amp > 1.3:
                     region = 400
                     maskregion = 150
                 else:
@@ -235,19 +235,23 @@ class FitFlares(object):
                     growth = subf[amp_ind-2]
                 
                     if amp > 1.5:
-                        decay_guess = 0.002
+                        decay_guess = 0.008
+                        rise_guess  = 0.003
                     else:
                         decay_guess = 0.001
+                        rise_guess  = 0.0001
                         
                     if ( (amp1 > (med+1.5*std) )):
                         if  (detrended[amp_ind+1] >= med+1.0*std) and (decay <= amp):
-                            if (growth < amp) and ((amp-detrended[amp_ind+200]) < 5):
+                            if (growth < amp) and ((amp-subf[amp_ind+1]) < 2):
                                 amp1 -= med
                                 
-                                x = minimize(chiSquare, x0=[amp1, 0.0001, decay_guess],
+                                x = minimize(chiSquare, x0=[amp1, rise_guess, decay_guess],
+                                             bounds=((amp1-0.1,amp1+0.1), (0.0001,0.01),
+                                                     (0.001, 0.01)),
                                              args=(subt, detrended, sube, amp_ind),
                                              method='L-BFGS-B')
-                                
+
                                 if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
                                     fm, params = flare_lightcurve(subt, amp_ind, np.nanmedian([amp1, x.x[0]]),
                                                                   x.x[1], x.x[2])
