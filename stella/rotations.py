@@ -290,12 +290,12 @@ class FindTheSpots(object):
             flag = 4
         if (period < maxperiod) and (power > 0.005):
             flag = 3
-        if (period < maxperiod) and (width <= period*0.4) and (power > 0.005):
+        if (period < maxperiod) and (width <= period*0.6) and (power > 0.005):
             flag = 2
-        if ( (period < maxperiod) and (width <= period*0.4) and
+        if ( (period < maxperiod) and (width <= period*0.6) and
              (secpow < 0.96*power) and (power > 0.005)):
             flag = 1
-        if ( (period < maxperiod) and (width <= period*0.4) and 
+        if ( (period < maxperiod) and (width <= period*0.6) and 
              (secpow < 0.96*power) and (np.abs(period-avg)<1.0) and (power > 0.005)):
             flag = 0
         if flag == 100:
