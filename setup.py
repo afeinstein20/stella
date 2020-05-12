@@ -35,7 +35,8 @@ setup(
     install_requires=[
         'tqdm', 'astropy',
         'astroquery', 'sklearn', 
-        'setuptools>=41.0.0', 
+        'setuptools>=41.0.0', 'pylab',
+        'matplotlib',
         'tensorflow>=2.0.0'],
     classifiers=[
         'Development Status :: 3 - Alpha',
