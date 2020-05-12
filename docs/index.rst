@@ -20,10 +20,6 @@ stella is an open-source python framework for identifying stellar flares using a
    getting_started/installation
    getting_started/tutorial
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Documentation
-
    api
 
 Bug Reports & Questions
