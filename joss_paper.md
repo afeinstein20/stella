@@ -54,14 +54,14 @@ Models have demonstrated that the introduction of superflares ($> 5\%$ flux incr
 Thus, understand flare rates and energies provide crucial keys for understanding the exoplanet population we see today.
 
 Previous methods of flare detection have relied on detrending a light curve and using outlier detection heuristics for identifying flare events.
-However, by relying on detrending first, low energy flares can easily be removed, where cadences within a flare can be flattened. 
-Additionally, low energy flares likely fall below the sigma outlier threshold, biases the overall flare sample towards high energy flares.
-As flares originate from the same physical processes and exhibit siilar time evolution (a sharp rise followed by an exopential decay), machine learning algorithms may prove suitable for identifying such features without light curve detrending.
+However, by relying on detrending first, low energy flares can easily be removed, where cadences within a flare can be flattened. \textbf{This phrasing is awkward!} 
+Additionally, low energy flares likely fall below the outlier threshold, biasing the overall flare sample towards higher energy flares.
+As flares originate from the same physical processes and exhibit similar temporal evolution (a sharp rise followed by an exponential decay), machine learning algorithms may prove suitable for identifying such features without light curve detrending.
 
 `stella` is an open-source Python package for identifying flares in the *Transiting Exoplanet Survey Satellite* (*TESS*) two-minute data with convolutional neural networks (CNN).
-Users have the option to build and train their own networks or the CNN models created for the work of @Feinstein:2020 are also included.
-The training, validation, and test sets for our CNN used the flare catalog presented in @guenther:2019. These light curves are publically available through the Mikulski Archive for Space Telescopes and are not included in this package.
-It takes approximately twenty minutes to create a CNN from scratch through the code and $<$ one minute to predict where flares are on a new light curve.
+Users have the option to build and train their own networks or the CNN models created for the work of @Feinstein:2020 are also included. \textbf{Redundant phrasing in this sentence is a little redundnat}
+The training, validation, and test sets for our CNN used \textbf{tense1 The rest is present tense} the flare catalog presented in @guenther:2019. These light curves are publicly available through the Mikulski Archive for Space Telescopes \textbf{link?} and are not included in this package.
+It takes approximately twenty minutes to create a CNN from scratch through the code and $<1$ minute to predict where flares are on a new light curve. \textbf{What kind of light curve? A single sector? Orbit? Something else?}
 The package also allows users to measure rotation periods and fit flares to extract underlying flare parameters. Further documentation and tutorials can be found at \url{adina.feinste.in/stella}.
 
 # Acknowledgements
