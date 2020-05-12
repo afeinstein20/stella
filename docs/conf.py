@@ -103,6 +103,8 @@ html_static_path = ['_static']
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
+autodoc_mock_imports = ['pylab']
+
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
