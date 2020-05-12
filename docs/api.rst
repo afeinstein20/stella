@@ -5,10 +5,16 @@ API
 .. automodule:: stella
     :members:
 
-.. autoclass:: TrainingSet
+.. autoclass:: FlareDataSet
     :members:
 
 .. autoclass:: ConvNN
+    :members:
+
+.. autoclass:: FitFlares
+    :members:
+
+.. autoclass:: FindTheSpots
     :members:
 
 .. autoclass:: Visualize
