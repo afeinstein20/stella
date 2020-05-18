@@ -14,7 +14,7 @@ API
 .. autoclass:: FitFlares
     :members:
 
-.. autoclass:: FindTheSpots
+.. autoclass:: MeasureProt
     :members:
 
 .. autoclass:: Visualize

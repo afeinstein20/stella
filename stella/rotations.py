@@ -7,9 +7,9 @@ from scipy.optimize import curve_fit
 from astropy.table import Table, Column
 from astropy.timeseries import LombScargle
 
-__all__ = ['FindTheSpots']
+__all__ = ['MeasureProt']
 
-class FindTheSpots(object):
+class MeasureProt(object):
     """
     Used for measuring rotation periods.
     """
