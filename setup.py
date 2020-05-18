@@ -13,7 +13,16 @@ from version import __version__
 
 long_description = \
     """
-stella is a python package to find and characterize flares using a neural network.
+stella is a python package to identify and characterize flares in 
+TESS short-cadence data using a convolutional neural network. In its
+simplest form, stella takes an array of light curves and predicts where
+flares are using the models provided in Feinstein et al. submitted and 
+returns predictions. 
+
+Read the documentation at https://adina.feinste.in/stella
+
+Changes to v0.1.0 (2020-05-18):
+*  
 """
 
 
@@ -35,7 +44,7 @@ setup(
     install_requires=[
         'tqdm', 'astropy',
         'astroquery', 'sklearn', 
-        'setuptools>=41.0.0',
+        'setuptools>=41.0.0', 'itertools',
         'matplotlib',
         'tensorflow>=2.0.0'],
     classifiers=[

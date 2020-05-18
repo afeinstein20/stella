@@ -1,7 +1,7 @@
 Metadata-Version: 2.1
 Name: stella
-Version: 0.0.4
-Summary: For finding flares with a neural network
+Version: 0.0.5rc1
+Summary: For finding flares in TESS 2-min data with a CNN
 Home-page: http://github.com/afeinstein20/stella
 Author: Adina D. Feinstein
 Author-email: adina.d.feinstein@gmail.com
