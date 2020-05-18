@@ -202,7 +202,6 @@ def do_the_shuffle(training_matrix, labels, training_other, training_ids, frac_b
     Returns
     -------
     """
-    
     np.random.seed(321)
     ind_shuffle = np.random.permutation(training_matrix.shape[0])
     
@@ -221,16 +220,16 @@ def do_the_shuffle(training_matrix, labels, training_other, training_ids, frac_b
     # REMOVE FRAC_BALANCE% OF NEGATIVE CLASS                                                                          
     length = int(frac_balance * len(ind_nc_rand))
 
-    ind_pc = np.where(labels==1)
-    ind_nc = np.where(labels==0)
-    print("{} positive classes (flare)".format(len(ind_pc[0])))
-    print("{} negative classes (no flare)".format(len(ind_nc[0])))
-    print("{}% class imbalance\n".format(np.round(100 * len(ind_pc[0]) / len(ind_nc[0]))))
-    
     newlabels = np.delete(labels2, ind_nc_rand[0:length])
     newtraining_other  = np.delete(other2 , ind_nc_rand[0:length])
     newtraining_ids    = np.delete(ids2   , ind_nc_rand[0:length])
     newtraining_matrix = np.delete(matrix2, ind_nc_rand[0:length], axis=0)
+
+    ind_pc = np.where(newlabels==1)
+    ind_nc = np.where(newlabels==0)
+    print("{} positive classes (flare)".format(len(ind_pc[0])))
+    print("{} negative classes (no flare)".format(len(ind_nc[0])))
+    print("{}% class imbalance\n".format(np.round(100 * len(ind_pc[0]) / len(ind_nc[0]))))
     
     return newtraining_ids, newtraining_matrix, newlabels, newtraining_other
 
