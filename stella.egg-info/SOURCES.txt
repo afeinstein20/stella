@@ -19,6 +19,7 @@ docs/conf.py
 docs/index.rst
 docs/getting_started/about.rst
 docs/getting_started/installation.rst
+docs/getting_started/other_features.ipynb
 docs/getting_started/shortest_demo.ipynb
 docs/getting_started/tutorial.ipynb
 docs/sphinx_rtd_theme/__init__.py

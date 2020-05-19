@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://travis-ci.org/afeinstein20/stella/"><img src="https://img.shields.io/travis/afeinstein20/stella/master.svg?colorB=D35968"/></a>
+  <a href="https://arxiv.org/abs/2005.07710"><img src="https://img.shields.io/badge/read-the_paper-3C1370.svg?style=flat"/></a>
   <a href="https://afeinstein20.github.io/stella/"><img src="https://img.shields.io/badge/read-the_docs-3C1370.svg?style=flat"/></a>
 </p>
 
@@ -25,3 +26,4 @@ Alternatively you can install the current development version of stella:
         cd stella
         python setup.py install
 
+If your work uses eleanor, please cite <a href="">Feinstein et al. submitted</a>.

@@ -1,13 +1,22 @@
 Metadata-Version: 2.1
 Name: stella
-Version: 0.0.5rc1
+Version: 0.0.5
 Summary: For finding flares in TESS 2-min data with a CNN
 Home-page: http://github.com/afeinstein20/stella
 Author: Adina D. Feinstein
 Author-email: adina.d.feinstein@gmail.com
 License: MIT
 Description: 
-        stella is a python package to find and characterize flares using a neural network.
+        stella is a python package to identify and characterize flares in 
+        TESS short-cadence data using a convolutional neural network. In its
+        simplest form, stella takes an array of light curves and predicts where
+        flares are using the models provided in Feinstein et al. submitted and 
+        returns predictions. 
+        
+        Read the documentation at https://adina.feinste.in/stella
+        
+        Changes to v0.1.0 (2020-05-18):
+        *  
         
 Platform: UNKNOWN
 Classifier: Development Status :: 3 - Alpha
