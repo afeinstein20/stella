@@ -7,6 +7,23 @@
   {%- set titlesuffix = "" %}
 {%- endif %}
 
+
+{% extends "!layout.html" %}
+
+{% block footer %}
+{{ super() }}
+<script type="text/javascript">
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+try {
+var pageTracker = _gat._getTracker("UA-124414737-2");
+pageTracker._trackPageview();
+} catch(err) {}</script>
+{% endblock %}
+
+
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
