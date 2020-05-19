@@ -191,8 +191,6 @@
   </script>
   {% endif %}
 
-  {% block footer %} 
-
   {{ super() }}
   <script type="text/javascript">
     var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
@@ -204,7 +202,7 @@
     pageTracker._trackPageview();
     } catch(err) {}</script>
 
-  {% endblock %}
+  {%- block footer %} {% endblock %}
   
 
 
