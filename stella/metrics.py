@@ -34,7 +34,7 @@ class ModelMetrics(object):
 
         self.load_data()
 
-        if mode is 'ensemble':
+        if mode == 'ensemble':
             self.ensemble_average()
 
         
@@ -52,11 +52,11 @@ class ModelMetrics(object):
         """
         df = os.listdir(self.dir)
 
-        if self.mode is 'cross_val':
+        if self.mode == 'cross_val':
             files = np.sort([i for i in df if 'crossval' in i])
             folds = []
 
-        elif self.mode is 'ensemble':
+        elif self.mode == 'ensemble':
             files = np.sort([i for i in df if 'ensemble' in i])
             seeds = []
 
@@ -79,11 +79,11 @@ class ModelMetrics(object):
         self.frac_balance = float(parsing[3].split('b')[1][0:4])
         
         for m in self.models:
-            if self.mode is 'cross_val':
+            if self.mode == 'cross_val':
                 f = int(m.split('_')[4].split('.')[0][1:])
                 folds.append(f)
                 self.folds = folds
-            if self.mode is 'ensemble':
+            if self.mode == 'ensemble':
                 s = int(m.split('_')[1].split('s')[1])
                 seeds.append(s)
                 self.seeds = seeds
@@ -128,9 +128,9 @@ class ModelMetrics(object):
 
     def set_table(self, data_set):
         """ Sets table for metric calculation."""
-        if data_set is 'validation':
+        if data_set == 'validation':
             table = self.predval_table
-        elif data_set is 'test':
+        elif data_set == 'test':
             if self.predtest_table is not None:
                 table = self.predtest_table
             else:
