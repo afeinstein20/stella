@@ -49,7 +49,7 @@ As flares exhibit similar temporal evolution (a sharp rise followed by an expone
 
 `stella` is an open-source Python package for identifying flares in the *Transiting Exoplanet Survey Satellite* (*TESS*) two-minute data with convolutional neural networks (CNN).
 Users have the option to use the models created in @Feinstein:2020 or build their own cutomized networks.
-The training, validation, and test sets for our CNN use the flare catalog presented in @guenther:2019. These light curves are publicly available through the Mikulski Archive for Space Telescopes and can be downloaded through the \texttt{lightkurve} package. They are not included in \texttt{stella}.
+The training, validation, and test sets for our CNN use the flare catalog presented in @guenther:2019. These light curves are publicly available through the Mikulski Archive for Space Telescopes and can be downloaded through the \texttt{lightkurve} package; they are not included in \texttt{stella}.
 It takes approximately twenty minutes to train a \texttt{stella} model from scratch and $<1$ minute to predict flares on a single sector light curve.
 The package also allows users to measure rotation periods and fit flares to extract underlying flare parameters. Further documentation and tutorials can be found at \url{adina.feinste.in/stella}.
 
