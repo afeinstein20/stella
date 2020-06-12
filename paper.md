@@ -55,6 +55,6 @@ The package also allows users to measure rotation periods and fit flares to extr
 
 # Acknowledgements
 
-We acknowledge contributions from Jacob Bean, Dorian Abbot, Thaddeus Komacek, James Owen, and Travis guru Rodrigo Luger.
+We acknowledge contributions from Travis expert Rodrigo Luger.
 This material is based upon work supported by the National Science Foundation Graduate Research Fellowship Program under Grant No. (DGE-1746045).
 This work was funded in part through the NASA *TESS* Guest Investigator Program, as a part of Program G011237 (PI Montet).
