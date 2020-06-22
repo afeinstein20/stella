@@ -180,9 +180,10 @@ class FitFlares(object):
             return np.sum( (y-m)**2.0 / yerr**2.0 )
             
 
-        table = Table(names=['Target_ID', 'tpeak', 'amp', 'dur',
+        table = Table(names=['Target_ID', 'tpeak', 'amp', 'dur_min',
                              'rise', 'fall', 'prob'])
-        kernel_size = 15
+        kernel_size  = 15
+        kernel_size1 = 21
 
         for i in tqdm(range(len(self.IDs)), desc='Finding & Fitting Flares'):
             time = self.time[i]
@@ -219,15 +220,19 @@ class FitFlares(object):
                 m = mask == 0
 
                 if len(mask) > 10:
-                    func = interp1d(subt[m], medfilt(subf[m], kernel_size=kernel_size))
-
+                    func  = interp1d(subt[m], medfilt(subf[m], kernel_size=kernel_size))
+                    func1 = interp1d(subt, medfilt(subf, kernel_size=kernel_size1))
                     # REMOVES LOCAL STELLAR VARIABILITY TO FIT FLARE
-                    try:
-                        detrended = subf/func(subt) 
-                        std = np.nanstd(detrended[m])
-                        med = np.nanmedian(detrended[m])
-                    except:
-                        pass
+#                    try:
+                    detrended = subf/func(subt) 
+                    std = np.nanstd(detrended[m])
+                    med = np.nanmedian(detrended[m])
+                    
+                    detrend_with_flare = subf/func1(subt)
+                    std1 = np.nanstd(detrend_with_flare)
+                    med1 = np.nanmedian(detrend_with_flare)
+#                    except:
+#                        pass
 
                     # MARKS FLARE AMPLITUDE AND POINTS BEFORE & AFTER
                     amp1 = detrended[amp_ind]# - med
@@ -241,15 +246,24 @@ class FitFlares(object):
                         decay_guess = 0.001
                         rise_guess  = 0.0001
                         
-                    if ( (amp1 > (med+1.5*std) )):
-                        if  (detrended[amp_ind+1] >= med+1.0*std) and (decay <= amp):
-                            if (growth < amp) and ((amp-subf[amp_ind+1]) < 2):
+                    # Checks if amplitude of flare is 1.5sig, and the next 2 consecutive points < amp
+                    if ( (amp1 > (med+1.5*std) )) and (subf[amp_ind+1] < subf[amp_ind]) and (subf[amp_ind+2] < subf[amp_ind+1]):
+
+                        # Checks if next 2 consecutive points are > 1sig above
+                        if  (detrended[amp_ind+1] >= (med1+std1)) and (detrended[amp_ind+2] >= (med1+std1)):
+
+                            # Checks if point before amp < amp and that it isn't catching noise
+                            if (growth < amp) and ((amp-subf[-1]) < 2):
+
                                 amp1 -= med
                                 
                                 x = minimize(chiSquare, x0=[amp1, rise_guess, decay_guess],
                                              bounds=((amp1-0.1,amp1+0.1), (0.0001,0.01),
-                                                     (0.001, 0.01)),
-                                             args=(subt, detrended, sube, amp_ind),
+                                                     (0.0005, 0.01)),
+                                             args=(subt[int(len(subt)/2-maskregion):int(len(subt)/2+maskregion)], 
+                                                   detrended[int(len(detrended)/2-maskregion):int(len(detrended)/2+maskregion)], 
+                                                   sube[int(len(sube)/2-maskregion):int(len(sube)/2+maskregion)], 
+                                                   int(len(subt[int(len(subt)/2-maskregion):int(len(subt)/2+maskregion)])/2)),
                                              method='L-BFGS-B')
 
                                 if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
@@ -257,9 +271,10 @@ class FitFlares(object):
                                                                   x.x[1], x.x[2])
                                     
                                     params[1] = x.x[0]#subf[amp_ind]
-                                    params[2] = (params[2] * u.min).value / 2
+                                    params[2] = ((params[2] * u.day).to(u.min)/2).value
                                     params = np.append(params, subp[amp_ind])
                                     params = np.append(np.array([self.IDs[i]]), params)
                                     table.add_row(params)
+                                    self.flare_table = table                                        
 
-        self.flare_table = table
+        self.flare_table = table[table['amp'] > 0.005]

@@ -1,4 +1,5 @@
 import numpy as np
+from astropy import units as u
 from scipy.interpolate import interp1d
 
 def flare_lightcurve(time, t0, amp, rise, fall, y=None):
@@ -45,8 +46,8 @@ def flare_lightcurve(time, t0, amp, rise, fall, y=None):
     decay_model  = exp_decay(time[decay]  , y[decay] , amp, time[t0], fall)
 
     model = np.append(growth_model, decay_model)
-    dur = np.abs(np.sum(model[:-1] * np.diff(time) ))
-
+    w = np.where(model != 1.0)[0]#
+    dur = np.abs(np.sum(model[w][:-1] * np.diff(time[w]) ))
     return model, np.array([time[t0], amp, dur, rise, fall])
 
 
