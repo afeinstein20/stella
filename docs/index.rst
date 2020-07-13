@@ -28,10 +28,10 @@ stella is an open-source python framework for identifying stellar flares using a
 
    api
 
-Bug Reports & Questions
------------------------
+Bug Reports, Questions, & Contributions
+---------------------------------------
 
-stella is an open source project under the MIT license. The source code is available on `GitHub`_. In case of any questions or problems, please contact us via the `Git Issues`_.
+stella is an open source project under the MIT license. The source code is available on `GitHub`_. In case of any questions or problems, please contact us via the `Git Issues`_. Pull requests are also welcome through the GitHub page.
 
 
 Index
