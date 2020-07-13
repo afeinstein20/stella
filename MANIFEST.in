@@ -1,0 +1,3 @@
+include README.md 
+include LICENSE 
+include stella/tests/ensemble_s0005_i0350_b0.73.h5
