@@ -4,6 +4,7 @@ from numpy.testing import assert_almost_equal
 
 lk = search_lightcurvefile(target='tic62124646', mission='TESS')
 lk = lk.download().PDCSAP_FLUX
+lk = lk.remove_nans()
 
 mProt = MeasureProt([lk.targetid], [lk.time], [lk.flux], [lk.flux_err])
 mProt.run_LS()
