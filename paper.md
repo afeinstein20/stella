@@ -42,7 +42,7 @@ Flare rates and energies can yield consequences for the early stages of planet f
 Models have demonstrated that the introduction of superflares ($> 5\%$ flux increase) are able to irreparably alter the chemistry of an atmosphere [@venot:2016] and expedite atmospheric photoevaporation [@lammer:2007]. 
 Thus, understanding flare rates and energies at young ages provides crucial keys for understanding the exoplanet population we see today.
 
-Previous methods of flare detection with both *Kepler* [@borucki:2010] and *Transiting Exooplanet Survey Satellite* (*TESS*) [@ricker:2014] data have relied on detrending a light curve and using outlier detection heuristics for identifying flare events [@Davenport:2016; @allesfitter]. 
+Previous methods of flare detection with both *Kepler* [@borucki:2010] and *Transiting Exooplanet Survey Satellite* (*TESS*; @ricker:2014) data have relied on detrending a light curve and using outlier detection heuristics for identifying flare events [@Davenport:2016; @allesfitter]. 
 More complex methods, such as a RANdom SAmple Consensus (RANSAC) algorithm has been tested as well [@vida18]. RANSAC algorithms identfy and subtract inliers (the underlying light curve) before searching for outliers above a given detection threshold.
 Low-amplitude flares can easily be removed with aggressive detrending techniques (e.g. using a small window-length to remove spot modulation). 
 Additionally, low energy flares likely fall below the outlier threshold, biasing the overall flare sample towards higher energy flares.
