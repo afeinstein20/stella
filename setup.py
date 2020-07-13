@@ -46,7 +46,7 @@ setup(
         'astroquery', 'sklearn', 
         'setuptools>=41.0.0', 'more-itertools',
         'matplotlib', 'numpy', 'scipy>1.4.1',
-        'tensorflow', 'lightkurve<1.11.0'],
+        'tensorflow>2.0.0', 'lightkurve==1.9.0'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
