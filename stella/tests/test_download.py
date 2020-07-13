@@ -1,4 +1,4 @@
-from ..download_nn_set import *
+from stella.download_nn_set import *
 from numpy.testing import assert_almost_equal
 
 download = DownloadSets(fn_dir='.')
