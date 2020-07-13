@@ -18,3 +18,4 @@ lightkurve
 numpy
 sklearn
 more-itertools
+scipy
