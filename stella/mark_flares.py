@@ -223,21 +223,16 @@ class FitFlares(object):
                     func  = interp1d(subt[m], medfilt(subf[m], kernel_size=kernel_size))
                     func1 = interp1d(subt, medfilt(subf, kernel_size=kernel_size1))
                     # REMOVES LOCAL STELLAR VARIABILITY TO FIT FLARE
-#                    try:
                     detrended = subf/func(subt) 
                     std = np.nanstd(detrended[m])
-                    med = np.nanmedian(detrended[m])
-                    
+                    med = np.nanmedian(detrended[m])                
+
                     detrend_with_flare = subf/func1(subt)
                     std1 = np.nanstd(detrend_with_flare)
                     med1 = np.nanmedian(detrend_with_flare)
-#                    except:
-#                        pass
 
-                    # MARKS FLARE AMPLITUDE AND POINTS BEFORE & AFTER
-                    amp1 = detrended[amp_ind]# - med
-                    decay  = subf[amp_ind+2]
-                    growth = subf[amp_ind-2]
+                    amp    = subf[amp_ind]
+                    amp1   = detrended[amp_ind]
                 
                     if amp > 1.5:
                         decay_guess = 0.008
@@ -247,13 +242,13 @@ class FitFlares(object):
                         rise_guess  = 0.0001
                         
                     # Checks if amplitude of flare is 1.5sig, and the next 2 consecutive points < amp
-                    if ( (amp1 > (med+1.5*std) )) and (subf[amp_ind+1] < subf[amp_ind]) and (subf[amp_ind+2] < subf[amp_ind+1]):
-
+                    if ( (amp1 > (med+1.5*std) ) and (subf[amp_ind+1] <= amp) and (subf[amp_ind+2] <= amp) and (subf[amp_ind-1] < amp) ):
+                        
                         # Checks if next 2 consecutive points are > 1sig above
                         if  (detrended[amp_ind+1] >= (med1+std1)) and (detrended[amp_ind+2] >= (med1+std1)):
 
                             # Checks if point before amp < amp and that it isn't catching noise
-                            if (growth < amp) and ((amp-subf[-1]) < 2):
+                            if (subf[amp_ind-1] < amp) and ((amp-subf[-1]) < 2):
 
                                 amp1 -= med
                                 
