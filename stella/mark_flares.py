@@ -260,13 +260,13 @@ class FitFlares(object):
                                                    sube[int(len(sube)/2-maskregion):int(len(sube)/2+maskregion)], 
                                                    int(len(subt[int(len(subt)/2-maskregion):int(len(subt)/2+maskregion)])/2)),
                                              method='L-BFGS-B')
-
+                                
                                 if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
                                     fm, params = flare_lightcurve(subt, amp_ind, np.nanmedian([amp1, x.x[0]]),
                                                                   x.x[1], x.x[2])
                                     
                                     params[1] = x.x[0]#subf[amp_ind]
-                                    params[2] = ((params[2] * u.day).to(u.min)/2).value
+                                    params[2] = params[2]
                                     params = np.append(params, subp[amp_ind])
                                     params = np.append(np.array([self.IDs[i]]), params)
                                     table.add_row(params)

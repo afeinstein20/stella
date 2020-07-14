@@ -46,9 +46,12 @@ def flare_lightcurve(time, t0, amp, rise, fall, y=None):
     decay_model  = exp_decay(time[decay]  , y[decay] , amp, time[t0], fall)
 
     model = np.append(growth_model, decay_model)
-    w = np.where(model != 1.0)[0]#
-    dur = np.abs(np.sum(model[w][:-1] * np.diff(time[w]) ))
-    return model, np.array([time[t0], amp, dur, rise, fall])
+    
+    model_zero = model - 1
+    dur = np.trapz(model_zero, time) * u.day
+    dur = dur.to(u.s)
+
+    return model, np.array([time[t0], amp, dur.value, rise, fall])
 
 
 def flare_parameters(size, time, amps, cut_ends=30):
