@@ -180,7 +180,7 @@ class FitFlares(object):
             return np.sum( (y-m)**2.0 / yerr**2.0 )
             
 
-        table = Table(names=['Target_ID', 'tpeak', 'amp', 'dur_min',
+        table = Table(names=['Target_ID', 'tpeak', 'amp', 'ed_s',
                              'rise', 'fall', 'prob'])
         kernel_size  = 15
         kernel_size1 = 21
@@ -242,10 +242,11 @@ class FitFlares(object):
                         rise_guess  = 0.0001
                         
                     # Checks if amplitude of flare is 1.5sig, and the next 2 consecutive points < amp
-                    if ( (amp1 > (med+1.5*std) ) and (subf[amp_ind+1] <= amp) and (subf[amp_ind+2] <= amp) and (subf[amp_ind-1] < amp) ):
+                    if ( (amp1 > (med+1.5*std) ) and (subf[amp_ind+1] <= amp) and (subf[amp_ind+2] <= amp) and 
+                         (subf[amp_ind-1] <= amp)):
                         
                         # Checks if next 2 consecutive points are > 1sig above
-                        if  (detrended[amp_ind+1] >= (med1+std1)) and (detrended[amp_ind+2] >= (med1+std1)):
+                        if  (detrended[amp_ind+1] >= (med1+std1)):# and (detrended[amp_ind+2] >= (med1+std1)):
 
                             # Checks if point before amp < amp and that it isn't catching noise
                             if (subf[amp_ind-1] < amp) and ((amp-subf[-1]) < 2):
@@ -264,12 +265,13 @@ class FitFlares(object):
                                 if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
                                     fm, params = flare_lightcurve(subt, amp_ind, np.nanmedian([amp1, x.x[0]]),
                                                                   x.x[1], x.x[2])
-                                    
-                                    params[1] = x.x[0]#subf[amp_ind]
-                                    params[2] = params[2]
+                                    dur = np.trapz(fm-1, subt) * u.day
+                                    params[1] = detrended[amp_ind]
+                                    params[2] = dur.to(u.s).value
                                     params = np.append(params, subp[amp_ind])
                                     params = np.append(np.array([self.IDs[i]]), params)
-                                    table.add_row(params)
-                                    self.flare_table = table                                        
 
-        self.flare_table = table[table['amp'] > 0.005]
+                                    table.add_row(params)
+
+
+        self.flare_table = table[table['amp'] > 1.002]

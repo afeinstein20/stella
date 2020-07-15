@@ -1,5 +1,5 @@
 import numpy as np
-from astropy import units as u
+from astropy import units as uni
 from scipy.interpolate import interp1d
 
 def flare_lightcurve(time, t0, amp, rise, fall, y=None):
@@ -47,11 +47,7 @@ def flare_lightcurve(time, t0, amp, rise, fall, y=None):
 
     model = np.append(growth_model, decay_model)
     
-    model_zero = model - 1
-    dur = np.trapz(model_zero, time) * u.day
-    dur = dur.to(u.s)
-
-    return model, np.array([time[t0], amp, dur.value, rise, fall])
+    return model, np.array([time[t0], amp, 0, rise, fall])
 
 
 def flare_parameters(size, time, amps, cut_ends=30):
