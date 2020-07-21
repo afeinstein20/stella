@@ -9,12 +9,11 @@ matrix:
 
 addons:
   apt_packages:
-  - pandoc
+    - pandoc
+  file:
+    - "stella/tests/ensemble_s0005_i0350_b0.73.h5"
 
 cache: pip
-
-file:
-  - "stella/tests/ensemble_s0005_i0350_b0.73.h5"
 
 before_install:
   - sudo apt-get install python3-pip
