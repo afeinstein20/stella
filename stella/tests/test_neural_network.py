@@ -1,7 +1,6 @@
 import numpy as np
 from stella import ConvNN
 from lightkurve.search import search_lightcurvefile
-from numpy.testing import assert_almost_equal
 
 lk = search_lightcurvefile(target='tic62124646', mission='TESS')
 lk = lk.download().PDCSAP_FLUX
