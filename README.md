@@ -27,3 +27,10 @@ Alternatively you can install the current development version of stella:
         python setup.py install
 
 If your work uses eleanor, please cite <a href="https://arxiv.org/abs/2005.07710">Feinstein et al. (submitted)</a>.
+
+<p>
+<b>Bug Reports, Questions, & Contributions</b>
+stella is an open source project under the MIT license. 
+The source code is available on GitHub. In case of any questions or problems, please contact us via the Git Issues. 
+Pull requests are also welcome through the GitHub page.
+</p>
