@@ -5,7 +5,7 @@ from lightkurve.search import search_lightcurvefile
 lk = search_lightcurvefile(target='tic62124646', mission='TESS')
 lk = lk.download().PDCSAP_FLUX
 lk = lk.remove_nans()
-modelname = 'ensemble_s0005_i0350_b0.73.h5'
+modelname = '../ensemble_s0005_i0350_b0.73.h5'
 
 def test_predictions():
     cnn = ConvNN(output_dir='.')

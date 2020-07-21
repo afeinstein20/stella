@@ -36,4 +36,4 @@ install:
 
 script:
   - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
-  - pytest stella/tests/*.py --cov=stella/
+  - pytest stella/tests/* --cov=stella/
