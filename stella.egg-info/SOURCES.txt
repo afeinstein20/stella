@@ -3,11 +3,12 @@
 .travis.yml
 CODE_OF_CONDUCT.md
 LICENSE
+MANIFEST.in
 README.md
 codecov.yml
 final_models.zip
-joss.bib
-joss_paper.md
+paper.bib
+paper.md
 requirements.txt
 setup.cfg
 setup.py
@@ -48,11 +49,12 @@ docs/sphinx_rtd_theme/static/js/theme.js
 figures/stella_logo.png
 figures/stella_prob_slider.gif
 stella/__init__.py
+stella/download_nn_set.py
+stella/ensemble_s0005_i0350_b0.73.h5
 stella/mark_flares.py
 stella/metrics.py
 stella/neural_network.py
 stella/preprocessing_flares.py
-stella/preprocessing_transits.py
 stella/rotations.py
 stella/utils.py
 stella/version.py
@@ -62,4 +64,6 @@ stella.egg-info/SOURCES.txt
 stella.egg-info/dependency_links.txt
 stella.egg-info/requires.txt
 stella.egg-info/top_level.txt
+stella/tests/test_download.py
 stella/tests/test_neural_network.py
+stella/tests/test_rotation.py
