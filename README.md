@@ -26,4 +26,4 @@ Alternatively you can install the current development version of stella:
         cd stella
         python setup.py install
 
-If your work uses eleanor, please cite <a href="https://arxiv.org/abs/2005.07710">Feinstein et al. (submitted)</a>.
+If your work uses stella, please cite <a href="https://arxiv.org/abs/2005.07710">Feinstein et al. (submitted)</a>.
