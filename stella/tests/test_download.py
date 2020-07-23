@@ -25,25 +25,7 @@ def test_processing():
     assert(pre.val_data.shape == (6, 200, 1))
     assert(pre.test_data.shape == (7, 200, 1))
 
-    cnn = ConvNN(ds=pre, output_dir='.')
-    cnn.train_models(epochs=10)
-
-    assert(len(cnn.val_pred_table) == 2307)
-    assert(len(cnn.test_pred_table) == 2308)
-    assert(cnn.loss == 'binary_crossentropy')
-    assert(cnn.frac_balance == 0.73)
-    assert(len(cnn.labels[cnn.labels==0]) == 17684)
-    
 def test_tensorflow():
     import tensorflow
     assert(tensorflow.__version__ == '2.1.0')
 
-#def test_cnn():
-#    cnn = ConvNN(ds=pre, output_dir='.')
-#    cnn.train_models(epochs=10)
-
-#    assert(len(cnn.val_pred_table) == 2307)
-#    assert(len(cnn.test_pred_table) == 2308)
-#    assert(cnn.loss == 'binary_crossentropy')
-#    assert(cnn.frac_balance == 0.73)
-#    assert(len(cnn.labels[cnn.labels==0]) == 17684)
