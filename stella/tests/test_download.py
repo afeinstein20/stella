@@ -1,5 +1,6 @@
 from stella.download_nn_set import *
 from stella.preprocessing_flares import *
+from stella.neural_network import *
 from numpy.testing import assert_almost_equal
 
 download = DownloadSets(fn_dir='.')
@@ -28,7 +29,7 @@ def test_tensorflow():
     assert(tensorflow.__version__ == '2.1.0')
 
 def test_cnn():
-    cnn = stella.ConvNN(ds=pre, output_dir='.')
+    cnn = ConvNN(ds=pre, output_dir='.')
     cnn.train_models(epochs=10)
 
     assert(len(cnn.val_pred_table) == 2307)
