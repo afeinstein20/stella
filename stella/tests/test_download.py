@@ -23,3 +23,7 @@ def test_processing():
     assert(pre.train_data.shape == (48, 200, 1))
     assert(pre.val_data.shape == (6, 200, 1))
     assert(pre.test_data.shape == (7, 200, 1))
+
+def test_tensorflow():
+    import tensorflow
+    assert(tensorflow.__version__ == '2.1.0')
