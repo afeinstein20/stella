@@ -5,8 +5,6 @@ from numpy.testing import assert_almost_equal
 
 
 download = DownloadSets(fn_dir='.')
-download.download_catalog()
-download.download_lightcurves()
 
 def test_catalog_retrieval():
     assert(download.flare_table['TIC'][0] == 2760232)
