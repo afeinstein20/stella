@@ -58,14 +58,11 @@ class DownloadSets(object):
 
         catalog_list = Vizier.find_catalogs('TESS flares sectors')
         catalogs = Vizier.get_catalogs(catalog_list.keys())
-        flare_table = catalogs[1]
-        
-        catalogs[1].write(os.path.join(self.fn_dir, self.flare_catalog_name),
-                          format='csv')
-
 
         self.flare_table = catalogs[1]
         self.flare_table.rename_column('_tab2_5', 'tpeak')
+        self.flare_table.write(os.path.join(self.fn_dir, self.flare_catalog_name),
+                          format='csv')
         return
 
 
