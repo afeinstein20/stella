@@ -29,10 +29,9 @@ def test_tensorflow():
     assert(tensorflow.__version__ == '2.1.0')
 
 cnn = ConvNN(output_dir='.', ds=pre)
+cnn.train_models(epochs=10, save=True, pred_test=True)
 
 def test_train_model():
-    cnn.train_models(epochs=10, save=True, pred_test=True)
-
     assert(cnn.loss == 'binary_crossentropy')
     assert(cnn.optimizer == 'adam')
     assert(cnn.training_ids[10] == 2760232.0)
