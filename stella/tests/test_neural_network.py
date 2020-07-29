@@ -57,7 +57,7 @@ metrics = ModelMetrics(fn_dir='.')
 
 def test_create_metrics():
     assert(metrics.mode == 'ensemble')
-    assert(len(metrics.predtest_table)==8)
+    assert(len(metrics.predtest_table)==7)
     assert(metrics.predval_table['gt'][0] == 1)
     assert(metrics.history_table.colnames[2] == 'precision_s0002')
 
