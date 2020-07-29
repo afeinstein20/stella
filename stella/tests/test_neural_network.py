@@ -64,5 +64,5 @@ def test_create_metrics():
 def test_ensemble():
     metrics.calculate_ensemble_metrics()
 
-    assert(metrics.ensemble_accuracy == 0.5)
+    assert(metrics.ensemble_accuracy == 0.0)
     assert(metrics.ensemble_avg_precision == 1.0)
