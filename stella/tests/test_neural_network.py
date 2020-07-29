@@ -1,3 +1,4 @@
+from stella.metrics import *
 from stella.download_nn_set import *
 from stella.preprocessing_flares import *
 from stella.neural_network import *
@@ -27,9 +28,10 @@ def test_tensorflow():
     import tensorflow
     assert(tensorflow.__version__ == '2.1.0')
 
-def test_build_model():
-    cnn = ConvNN(output_dir='.', ds=pre)
-    cnn.train_models(epochs=10)
+cnn = ConvNN(output_dir='.', ds=pre)
+
+def test_train_model():
+    cnn.train_models(epochs=10, save=True, pred_test=True)
 
     assert(cnn.loss == 'binary_crossentropy')
     assert(cnn.optimizer == 'adam')
@@ -37,16 +39,31 @@ def test_build_model():
     assert(cnn.frac_balance == 0.73)
     assert(len(cnn.val_pred_table) == 6)
 
+
+def test_predict():
     from lightkurve.search import search_lightcurvefile
 
     lk = search_lightcurvefile(target='tic62124646', mission='TESS')
     lk = lk.download().PDCSAP_FLUX
     lk = lk.remove_nans()
 
-    def test_predict():
-        cnn.predict(modelname='ensemble_s0002_i0010_b0.73.h5',
-                    times=lk.time,
-                    fluxes=lk.flux,
-                    errs=lk.flux_err)
-        assert(cnn.predictions.shape == (1,17939))
-        assert_almost_equal(cnn.predictions[0][1000], 0.3, decimal=1)
+    cnn.predict(modelname='ensemble_s0002_i0010_b0.73.h5',
+                times=lk.time,
+                fluxes=lk.flux,
+                errs=lk.flux_err)
+    assert(cnn.predictions.shape == (1,17939))
+    assert_almost_equal(cnn.predictions[0][1000], 0.3, decimal=1)
+
+metrics = ModelMetrics(fn_dir='.')
+
+def test_create_metrics():
+    assert(metrics.mode == 'ensemble')
+    assert(len(metrics.predtest_table)==8)
+    assert(metrics.predval_table['gt'][0] == 1)
+    assert(metrics.history_table.colnames[2] == 'precision_s0002')
+
+def test_ensemble():
+    metrics.calculate_ensemble_metrics()
+
+    assert(metrics.ensemble_accuracy == 0.5)
+    assert(metrics.ensemble_avg_precision == 1.0)
