@@ -27,7 +27,9 @@ class FlareDataSet(object):
     create and train the neural network.
     """
 
-    def __init__(self, fn_dir, catalog, cadences=200, frac_balance=0.73,
+    def __init__(self, fn_dir=None, catalog=None, 
+                 downloadSet=None,
+                 cadences=200, frac_balance=0.73,
                  training=0.80, validation=0.90):
         """
         Loads in time, flux, flux error data. Reshapes
@@ -36,12 +38,16 @@ class FlareDataSet(object):
 
         Parameters
         ----------
-        fn_dir : str
+        fn_dir : str, optional
              The path to where the files for the training
              set are stored.
-        catalog : str
+        catalog : str, optional
              The path and filename of the catalog with 
              marked flare start times
+        downloadSet : stella.DownloadSets, optional
+             The stella.DownloadSets class, which contains the 
+             flare catalog name and directory where light curves
+             and the catalog are saved.
         cadences : int, optional
              The size of each training set. Default is 200.
         frac_balance : float, optional 
@@ -54,9 +60,15 @@ class FlareDataSet(object):
              Assigns the percentage of validation and testing set
              data for the model. Default is 90%.
         """
+        if fn_dir is not None:
+            self.fn_dir   = fn_dir
+        if catalog is not None:
+            self.catalog  = Table.read(catalog, format='ascii')
 
-        self.fn_dir   = fn_dir
-        self.catalog  = Table.read(catalog, format='ascii')
+        if downloadSet is not None:
+            self.fn_dir = downloadSet.fn_dir
+            self.catalog = downloadSet.flare_table
+
         self.cadences = cadences
 
         self.frac_balance = frac_balance
@@ -82,7 +94,7 @@ class FlareDataSet(object):
         self.test_tpeaks = misc[9]
 
 
-    def load_files(self, id_keyword='tic_id', ft_keyword='tpeak',
+    def load_files(self, id_keyword='TIC', ft_keyword='tpeak',
                    time_offset=2457000.0):
         """
         Loads in light curves from the assigned training set
@@ -134,8 +146,8 @@ class FlareDataSet(object):
             flux.append(data[1])
             err.append( data[2])
         
-            peaks = self.catalog[(self.catalog[id_keyword] == tic) & 
-                            (self.catalog['sector'] == sector)][ft_keyword].data
+            peaks = self.catalog[(self.catalog[id_keyword] == tic)][ft_keyword].data 
+#                            (self.catalog['sector'] == sector)][ft_keyword].data
             peaks = peaks - time_offset
             tpeaks.append(peaks)
 

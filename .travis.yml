@@ -1,9 +1,7 @@
 dist: xenial
-sudo: true
 
 language: python
-python: 
-  - "3.7"
+python: 3.7
 
 matrix:
   include:
@@ -11,7 +9,7 @@ matrix:
 
 addons:
   apt_packages:
-  - pandoc
+    - pandoc
 
 cache: pip
 
@@ -21,7 +19,7 @@ before_install:
 
 install:
   - pip install tornado==5.1.1
-  - pip install tensorflow>=2.0.0
+  - pip install tensorflow==2.1.0
   - pip install astropy
   - pip install astroquery
   - pip install tqdm
@@ -38,4 +36,4 @@ install:
 
 script:
   - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
-  - pytest stella/tests/*.py --cov=stella/
+  - pytest stella/tests/* --cov=stella/

@@ -474,6 +474,8 @@ class ConvNN(object):
              
         Attributes
         ----------
+        model : tensorflow.python.keras.engine.sequential.Sequential
+             The model input with modelname.
         predict_time : np.ndarray
              The input times array.
         predict_flux : np.ndarray
@@ -514,6 +516,8 @@ class ConvNN(object):
             return np.delete(all_inds, bad_inds)
 
         model = keras.models.load_model(modelname)
+
+        self.model = model
 
         # GETS REQUIRED INPUT SHAPE FROM MODEL
         cadences = model.input.shape[1]

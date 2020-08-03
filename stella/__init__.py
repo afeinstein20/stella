@@ -9,3 +9,4 @@ from .mark_flares               import *
 from .visualize                 import *
 from .metrics                   import *
 from .rotations                 import *
+from .download_nn_set           import *
