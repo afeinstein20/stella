@@ -50,7 +50,6 @@ figures/stella_logo.png
 figures/stella_prob_slider.gif
 stella/__init__.py
 stella/download_nn_set.py
-stella/ensemble_s0005_i0350_b0.73.h5
 stella/mark_flares.py
 stella/metrics.py
 stella/neural_network.py
@@ -64,6 +63,7 @@ stella.egg-info/SOURCES.txt
 stella.egg-info/dependency_links.txt
 stella.egg-info/requires.txt
 stella.egg-info/top_level.txt
-stella/tests/test_download.py
+stella/tests/test_mark_flares.py
 stella/tests/test_neural_network.py
+stella/tests/test_processing.py
 stella/tests/test_rotation.py
