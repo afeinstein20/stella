@@ -29,7 +29,7 @@ affiliations:
 date: 4 May 2020
 bibliography: paper.bib
 
-aas-doi: 10.3847/xxxxx 
+aas-doi: 10.3847/1538-3881/abac0a
 aas-journal: Astrophysical Journal
 ---
 
