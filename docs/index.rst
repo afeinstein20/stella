@@ -6,8 +6,8 @@
 stella
 =====================================================
 .. image:: ../figures/stella_logo.png
-	:height: 300px
-	:width: 600px
+	:height: 150px
+	:width: 300px
 	:align: center
 
 stella is an open-source python framework for identifying stellar flares using a neural network.
