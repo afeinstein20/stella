@@ -28,6 +28,13 @@ stella is an open-source python framework for identifying stellar flares using a
 
    api
 
+Citations
+---------
+
+If your work uses the stella software, please cite `Feinstein, Montet, & Ansdell (2020)`_.
+
+If your work discusses the flare rate of young stars in the TESS Southern Hemisphere or the details of the CNNs, please cite `_Feinstein et al (2020, accepted)`_.
+
 Bug Reports, Questions, & Contributions
 ---------------------------------------
 
@@ -40,3 +47,5 @@ Index
 
 .. _GitHub: http://github.com/afeinstein20/stella
 .. _Git Issues: http://github.com/afeinstein20/stella/issues
+.. _Feinstein, Montet, & Ansdell (2020): https://ui.adsabs.harvard.edu/abs/2020JOSS....5.2347F/abstract
+.. _Feinstein et al (2020, accepted): https://ui.adsabs.harvard.edu/abs/2020arXiv200507710F/abstract
