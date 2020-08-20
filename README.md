@@ -30,7 +30,8 @@ Alternatively you can install the current development version of stella:
         cd stella
         python setup.py install
 
-If your work uses eleanor, please cite <a href="https://arxiv.org/abs/2005.07710">Feinstein et al. (submitted)</a>.
+If your work uses the stella software, please cite <a href="https://ui.adsabs.harvard.edu/abs/2020JOSS....5.2347F/abstract">Feinstein, Montet, & Ansdell (2020)</a>.
+If your work discusses the flare rate of young stars in the TESS Southern Hemisphere or the details of the CNNs, please cite <a href="https://ui.adsabs.harvard.edu/abs/2020arXiv200507710F/abstract">Feinstein et al. (AJ, accepted)</a>.
 
 <p>
 <b><u>Bug Reports, Questions, & Contributions</u></b>
