@@ -6,9 +6,7 @@
   <a href="https://travis-ci.org/afeinstein20/stella/"><img src="https://img.shields.io/travis/afeinstein20/stella/master.svg?color=D35968"/></a>
   <a href="https://arxiv.org/abs/2005.07710"><img src="https://img.shields.io/badge/read-the_paper-3C1370.svg?style=flat"/></a>
   <a href="https://afeinstein20.github.io/stella/"><img src="https://img.shields.io/badge/read-the_docs-3C1370.svg?style=flat"/></a>
-<a style="border-width:0" href="https://doi.org/10.21105/joss.02347">	
-  <img src="https://joss.theoj.org/papers/10.21105/joss.02347/status-D35968.svg?style=flat" alt="DOI badge" >
-</a>
+  <a href="https://doi.org/10.21105/joss.02347">   <img src="https://joss.theoj.org/papers/10.21105/joss.02347/status.svg?color=D35968"></a>
 </p>
 
 
