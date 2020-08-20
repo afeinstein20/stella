@@ -33,7 +33,7 @@ Citations
 
 If your work uses the stella software, please cite `Feinstein, Montet, & Ansdell (2020)`_.
 
-If your work discusses the flare rate of young stars in the TESS Southern Hemisphere or the details of the CNNs, please cite `_Feinstein et al (2020, accepted)`_.
+If your work discusses the flare rate of young stars in the TESS Southern Hemisphere or the details of the CNNs, please cite `Feinstein et al (2020, accepted)`_.
 
 Bug Reports, Questions, & Contributions
 ---------------------------------------
