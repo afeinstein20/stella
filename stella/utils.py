@@ -282,10 +282,13 @@ def split_data(labels, training_matrix, ids, other, training, validation):
     x_val   = x_val.reshape(x_val.shape[0], x_train.shape[1], 1)
     x_test  = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
 
+    train_ids = ids[0:train_cutoff]
+    train_other = other[0:train_cutoff]
+
     test_ids   = ids[val_cutoff:]
     test_other = other[val_cutoff:]
     
     val_ids   = ids[train_cutoff:val_cutoff]
     val_other = other[train_cutoff:val_cutoff]
     
-    return x_train, y_train, x_val, y_val, val_ids, val_other, x_test, y_test, test_ids, test_other
+    return x_train, y_train, train_ids, train_other, x_val, y_val, val_ids, val_other, x_test, y_test, test_ids, test_other
