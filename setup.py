@@ -45,8 +45,8 @@ setup(
         'tqdm', 'astropy',
         'astroquery', 'sklearn', 
         'setuptools>=41.0.0', 'more-itertools',
-        'matplotlib', 'numpy', 'scipy>1.4.1',
-        'tensorflow>=2.1.0', 'lightkurve'],
+        'matplotlib', 'numpy', 'scipy==1.4.1',
+        'tensorflow>=2.1.0', 'lightkurve<1.11'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
