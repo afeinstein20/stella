@@ -1,6 +1,5 @@
 nbsphinx
 ipykernel
-pylab
 tensorflow
 astroquery
 astropy
