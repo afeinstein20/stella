@@ -25,6 +25,8 @@ Changes to v0.1.0 (2020-05-18):
 *  
 """
 
+with open('requirements.txt') as f:
+    install_requires = f.read().splitlines()
 
 setup(
     name='stella',
@@ -41,12 +43,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={'': ['README.md', 'LICENSE']},
-    install_requires=[
-        'tqdm', 'astropy',
-        'astroquery', 'sklearn', 
-        'setuptools>=41.0.0', 'more-itertools',
-        'matplotlib', 'numpy', 'scipy==1.4.1',
-        'tensorflow>=2.1.0', 'lightkurve<1.11'],
+    install_requires=install_requires,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
