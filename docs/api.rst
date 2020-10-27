@@ -5,6 +5,9 @@ API
 .. automodule:: stella
     :members:
 
+.. autoclass:: DownloadSets
+    :members:
+
 .. autoclass:: FlareDataSet
     :members:
 
