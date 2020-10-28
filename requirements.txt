@@ -13,7 +13,7 @@ lxml
 pybind11
 tornado
 matplotlib
-lightkurve<1.11.0
+lightkurve<1.10.0
 numpy
 sklearn
 more-itertools
