@@ -17,4 +17,4 @@ lightkurve<1.10.0
 numpy
 sklearn
 more-itertools
-scipy
+scipy!=1.4.1
