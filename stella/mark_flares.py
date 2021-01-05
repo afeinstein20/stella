@@ -241,6 +241,7 @@ class FitFlares(object):
                         decay_guess = 0.001
                         rise_guess  = 0.0001
                         
+
                     # Checks if amplitude of flare is 1.5sig, and the next 2 consecutive points < amp
                     if ( (amp1 > (med+1.5*std) ) and (subf[amp_ind+1] <= amp) and (subf[amp_ind+2] <= amp) and 
                          (subf[amp_ind-1] <= amp)):
@@ -261,6 +262,7 @@ class FitFlares(object):
                                                    sube[int(len(sube)/2-maskregion):int(len(sube)/2+maskregion)], 
                                                    int(len(subt[int(len(subt)/2-maskregion):int(len(subt)/2+maskregion)])/2)),
                                              method='L-BFGS-B')
+
                                 
                                 if x.x[0] > 1.5 or (x.x[0]<1.5 and x.x[2]<0.4):
                                     fm, params = flare_lightcurve(subt, amp_ind, np.nanmedian([amp1, x.x[0]]),
