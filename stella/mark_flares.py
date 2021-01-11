@@ -119,23 +119,22 @@ class FitFlares(object):
 
         if len(groupings) > 0:
             for g in groupings:
-                gmin, gmax = g[0], g[-1]
-                
-                if gmin-maskregion < 0:
-                    subreg = np.arange(0, gmax+maskregion, 1, dtype=int)
-                elif gmax+maskregion > len(time):
-                    subreg = np.arange(len(time)-maskregion, len(time), 1, dtype=int)
+
+                if g[0]-region < 0:
+                    subreg = np.arange(0, g[-1]+region, 1, dtype=int)
+                elif g[-1]+region > len(time):
+                    subreg = np.arange(len(time)-region, len(time), 1, dtype=int)
                 else:
-                    subreg = np.arange(gmin-maskregion, gmax+maskregion, 1, dtype=int)
+                    subreg = np.arange(g[0]-region, g[-1]+region, 1, dtype=int)
 
                 # LOOKS AT REGION AROUND FLARE                                                                 
-                subt = time[subreg]
-                subf = flux[subreg]
-                sube = err[subreg]
-                subp = prob[subreg]
-                
+                subt = time[subreg]+0.0
+                subf = flux[subreg]+0.0
+                sube = err[subreg]+0.0
+                subp = prob[subreg]+0.0
+
                 doubcheck = np.where(subp>=self.threshold)[0]
-            
+
                 # FINDS HIGHEST "PROBABILITY" IN FLARE                                                         
                 if len(doubcheck) > 1:
                     peak = np.argmax(subf[doubcheck])
@@ -186,16 +185,17 @@ class FitFlares(object):
         kernel_size1 = 21
 
         for i in tqdm(range(len(self.IDs)), desc='Finding & Fitting Flares'):
-            time = self.time[i]
-            flux = self.flux[i]
-            err  = self.flux_err[i]
-            prob = self.predictions[i]
+            time = self.time[i]+0.0
+            flux = self.flux[i]+0.0
+            err  = self.flux_err[i]+0.0
+            prob = self.predictions[i]+0.0
             
             where_prob_higher = np.where(prob >= threshold)[0]
             groupings = self.group_inds(where_prob_higher)
 
             tpeaks, amps = self.get_init_guesses(groupings, time, flux,
                                                  err, prob, 2, 50)
+
 
             # FITS PARAMETERS TO FLARE
             for tp, amp in zip(tpeaks,amps):
