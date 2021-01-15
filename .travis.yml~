@@ -1,0 +1,39 @@
+dist: xenial
+
+language: python
+python: 3.7
+
+matrix:
+  include:
+  - os: linux
+
+addons:
+  apt_packages:
+    - pandoc
+
+cache: pip
+
+before_install:
+  - sudo apt-get install python3-pip
+  - sudo pip3 install requests
+
+install:
+  - pip install tornado==5.1.1
+  - pip install tensorflow==2.1.0
+  - pip install astropy
+  - pip install astroquery
+  - pip install tqdm
+  - pip install sphinx
+  - pip install nbsphinx
+  - pip install cython
+  - pip install codecov
+  - pip install coverage
+  - pip install pytest
+  - pip install pytest-cov
+  - pip install lxml
+  - pip install pybind11
+  - python setup.py install
+
+script:
+  - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then source .ci/build-docs.sh; fi
+  - pytest stella/tests/* --cov=stella/
