@@ -152,9 +152,9 @@ class FlareDataSet(object):
             tpeaks.append(peaks)
 
         self.ids      = np.array(tics)
-        self.time     = np.array(time)   # in TBJD
-        self.flux     = np.array(flux)
-        self.flux_err = np.array(err)
+        self.time     = np.array(time, dtype=np.ndarray)   # in TBJD
+        self.flux     = np.array(flux, dtype=np.ndarray)
+        self.flux_err = np.array(err,  dtype=np.ndarray)
         self.tpeaks   = np.array(tpeaks) # in TBJD
 
 
