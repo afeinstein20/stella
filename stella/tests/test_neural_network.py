@@ -15,8 +15,8 @@ def test_catalog_retrieval():
     assert_almost_equal(download.flare_table['tpeak'][10], 2458368.8, decimal=1)
     assert(download.flare_table['Flare'][9] == 3)
 
-#def test_light_curves():
-#    download.download_lightcurves()
+def test_light_curves():
+    download.download_lightcurves(remove_fits=False)
 
 def test_processing():
     assert_almost_equal(pre.frac_balance, 0.7, decimal=1)
@@ -29,7 +29,7 @@ def test_tensorflow():
     assert(tensorflow.__version__ == '2.1.0')
 
 cnn = ConvNN(output_dir='.', ds=pre)
-cnn.train_models(epochs=10, save=True, pred_test=True)
+cnn.train_models(epochs=10)#, save=True, pred_test=True)
 
 def test_train_model():
     assert(cnn.loss == 'binary_crossentropy')
