@@ -108,9 +108,9 @@ class DownloadSets(object):
                     lc = lcs[j].normalize()
                     
                     np.save(os.path.join(self.fn_dir, npy_name.format(tics[i], lc.sector)),
-                            np.array([lc.time, 
-                                      lc.flux, 
-                                      lc.flux_err]))
+                            np.array([lc.time.value, 
+                                      lc.flux.value, 
+                                      lc.flux_err.value]))
                     
                     # Removes FITS files when done
                     if remove_fits == True:
