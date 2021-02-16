@@ -155,7 +155,7 @@ class FlareDataSet(object):
         self.time     = np.array(time, dtype=np.ndarray)   # in TBJD
         self.flux     = np.array(flux, dtype=np.ndarray)
         self.flux_err = np.array(err,  dtype=np.ndarray)
-        print(tpeaks)
+        print('TPEAKS = ', tpeaks[0])
         self.tpeaks   = np.array(tpeaks, dtype=np.float64) # in TBJD
 
 
