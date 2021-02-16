@@ -18,10 +18,10 @@ before_install:
   - sudo pip3 install requests
 
 install:
-  - pip install tornado==5.1.1
+  - pip install tornado
   - pip install tensorflow>=2.0.0
   - pip install scipy!=1.4.1
-  - pip install lightkurve<1.10.0
+  - pip install lightkurve
   - pip install astropy
   - pip install astroquery
   - pip install tqdm
