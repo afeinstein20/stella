@@ -221,7 +221,7 @@ class MeasureProt(object):
             
             # SPLITS BY ORBIT
             diff = np.diff(time)
-            brk = np.where(diff >= np.median(diff)+14*np.std(diff))[0]
+            brk = np.where(diff >= np.nanmedian(diff)+14*np.nanstd(diff))[0]
             
             if len(brk) > 1:
                 brk_diff = brk - (len(time)/2)
