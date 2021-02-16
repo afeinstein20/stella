@@ -97,7 +97,8 @@ class DownloadSets(object):
             slc = search_lightcurve('TIC'+str(tics[i]),
                                     mission='TESS',
                                     exptime=120,
-                                    sector=[1,2])
+                                    sector=[1,2],
+                                    author='SPOC')
 
 
             if len(slc) > 0:

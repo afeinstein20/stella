@@ -43,7 +43,7 @@ def test_predict():
     from lightkurve.search import search_lightcurve
 
     lk = search_lightcurve(target='tic62124646', mission='TESS',
-                           sector=13, exptime=120)
+                           sector=13, exptime=120, author='SPOC')
     lk = lk.download(download_dir='.')#.PDCSAP_FLUX
     lk = lk.remove_nans()
 

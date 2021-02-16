@@ -5,7 +5,7 @@ from lightkurve.search import search_lightcurve
 from numpy.testing import assert_almost_equal
 
 lk = search_lightcurve(target='tic62124646', mission='TESS',
-                       exptime=120, sector=13)
+                       exptime=120, sector=13, author='SPOC')
 lk = lk.download(download_dir='.')
 lk = lk.remove_nans().normalize()
 modelname = 'ensemble_s0002_i0010_b0.73.h5'

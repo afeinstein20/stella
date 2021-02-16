@@ -3,7 +3,7 @@ from lightkurve.search import search_lightcurve
 from numpy.testing import assert_almost_equal
 
 lk = search_lightcurvefile(target='tic62124646', mission='TESS',
-                           exptime=120, sector=13)
+                           exptime=120, sector=13, author='SPOC')
 lk = lk.download(download_dir='.')
 lk = lk.remove_nans()
 
