@@ -9,13 +9,14 @@ jobs:
     strategy:
       matrix:
         name: [3.6, 3.7]
-	include:
-	  - name: 3.6
-	    python-version: 3.6
-	    pytest-command: poetry run pytest
-	  - name: 3.7
-	    python-version: 3.7
-	    pytest-command: pooetry run pytest
+        include:
+          - name: 3.6
+            python-version: 3.6
+            pytest-command: poetry run pytest
+          - name: 3.7
+            python-version: 3.7
+            pytest-command: poetry run pytest
+
     steps:
       - uses: actions/checkout@v1
       - name: Set up Python ${{ matrix.python-version }}
