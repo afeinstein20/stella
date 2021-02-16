@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/afeinstein20/stella/workflows/stella-tests/"><img src="https://github.com/afeinstein20/stella/workflows/stella-tests/badge.svg"/></a>
+  <a href="https://github.com/afeinstein20/stella/actions?query=workflow%3Astella-tests"><img src="https://github.com/afeinstein20/stella/workflows/stella-tests/badge.svg"/></a>
   <a href="https://arxiv.org/abs/2005.07710"><img src="https://img.shields.io/badge/read-the_paper-3C1370.svg?style=flat"/></a>
   <a href="https://afeinstein20.github.io/stella/"><img src="https://img.shields.io/badge/read-the_docs-3C1370.svg?style=flat"/></a>
   <a href="https://doi.org/10.21105/joss.02347">   <img src="https://joss.theoj.org/papers/10.21105/joss.02347/status.svg?color=D35968"></a>

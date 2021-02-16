@@ -29,7 +29,7 @@ def test_tensorflow():
     assert(tensorflow.__version__ == '2.1.0')
 
 cnn = ConvNN(output_dir='.', ds=pre)
-cnn.train_models(epochs=10)#, save=True, pred_test=True)
+cnn.train_models(epochs=10, save=True, pred_test=True)
 
 def test_train_model():
     assert(cnn.loss == 'binary_crossentropy')
