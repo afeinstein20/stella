@@ -155,7 +155,7 @@ class FlareDataSet(object):
         self.time     = np.array(time, dtype=np.ndarray)   # in TBJD
         self.flux     = np.array(flux, dtype=np.ndarray)
         self.flux_err = np.array(err,  dtype=np.ndarray)
-        self.tpeaks   = np.array(tpeaks[0], dtype=np.float64) # in TBJD
+        self.tpeaks   = np.array(tpeaks[0]) # in TBJD
 
 
     def reformat_data(self, random_seed=321):
