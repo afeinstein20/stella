@@ -8,8 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        name: 3.7
+        name: [3.6, 3.7]
 	include:
+	  - name: 3.6
+	    python-version: 3.6
+	    pytest-command: poetry run pytest
 	  - name: 3.7
 	    python-version: 3.7
 	    pytest-command: pooetry run pytest
