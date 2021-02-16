@@ -155,8 +155,7 @@ class FlareDataSet(object):
         self.time     = np.array(time, dtype=np.ndarray)   # in TBJD
         self.flux     = np.array(flux, dtype=np.ndarray)
         self.flux_err = np.array(err,  dtype=np.ndarray)
-        self.tpeaks   = np.array(tpeaks[0]) # in TBJD
-
+        self.tpeaks   = tpeaks # in TBJD
 
     def reformat_data(self, random_seed=321):
         """
@@ -216,7 +215,9 @@ class FlareDataSet(object):
             time_removed = np.delete(self.time[i], flares)
             flux_removed = np.delete(self.flux[i], flares)
             flux_err_removed = np.delete(self.flux_err[i], flares)
-        
+
+            print(time_removed)
+
             nontime, nonflux, nonerr = break_rest(time_removed, flux_removed, 
                                                   flux_err_removed, self.cadences)
             for j in range(len(nonflux)):
