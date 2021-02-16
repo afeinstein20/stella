@@ -3,7 +3,6 @@ name: stella-tests
 on: [push, pull_request]
 
 jobs:
-
   pytest-linux:
     runs-on: ubuntu-latest
     strategy:
