@@ -142,9 +142,9 @@ class FlareDataSet(object):
             tic = int(split_fn[0])
             tics.append(tic)
             sector = int(split_fn[1].split('r')[1][0:2])
-            time.append(data[0])
-            flux.append(data[1])
-            err.append( data[2])
+            time.append(data[0].value)
+            flux.append(data[1].value)
+            err.append( data[2].value)
         
             peaks = self.catalog[(self.catalog[id_keyword] == tic)][ft_keyword].data 
 #                            (self.catalog['sector'] == sector)][ft_keyword].data
