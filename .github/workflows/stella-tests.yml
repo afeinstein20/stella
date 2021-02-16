@@ -1,4 +1,4 @@
-name: stella-tests
+name: Stella Tests
 
 on: [push, pull_request]
 
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        name: [3.6, 3.7]
+        name: 3.7
 	include:
 	  - name: 3.7
 	    python-version: 3.7
