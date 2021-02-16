@@ -44,7 +44,7 @@ def test_predict():
 
     lk = search_lightcurve(target='tic62124646', mission='TESS',
                            sector=13, exptime=120)
-    lk = lk.download()#.PDCSAP_FLUX
+    lk = lk.download(download_dir='.')#.PDCSAP_FLUX
     lk = lk.remove_nans()
 
     cnn.predict(modelname='ensemble_s0002_i0010_b0.73.h5',

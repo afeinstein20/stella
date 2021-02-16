@@ -4,7 +4,7 @@ from numpy.testing import assert_almost_equal
 
 lk = search_lightcurvefile(target='tic62124646', mission='TESS',
                            exptime=120, sector=13)
-lk = lk.download()
+lk = lk.download(download_dir='.')
 lk = lk.remove_nans()
 
 mProt = MeasureProt([lk.targetid], [lk.time], [lk.flux], [lk.flux_err])
