@@ -7,7 +7,7 @@ from numpy.testing import assert_almost_equal
 download = DownloadSets(fn_dir='.')
 download.download_catalog()
 download.flare_table = download.flare_table[0:20]
-download.download_lightcurves()
+download.download_lightcurves(remove_fits=False)
 pre = FlareDataSet(downloadSet=download)
 
 def test_catalog_retrieval():
