@@ -137,7 +137,7 @@ class FlareDataSet(object):
         tics, time, flux, err, tpeaks = [], [], [], [], []
         
         for fn in files:
-            data = np.load(os.path.join(self.fn_dir, fn))
+            data = np.load(os.path.join(self.fn_dir, fn), allow_pickle=True)
             split_fn = fn.split('_')
             tic = int(split_fn[0])
             tics.append(tic)
