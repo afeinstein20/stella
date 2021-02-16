@@ -40,10 +40,10 @@ def test_train_model():
 
 
 def test_predict():
-    from lightkurve.search import search_lightcurvefile
+    from lightkurve.search import search_lightcurve
 
-    lk = search_lightcurvefile(target='tic62124646', mission='TESS',
-                               sector=13)
+    lk = search_lightcurve(target='tic62124646', mission='TESS',
+                           sector=13, exptime=120)
     lk = lk.download()#.PDCSAP_FLUX
     lk = lk.remove_nans()
 

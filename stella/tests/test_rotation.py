@@ -1,9 +1,10 @@
 from stella.rotations import MeasureProt
-from lightkurve.search import search_lightcurvefile
+from lightkurve.search import search_lightcurve
 from numpy.testing import assert_almost_equal
 
-lk = search_lightcurvefile(target='tic62124646', mission='TESS')
-lk = lk.download().PDCSAP_FLUX
+lk = search_lightcurvefile(target='tic62124646', mission='TESS',
+                           exptime=120, sector=13)
+lk = lk.download()
 lk = lk.remove_nans()
 
 mProt = MeasureProt([lk.targetid], [lk.time], [lk.flux], [lk.flux_err])
