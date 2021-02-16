@@ -1,0 +1,28 @@
+name: stella-tests
+
+on: [push, pull_request]
+
+jobs:
+
+  pytest-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        name: [3.6, 3.7]
+	include:
+	  - name: 3.7
+	    python-version: 3.7
+	    pytest-command: pooetry run pytest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip poetry
+          poetry install
+      - name: Test with ${{ matrix.pytest-command }}
+        run: |
+          ${{ matrix.pytest-command }}
