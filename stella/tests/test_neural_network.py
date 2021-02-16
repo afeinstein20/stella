@@ -42,8 +42,9 @@ def test_train_model():
 def test_predict():
     from lightkurve.search import search_lightcurvefile
 
-    lk = search_lightcurvefile(target='tic62124646', mission='TESS')
-    lk = lk.download().PDCSAP_FLUX
+    lk = search_lightcurvefile(target='tic62124646', mission='TESS',
+                               sector=13)
+    lk = lk.download()#.PDCSAP_FLUX
     lk = lk.remove_nans()
 
     cnn.predict(modelname='ensemble_s0002_i0010_b0.73.h5',
