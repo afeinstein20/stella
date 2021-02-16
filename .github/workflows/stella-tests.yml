@@ -1,4 +1,4 @@
-name: Stella Tests
+name: stella-tests
 
 on: [push, pull_request]
 
