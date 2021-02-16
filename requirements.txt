@@ -18,3 +18,4 @@ numpy
 sklearn
 more-itertools
 scipy!=1.4.1
+poetry
