@@ -155,7 +155,8 @@ class FlareDataSet(object):
         self.time     = np.array(time, dtype=np.ndarray)   # in TBJD
         self.flux     = np.array(flux, dtype=np.ndarray)
         self.flux_err = np.array(err,  dtype=np.ndarray)
-        self.tpeaks   = np.array(tpeaks) # in TBJD
+        print(tpeaks)
+        self.tpeaks   = np.array(tpeaks, dtype=np.float64) # in TBJD
 
 
     def reformat_data(self, random_seed=321):
@@ -204,7 +205,7 @@ class FlareDataSet(object):
                         start = start - (end - len(self.time[i]))
                         end = len(self.time[i])
                     flare_region = np.arange(start, end,1,dtype=int)
-                    flares = np.append(flares,flare_region)
+                    flares = np.append(flares, flare_region)
                 
                     # ADD FLARE TO TRAINING MATRIX & LABEL PROPERLY
                     training_peaks[x]  = self.time[i][closest] + 0.0
