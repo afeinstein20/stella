@@ -3,7 +3,7 @@ import numpy as np
 from tqdm import tqdm
 from astropy.table import Table
 from astroquery.vizier import Vizier
-from lightkurve.search import search_lightcurvefile
+from lightkurve.search import search_lightcurve
 
 __all__ = ['DownloadSets']
 
@@ -94,19 +94,23 @@ class DownloadSets(object):
         npy_name = '{0:09d}_sector{1:02d}.npy'
 
         for i in tqdm(range(len(tics))):
-            slc = search_lightcurvefile('TIC'+str(tics[i]),
-                                        mission='TESS',
-                                        cadence='short',
-                                        sector=[1,2])
+            slc = search_lightcurve('TIC'+str(tics[i]),
+                                    mission='TESS',
+                                    exptime=120,
+                                    sector=[1,2])
+
 
             if len(slc) > 0:
                 lcs = slc.download_all(download_dir=self.fn_dir)
 
                 for j in range(len(lcs)):
-                    lc = lcs[j].PDCSAP_FLUX.normalize()
+                    # Default lightkurve flux = pdcsap_flux
+                    lc = lcs[j].normalize()
                     
                     np.save(os.path.join(self.fn_dir, npy_name.format(tics[i], lc.sector)),
-                            np.array([lc.time, lc.flux, lc.flux_err]))
+                            np.array([lc.time, 
+                                      lc.flux, 
+                                      lc.flux_err]))
                     
                     # Removes FITS files when done
                     if remove_fits == True:
