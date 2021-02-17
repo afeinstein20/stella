@@ -26,7 +26,7 @@ def test_processing():
 
 def test_tensorflow():
     import tensorflow
-    assert(tensorflow.__version__ == '2.1.0')
+    assert(tensorflow.__version__ == '2.4.1')
 
 cnn = ConvNN(output_dir='.', ds=pre)
 cnn.train_models(epochs=10, save=True, pred_test=True)
