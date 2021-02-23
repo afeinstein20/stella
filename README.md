@@ -32,7 +32,7 @@ Alternatively you can install the current development version of stella:
 If your work uses the stella software, please cite <a href="https://ui.adsabs.harvard.edu/abs/2020JOSS....5.2347F/abstract">Feinstein, Montet, & Ansdell (2020)</a>.
 </p>
 <p>
-If your work discusses the flare rate of young stars in the TESS Southern Hemisphere or the details of the CNNs, please cite <a href="https://ui.adsabs.harvard.edu/abs/2020arXiv200507710F/abstract">Feinstein et al. (AJ, accepted)</a>.
+If your work discusses the flare rate of young stars in the TESS Southern Hemisphere or the details of the CNNs, please cite <a href="https://ui.adsabs.harvard.edu/abs/2020arXiv200507710F/abstract">Feinstein et al. (AJ, 2020)</a>.
 </p>
 
 <p>
