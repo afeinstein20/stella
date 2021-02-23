@@ -1,0 +1,838 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Quickstart Tutorial &mdash; stella 0.0.4 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="stella 0.0.4 documentation" href="../index.html"/>
+        <link rel="next" title="Creating A New CNN" href="tutorial.html"/>
+        <link rel="prev" title="Installation" href="installation.html"/>  
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> stella
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="about.html">About stella</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#1.1-Download-the-Models">1.1 Download the Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#1.2-Using-the-Models">1.2 Using the Models</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Creating A New CNN</a></li>
+<li class="toctree-l1"><a class="reference internal" href="other_features.html">Other Fun Features</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">stella</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">stella</a> &raquo;</li>
+      
+    
+      <li>Quickstart Tutorial</li>
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt *,
+div.nbinput.container div.input_area pre,
+div.nboutput.container div.output_area pre,
+div.nbinput.container div.input_area .highlight,
+div.nboutput.container div.output_area .highlight {
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+div.nbinput.container > div[class*=highlight],
+div.nboutput.container > div[class*=highlight] {
+    margin: 0;
+}
+
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt * {
+    background: none;
+}
+
+div.nboutput.container div.output_area .highlight,
+div.nboutput.container div.output_area pre {
+    background: unset;
+}
+
+div.nboutput.container div.output_area div.highlight {
+    color: unset;  /* override Pygments text color */
+}
+
+/* avoid gaps between output lines */
+div.nboutput.container div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput.container,
+div.nboutput.container {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput.container,
+    div.nboutput.container {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput.container {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast.container {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput.container div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput.container div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput.container div.prompt,
+div.nboutput.container div.prompt {
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
+}
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
+@media (max-width: 540px) {
+    div.nbinput.container div.prompt,
+    div.nboutput.container div.prompt {
+        width: unset;
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput.container div.prompt.empty {
+        padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput.container div.prompt pre,
+div.nboutput.container div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput.container div.input_area,
+div.nboutput.container div.output_area {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput.container div.input_area,
+    div.nboutput.container div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput.container div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    /*background: #f5f5f5;*/
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput.container div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput.container div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput.container div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+
+div.nbinput.container div.input_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight].math,
+div.nboutput.container div.output_area.rendered_html,
+div.nboutput.container div.output_area > div.output_javascript,
+div.nboutput.container div.output_area:not(.rendered_html) > img{
+    padding: 5px;
+    margin: 0;
+}
+
+/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
+div.nbinput.container div.input_area > div[class^='highlight'],
+div.nboutput.container div.output_area > div[class^='highlight']{
+    overflow-y: hidden;
+}
+
+/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
+.prompt a.copybtn {
+    display: none;
+}
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="Quickstart-Tutorial">
+<h1>Quickstart Tutorial<a class="headerlink" href="#Quickstart-Tutorial" title="Permalink to this headline">¶</a></h1>
+<p>Hi! Welcome to <span class="math notranslate nohighlight">\(\texttt{stella}\)</span>, a package to identify stellar flares using <span class="math notranslate nohighlight">\(\textit{TESS}\)</span> two-minute data. Here, we’ll run through an example of how to create a convolutional neural network (CNN) model and how to use it to predict where flares are in your own light curves. Let’s get started!</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;/Users/arcticfox/Documents/GitHub/stella/&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">stella</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm_notebook</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">20</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING: leap-second auto-update failed due to the following exception: ValueError(&#34;Malformed URL: &#39;//anaconda3/lib/python3.7/site-packages/astropy/utils/iers/data/Leap_Second.dat&#39;&#34;) [astropy.time.core]
+</pre></div></div>
+</div>
+<div class="section" id="1.1-Download-the-Models">
+<h2>1.1 Download the Models<a class="headerlink" href="#1.1-Download-the-Models" title="Permalink to this headline">¶</a></h2>
+<p>For this network, we’ll be using the models created and used in Feinstein et al. (2020). The models can be downloaded from MAST using the following:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">ds</span> <span class="o">=</span> <span class="n">stella</span><span class="o">.</span><span class="n">DownloadSets</span><span class="p">()</span>
+<span class="n">ds</span><span class="o">.</span><span class="n">download_models</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Models have already been downloaded to ~/.stella/models
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">ds</span><span class="o">.</span><span class="n">models</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([&#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s004_tess_v0.1.0_cnn.h5&#39;,
+       &#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s005_tess_v0.1.0_cnn.h5&#39;,
+       &#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s018_tess_v0.1.0_cnn.h5&#39;,
+       &#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s028_tess_v0.1.0_cnn.h5&#39;,
+       &#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s029_tess_v0.1.0_cnn.h5&#39;,
+       &#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s038_tess_v0.1.0_cnn.h5&#39;,
+       &#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s050_tess_v0.1.0_cnn.h5&#39;,
+       &#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s077_tess_v0.1.0_cnn.h5&#39;,
+       &#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s078_tess_v0.1.0_cnn.h5&#39;,
+       &#39;/Users/arcticfox/.stella/models/hlsp_stella_tess_ensemblemodel_s080_tess_v0.1.0_cnn.h5&#39;],
+      dtype=&#39;&lt;U86&#39;)
+</pre></div></div>
+</div>
+</div>
+<div class="section" id="1.2-Using-the-Models">
+<h2>1.2 Using the Models<a class="headerlink" href="#1.2-Using-the-Models" title="Permalink to this headline">¶</a></h2>
+<p>Step 1. Specifiy a directory where you’d like your models to be saved to.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">OUT_DIR</span> <span class="o">=</span> <span class="s1">&#39;/Users/arcticfox/Desktop/results/&#39;</span>
+</pre></div>
+</div>
+</div>
+<p>Step 2. Initialize the class! Call <span class="math notranslate nohighlight">\(\texttt{stella.ConvNN()}\)</span> and pass in your directory. A message will appear that says you can only call <span class="math notranslate nohighlight">\(\texttt{stella.ConvNN.predict()}\)</span>. That’s okay because we’re doing to pass in the model later down the line.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnn</span> <span class="o">=</span> <span class="n">stella</span><span class="o">.</span><span class="n">ConvNN</span><span class="p">(</span><span class="n">output_dir</span><span class="o">=</span><span class="n">OUT_DIR</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+WARNING: No stella.DataSet object passed in.
+Can only use stella.ConvNN.predict().
+</pre></div></div>
+</div>
+<p>The easiest thing you can do is pass in your light curves here! Let’s grab an example star using <span class="math notranslate nohighlight">\(\texttt{lightkurve}\)</span>:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1">#### create a lightkurve for a two minute target here for the example</span>
+<span class="kn">from</span> <span class="nn">lightkurve.search</span> <span class="kn">import</span> <span class="n">search_lightcurvefile</span>
+
+<span class="n">lc</span> <span class="o">=</span> <span class="n">search_lightcurvefile</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="s1">&#39;tic62124646&#39;</span><span class="p">,</span> <span class="n">mission</span><span class="o">=</span><span class="s1">&#39;TESS&#39;</span><span class="p">,</span> <span class="n">sector</span><span class="o">=</span><span class="mi">13</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">download</span><span class="p">()</span><span class="o">.</span><span class="n">PDCSAP_FLUX</span>
+<span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+//anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:4: LightkurveDeprecationWarning: The search_lightcurvefile function is deprecated and may be removed in a future version.
+        Use search_lightcurve() instead.
+  after removing the cwd from sys.path.
+//anaconda3/lib/python3.7/site-packages/lightkurve/search.py:352: LightkurveWarning: Warning: 3 files available to download. Only the first file has been downloaded. Please use `download_all()` or specify additional criteria (e.g. quarter, campaign, or sector) to limit your search.
+  LightkurveWarning,
+//anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:5: LightkurveDeprecationWarning: The PDCSAP_FLUX function is deprecated and may be removed in a future version.
+  &#34;&#34;&#34;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_shortest_demo_13_1.png" src="../_images/getting_started_shortest_demo_13_1.png" />
+</div>
+</div>
+<p>Now we can use the model we saved to predict flares on new light curves! This is where it becomes important to keep track of your models and your output directory. To be extra sure you know what model you’re using, in order to predict on new light curves you <span class="math notranslate nohighlight">\(\textit{must}\)</span> input the model filename.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnn</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">modelname</span><span class="o">=</span><span class="n">MODELS</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">times</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+            <span class="n">fluxes</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">flux</span><span class="p">,</span>
+            <span class="n">errs</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">flux_err</span><span class="p">)</span>
+<span class="n">single_pred</span> <span class="o">=</span> <span class="n">cnn</span><span class="o">.</span><span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 1/1 [00:00&lt;00:00,  1.18it/s]
+</pre></div></div>
+</div>
+<p>You can inspect the model a bit more by calling <code class="docutils literal notranslate"><span class="pre">cnn.model.summary()</span></code> which details the layers, size, and output shapes for the <span class="math notranslate nohighlight">\(\texttt{stella}\)</span> models.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnn</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Model: &#34;sequential&#34;
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+conv1d (Conv1D)              (None, 200, 16)           128
+_________________________________________________________________
+max_pooling1d (MaxPooling1D) (None, 100, 16)           0
+_________________________________________________________________
+dropout (Dropout)            (None, 100, 16)           0
+_________________________________________________________________
+conv1d_1 (Conv1D)            (None, 100, 64)           3136
+_________________________________________________________________
+max_pooling1d_1 (MaxPooling1 (None, 50, 64)            0
+_________________________________________________________________
+dropout_1 (Dropout)          (None, 50, 64)            0
+_________________________________________________________________
+flatten (Flatten)            (None, 3200)              0
+_________________________________________________________________
+dense (Dense)                (None, 32)                102432
+_________________________________________________________________
+dropout_2 (Dropout)          (None, 32)                0
+_________________________________________________________________
+dense_1 (Dense)              (None, 1)                 33
+=================================================================
+Total params: 105,729
+Trainable params: 105,729
+Non-trainable params: 0
+_________________________________________________________________
+</pre></div></div>
+</div>
+<p>Et voila… Predictions!</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">predict_time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cnn</span><span class="o">.</span><span class="n">predict_flux</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">single_pred</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Probability of Flare&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time [BJD-2457000]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Normalized Flux&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;TIC </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">targetid</span><span class="p">));</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_shortest_demo_19_0.png" src="../_images/getting_started_shortest_demo_19_0.png" />
+</div>
+</div>
+<p>Now you can loop through all 10 models provided and average over the predictions from each model. This is called <span class="math notranslate nohighlight">\(\textit{ensembling}\)</span> and can provide more accurate predictions than using a single model.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">preds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">MODELS</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">MODELS</span><span class="p">):</span>
+    <span class="n">cnn</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">modelname</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+                <span class="n">times</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+                <span class="n">fluxes</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">flux</span><span class="p">,</span>
+                <span class="n">errs</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">flux_err</span><span class="p">)</span>
+    <span class="n">preds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cnn</span><span class="o">.</span><span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">avg_pred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 1/1 [00:00&lt;00:00,  1.36it/s]
+100%|██████████| 1/1 [00:00&lt;00:00,  1.33it/s]
+100%|██████████| 1/1 [00:00&lt;00:00,  1.32it/s]
+100%|██████████| 1/1 [00:00&lt;00:00,  1.33it/s]
+100%|██████████| 1/1 [00:00&lt;00:00,  1.34it/s]
+100%|██████████| 1/1 [00:00&lt;00:00,  1.37it/s]
+100%|██████████| 1/1 [00:00&lt;00:00,  1.33it/s]
+100%|██████████| 1/1 [00:00&lt;00:00,  1.35it/s]
+100%|██████████| 1/1 [00:00&lt;00:00,  1.33it/s]
+100%|██████████| 1/1 [00:00&lt;00:00,  1.35it/s]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span><span class="mi">8</span><span class="p">),</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                               <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">ax1</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">predict_time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cnn</span><span class="o">.</span><span class="n">predict_flux</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">avg_pred</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">predict_time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cnn</span><span class="o">.</span><span class="n">predict_flux</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">single_pred</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time [BJD-2457000]&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Normalized Flux&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">1.2</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">right</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+<span class="n">cbar_ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_axes</span><span class="p">([</span><span class="mf">0.81</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">])</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cax</span><span class="o">=</span><span class="n">cbar_ax</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Probability&#39;</span><span class="p">)</span>
+
+
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Averaged Predictions&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Single Model Predictions&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">hspace</span><span class="o">=</span><span class="mf">0.4</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_shortest_demo_22_0.png" src="../_images/getting_started_shortest_demo_22_0.png" />
+</div>
+</div>
+<p>There might not be a huge noticeable difference here, but if we zoom into a noisier region and look at both the light curves and the predictions over time, we see that the averaged values do a better job at marking a lower probability for these regions. (It should also be noted that using the <code class="docutils literal notranslate"><span class="pre">stella.FitFlares()</span></code> function, these potential flares are not marked as real. See <a class="reference external" href="http://adina.feinste.in/stella/getting_started/other_features.html">Other Fun Features</a> for a demo on this class.)</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[52]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span><span class="mi">8</span><span class="p">),</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                               <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">predict_time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cnn</span><span class="o">.</span><span class="n">predict_flux</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">avg_pred</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;Oranges_r&#39;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">predict_time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cnn</span><span class="o">.</span><span class="n">predict_flux</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mf">0.03</span><span class="p">,</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">single_pred</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;Greys_r&#39;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mf">0.93</span><span class="p">,</span><span class="mf">1.05</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">predict_time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">single_pred</span><span class="p">,</span> <span class="s1">&#39;k&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">predict_time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">avg_pred</span><span class="p">,</span> <span class="s1">&#39;orange&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Black = Single Model; Orange = Averaged Models&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">1661</span><span class="p">,</span><span class="mi">1665</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[52]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(1661, 1665)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_shortest_demo_24_1.png" src="../_images/getting_started_shortest_demo_24_1.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="tutorial.html" class="btn btn-neutral float-right" title="Creating A New CNN" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral" title="Installation" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019-2020, Adina D. Feinstein.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.4',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" src="../None"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+  
+
+
+</body>
+</html>

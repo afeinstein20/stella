@@ -1,0 +1,1365 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Creating A New CNN &mdash; stella 0.0.4 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="stella 0.0.4 documentation" href="../index.html"/>
+        <link rel="next" title="Other Fun Features" href="other_features.html"/>
+        <link rel="prev" title="Quickstart Tutorial" href="shortest_demo.html"/>  
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> stella
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="about.html">About stella</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="shortest_demo.html">Quickstart Tutorial</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Creating A New CNN</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#1.1-The-Training-Set">1.1 The Training Set</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#1.2-Creating-&amp;-Training-a-Model">1.2 Creating &amp; Training a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#1.3-Evaluating-your-Model">1.3 Evaluating your Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#1.4-Predicting-Flares-in-your-Data">1.4 Predicting Flares in your Data</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="other_features.html">Other Fun Features</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">stella</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">stella</a> &raquo;</li>
+      
+    
+      <li>Creating A New CNN</li>
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt *,
+div.nbinput.container div.input_area pre,
+div.nboutput.container div.output_area pre,
+div.nbinput.container div.input_area .highlight,
+div.nboutput.container div.output_area .highlight {
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+div.nbinput.container > div[class*=highlight],
+div.nboutput.container > div[class*=highlight] {
+    margin: 0;
+}
+
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt * {
+    background: none;
+}
+
+div.nboutput.container div.output_area .highlight,
+div.nboutput.container div.output_area pre {
+    background: unset;
+}
+
+div.nboutput.container div.output_area div.highlight {
+    color: unset;  /* override Pygments text color */
+}
+
+/* avoid gaps between output lines */
+div.nboutput.container div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput.container,
+div.nboutput.container {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput.container,
+    div.nboutput.container {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput.container {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast.container {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput.container div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput.container div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput.container div.prompt,
+div.nboutput.container div.prompt {
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
+}
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
+@media (max-width: 540px) {
+    div.nbinput.container div.prompt,
+    div.nboutput.container div.prompt {
+        width: unset;
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput.container div.prompt.empty {
+        padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput.container div.prompt pre,
+div.nboutput.container div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput.container div.input_area,
+div.nboutput.container div.output_area {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput.container div.input_area,
+    div.nboutput.container div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput.container div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    /*background: #f5f5f5;*/
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput.container div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput.container div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput.container div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+
+div.nbinput.container div.input_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight].math,
+div.nboutput.container div.output_area.rendered_html,
+div.nboutput.container div.output_area > div.output_javascript,
+div.nboutput.container div.output_area:not(.rendered_html) > img{
+    padding: 5px;
+    margin: 0;
+}
+
+/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
+div.nbinput.container div.input_area > div[class^='highlight'],
+div.nboutput.container div.output_area > div[class^='highlight']{
+    overflow-y: hidden;
+}
+
+/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
+.prompt a.copybtn {
+    display: none;
+}
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="Creating-A-New-CNN">
+<h1>Creating A New CNN<a class="headerlink" href="#Creating-A-New-CNN" title="Permalink to this headline">¶</a></h1>
+<p>Hi! Welcome to <span class="math notranslate nohighlight">\(\texttt{stella}\)</span>, a package to identify stellar flares using <span class="math notranslate nohighlight">\(\textit{TESS}\)</span> two-minute data. Here, we’ll run through an example of how to create a convolutional neural network (CNN) model and how to use it to predict where flares are in your own light curves. Let’s get started!</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;/Users/arcticfox/Documents/GitHub/stella/&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">stella</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm_notebook</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">20</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="1.1-The-Training-Set">
+<h2>1.1 The Training Set<a class="headerlink" href="#1.1-The-Training-Set" title="Permalink to this headline">¶</a></h2>
+<p>For this network, we’ll be using the flare catalog presented in Günther et al. (2020), which were identified and hand-labeled using all stars observed at two-minute cadence in <span class="math notranslate nohighlight">\(\textit{TESS}\)</span> Sectors 1 and 2. The catalog and the light curves can be downloaded through <span class="math notranslate nohighlight">\(\texttt{stella}\)</span> with the following:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">download</span> <span class="o">=</span> <span class="n">stella</span><span class="o">.</span><span class="n">DownloadSets</span><span class="p">(</span><span class="n">fn_dir</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+<span class="n">download</span><span class="o">.</span><span class="n">download_catalog</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING: AstropyDeprecationWarning: ./Guenther_2020_flare_catalog.txt already exists. Automatically overwriting ASCII files is deprecated. Use the argument &#39;overwrite=True&#39; in the future. [astropy.io.ascii.ui]
+WARNING: Logging before flag parsing goes to stderr.
+W0714 08:45:08.602910 4409996736 logger.py:204] AstropyDeprecationWarning: ./Guenther_2020_flare_catalog.txt already exists. Automatically overwriting ASCII files is deprecated. Use the argument &#39;overwrite=True&#39; in the future.
+</pre></div></div>
+</div>
+<p>Et voila! A table of flares. For this demo, we’ll only be using a subset of targets. Please ignore this when creating your own CNN!!</p>
+<p>And we’ll download that subset of light curves.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">download</span><span class="o">.</span><span class="n">flare_table</span> <span class="o">=</span> <span class="n">download</span><span class="o">.</span><span class="n">flare_table</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span>
+<span class="n">download</span><span class="o">.</span><span class="n">download_lightcurves</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+  0%|          | 0/5 [00:00&lt;?, ?it/s]//anaconda3/lib/python3.7/site-packages/lightkurve/lightcurvefile.py:47: LightkurveWarning: `LightCurveFile.header` is deprecated, please use `LightCurveFile.get_header()` instead.
+  LightkurveWarning)
+ 20%|██        | 1/5 [00:08&lt;00:32,  8.23s/it]//anaconda3/lib/python3.7/site-packages/lightkurve/lightcurvefile.py:47: LightkurveWarning: `LightCurveFile.header` is deprecated, please use `LightCurveFile.get_header()` instead.
+  LightkurveWarning)
+ 40%|████      | 2/5 [00:18&lt;00:26,  8.90s/it]//anaconda3/lib/python3.7/site-packages/lightkurve/lightcurvefile.py:47: LightkurveWarning: `LightCurveFile.header` is deprecated, please use `LightCurveFile.get_header()` instead.
+  LightkurveWarning)
+ 60%|██████    | 3/5 [00:27&lt;00:17,  8.87s/it]//anaconda3/lib/python3.7/site-packages/lightkurve/lightcurvefile.py:47: LightkurveWarning: `LightCurveFile.header` is deprecated, please use `LightCurveFile.get_header()` instead.
+  LightkurveWarning)
+ 80%|████████  | 4/5 [00:36&lt;00:08,  8.79s/it]//anaconda3/lib/python3.7/site-packages/lightkurve/lightcurvefile.py:47: LightkurveWarning: `LightCurveFile.header` is deprecated, please use `LightCurveFile.get_header()` instead.
+  LightkurveWarning)
+100%|██████████| 5/5 [00:47&lt;00:00,  9.53s/it]
+</pre></div></div>
+</div>
+<p>These light curve files are downloaded to the preset <code class="docutils literal notranslate"><span class="pre">fn_dir</span></code> set. The light curves are downloaded through <span class="math notranslate nohighlight">\(\texttt{lightkurve}\)</span>. They are then reformatted to <code class="docutils literal notranslate"><span class="pre">.npy</span></code> files to save space and the original FITS files are deleted. If you wish to keep the original FITS files, you can set <code class="docutils literal notranslate"><span class="pre">download.download_lightcurves(remove_fits=False)</span></code>.</p>
+<p>First, we need to do a bit of pre-processing of our light curves. The details of this can be found in Feinstein et al. (submitted). The pre-processing is necessary to reformat the light curves such that the Tensorflow modules work. The recommended settings (such as the length of light curve fed into the neural network and the fractional balance of non-flare to flare examples) are the default in the <code class="docutils literal notranslate"><span class="pre">stella.FlareDataSet()</span></code> class. The only variables you must input is the directory to where you
+are storing the light curves and the catalog.</p>
+<p>Other variables that can be set are:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\textit{cadences}\)</span>: The number of cadences the CNN looks at at one time. Default = 200.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\textit{frac_balance}\)</span>: This fixes the class imbalances between the flare and no-flare classes. This is useful because we have a lot more no-flare cases and by rebalancing, we can train the CNN better. Default = 0.73.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\textit{training}\)</span>: The percentage of the data set that is set aside for training. The typical split is 80% for the training, 10% for the validation, and 10% for the test sets. Default = 0.80.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\textit{validation}\)</span>: The remaining percentage to be split between the validation and test sets after the training set has been assigned. Default = 0.90.</p></li>
+</ul>
+<p>More information on these variables can be found in the <a class="reference external" href="http://adina.feinste.in/stella/api.html#stella.FlareDataSet">API for stella.FlareDataSet()</a>.</p>
+<p>If you downloaded the catalog through <code class="docutils literal notranslate"><span class="pre">stella.DownloadSets()</span></code> you can initialize the <code class="docutils literal notranslate"><span class="pre">FlareDataSet</span></code> class by calling:</p>
+<p><code class="docutils literal notranslate"><span class="pre">ds</span> <span class="pre">=</span> <span class="pre">stella.FlareDataSet(downloadSet=download)</span></code></p>
+<p>If you already have the catalog and light curves stored on your machine, you can call:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">ds</span> <span class="o">=</span> <span class="n">stella</span><span class="o">.</span><span class="n">FlareDataSet</span><span class="p">(</span><span class="n">fn_dir</span><span class="o">=</span><span class="s1">&#39;/Users/arcticfox/Documents/flares/lc/unlabeled&#39;</span><span class="p">,</span>
+                         <span class="n">catalog</span><span class="o">=</span><span class="s1">&#39;/Users/arcticfox/Documents/flares/lc/unlabeled/catalog_per_flare_final.csv&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Reading in training set files.
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 865/865 [00:01&lt;00:00, 434.38it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+5389 positive classes (flare)
+17684 negative classes (no flare)
+30.0% class imbalance
+
+</pre></div></div>
+</div>
+<p>If you did not use the <code class="docutils literal notranslate"><span class="pre">DownloadSets</span></code> class, you can set the parameters <code class="docutils literal notranslate"><span class="pre">fn_dir</span></code> and <code class="docutils literal notranslate"><span class="pre">catalog</span></code> when initiating <code class="docutils literal notranslate"><span class="pre">stella.FlareDataSet</span></code>.</p>
+<p>The TQDM loading bar tracks which light curve files have been read in for creating the data set. <span class="math notranslate nohighlight">\(\texttt{stella}\)</span> will also print out the number of positive (flare) and negative (no flare) cases in the set as well as the class imbalance. Setting <span class="math notranslate nohighlight">\(\textit{frac_balance} = 0.73\)</span> results in an imbalance of 30%, which is recommended for training CNNs.</p>
+<p>We can take a look at some of the flares and no flares in the training set data.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">ind_pc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">train_labels</span><span class="o">==</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># Flares</span>
+<span class="n">ind_nc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">train_labels</span><span class="o">==</span><span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># No flares</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">ncols</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span>
+                               <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">train_data</span><span class="p">[</span><span class="n">ind_pc</span><span class="p">[</span><span class="mi">10</span><span class="p">]],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Flare&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Cadences&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">train_data</span><span class="p">[</span><span class="n">ind_nc</span><span class="p">[</span><span class="mi">10</span><span class="p">]],</span> <span class="s1">&#39;k&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;No Flare&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Cadences&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_tutorial_15_0.png" src="../_images/getting_started_tutorial_15_0.png" />
+</div>
+</div>
+<p>That definitely looks like a flare on the left and definitely doesn’t on the right!</p>
+</div>
+<div class="section" id="1.2-Creating-&amp;-Training-a-Model">
+<h2>1.2 Creating &amp; Training a Model<a class="headerlink" href="#1.2-Creating-&-Training-a-Model" title="Permalink to this headline">¶</a></h2>
+<p>Step 1. Specifiy a directory where you’d like your models to be saved to.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">OUT_DIR</span> <span class="o">=</span> <span class="s1">&#39;/Users/arcticfox/Desktop/results/&#39;</span>
+</pre></div>
+</div>
+</div>
+<p>Step 2. Initialize the class! Call <span class="math notranslate nohighlight">\(\texttt{stella.ConvNN()}\)</span> and pass in your directory and the <span class="math notranslate nohighlight">\(\texttt{stella.DataSet}\)</span> object. If you’re feeling adventerous, this is also the step where you can pass in a customized CNN architecture by passing in <span class="math notranslate nohighlight">\(\textit{layers}\)</span>, and what <span class="math notranslate nohighlight">\(\textit{optimizer}\)</span>, <span class="math notranslate nohighlight">\(\textit{metrics}\)</span>, and <span class="math notranslate nohighlight">\(\textit{loss}\)</span> function you want to use. The default for each of these variables are described in the associated paper.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnn</span> <span class="o">=</span> <span class="n">stella</span><span class="o">.</span><span class="n">ConvNN</span><span class="p">(</span><span class="n">output_dir</span><span class="o">=</span><span class="n">OUT_DIR</span><span class="p">,</span>
+                    <span class="n">ds</span><span class="o">=</span><span class="n">ds</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>To train your model, simply call <span class="math notranslate nohighlight">\(\texttt{cnn.train_models()}\)</span>. By default, this will train a single model over 350 epochs and will pass in a batch size = 64 (which means the CNN will see 64 light curves at a time while training) and use an initial random seed = 2. It’s important to keep track of your random seeds so you can reproduce models later, if wanted. Calling this function will also predict on the validation set to give you an idea of how well your CNN is doing.</p>
+<p>However, if you pass in a list of seeds, then this function will train len(seeds) many models over the same number of epochs. This is useful for <span class="math notranslate nohighlight">\(\textit{ensembling}\)</span>, or running a bunch of models and averaging the predicted values over them.</p>
+<p>The models you create will automatically be saved to your output directory in the following file format: ‘ensemble_s{0:04d}_i{1:04d}_b{2}.h5’.format(seed, epochs, frac_balance)</p>
+<p>For this tutorial, we will train the CNN for 50 epochs, however we generally recommend training for <span class="math notranslate nohighlight">\(\textbf{at least 300 epochs}\)</span> or until signs of overfitting are seen in the metrics. More information on that below.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnn</span><span class="o">.</span><span class="n">train_models</span><span class="p">(</span><span class="n">seeds</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Model: &#34;sequential&#34;
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+conv1d (Conv1D)              (None, 200, 16)           128
+_________________________________________________________________
+max_pooling1d (MaxPooling1D) (None, 100, 16)           0
+_________________________________________________________________
+dropout (Dropout)            (None, 100, 16)           0
+_________________________________________________________________
+conv1d_1 (Conv1D)            (None, 100, 64)           3136
+_________________________________________________________________
+max_pooling1d_1 (MaxPooling1 (None, 50, 64)            0
+_________________________________________________________________
+dropout_1 (Dropout)          (None, 50, 64)            0
+_________________________________________________________________
+flatten (Flatten)            (None, 3200)              0
+_________________________________________________________________
+dense (Dense)                (None, 32)                102432
+_________________________________________________________________
+dropout_2 (Dropout)          (None, 32)                0
+_________________________________________________________________
+dense_1 (Dense)              (None, 1)                 33
+=================================================================
+Total params: 105,729
+Trainable params: 105,729
+Non-trainable params: 0
+_________________________________________________________________
+Train on 18458 samples, validate on 2307 samples
+Epoch 1/200
+18458/18458 [==============================] - 3s 174us/sample - loss: 0.5494 - accuracy: 0.7645 - precision: 0.2500 - recall: 2.3020e-04 - val_loss: 0.5289 - val_accuracy: 0.7707 - val_precision: 0.0000e+00 - val_recall: 0.0000e+00
+Epoch 2/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.5324 - accuracy: 0.7647 - precision: 0.0000e+00 - recall: 0.0000e+00 - val_loss: 0.4919 - val_accuracy: 0.7707 - val_precision: 0.0000e+00 - val_recall: 0.0000e+00
+Epoch 3/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.4737 - accuracy: 0.7863 - precision: 0.9761 - recall: 0.0942 - val_loss: 0.3863 - val_accuracy: 0.8466 - val_precision: 0.9944 - val_recall: 0.3327
+Epoch 4/200
+18458/18458 [==============================] - 3s 139us/sample - loss: 0.3604 - accuracy: 0.8620 - precision: 0.9653 - recall: 0.4291 - val_loss: 0.3166 - val_accuracy: 0.8643 - val_precision: 0.9865 - val_recall: 0.4140
+Epoch 5/200
+18458/18458 [==============================] - 3s 154us/sample - loss: 0.3120 - accuracy: 0.8820 - precision: 0.9577 - recall: 0.5216 - val_loss: 0.2419 - val_accuracy: 0.9016 - val_precision: 0.9809 - val_recall: 0.5822
+Epoch 6/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.2938 - accuracy: 0.8948 - precision: 0.9475 - recall: 0.5854 - val_loss: 0.2647 - val_accuracy: 0.8882 - val_precision: 0.9892 - val_recall: 0.5180
+Epoch 7/200
+18458/18458 [==============================] - 3s 143us/sample - loss: 0.2628 - accuracy: 0.9055 - precision: 0.9514 - recall: 0.6308 - val_loss: 0.2178 - val_accuracy: 0.9137 - val_precision: 0.9797 - val_recall: 0.6371
+Epoch 8/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.2715 - accuracy: 0.9031 - precision: 0.9422 - recall: 0.6268 - val_loss: 0.2429 - val_accuracy: 0.9068 - val_precision: 0.9816 - val_recall: 0.6049
+Epoch 9/200
+18458/18458 [==============================] - 3s 147us/sample - loss: 0.2567 - accuracy: 0.9083 - precision: 0.9311 - recall: 0.6593 - val_loss: 0.2139 - val_accuracy: 0.9272 - val_precision: 0.9640 - val_recall: 0.7089
+Epoch 10/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.2447 - accuracy: 0.9140 - precision: 0.9230 - recall: 0.6924 - val_loss: 0.2234 - val_accuracy: 0.9272 - val_precision: 0.9593 - val_recall: 0.7127
+Epoch 11/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.2286 - accuracy: 0.9192 - precision: 0.9242 - recall: 0.7155 - val_loss: 0.1910 - val_accuracy: 0.9332 - val_precision: 0.9518 - val_recall: 0.7467
+Epoch 12/200
+18458/18458 [==============================] - 2s 127us/sample - loss: 0.2241 - accuracy: 0.9227 - precision: 0.9244 - recall: 0.7316 - val_loss: 0.1881 - val_accuracy: 0.9276 - val_precision: 0.9525 - val_recall: 0.7202
+Epoch 13/200
+18458/18458 [==============================] - 2s 132us/sample - loss: 0.2025 - accuracy: 0.9306 - precision: 0.9327 - recall: 0.7599 - val_loss: 0.1686 - val_accuracy: 0.9371 - val_precision: 0.9444 - val_recall: 0.7713
+Epoch 14/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.2141 - accuracy: 0.9288 - precision: 0.9314 - recall: 0.7530 - val_loss: 0.1662 - val_accuracy: 0.9371 - val_precision: 0.9528 - val_recall: 0.7637
+Epoch 15/200
+18458/18458 [==============================] - 3s 142us/sample - loss: 0.2016 - accuracy: 0.9320 - precision: 0.9282 - recall: 0.7705 - val_loss: 0.2023 - val_accuracy: 0.9224 - val_precision: 0.9730 - val_recall: 0.6805
+Epoch 16/200
+18458/18458 [==============================] - 3s 138us/sample - loss: 0.2043 - accuracy: 0.9303 - precision: 0.9245 - recall: 0.7666 - val_loss: 0.1942 - val_accuracy: 0.9306 - val_precision: 0.9792 - val_recall: 0.7127
+Epoch 17/200
+18458/18458 [==============================] - 2s 132us/sample - loss: 0.1916 - accuracy: 0.9362 - precision: 0.9366 - recall: 0.7820 - val_loss: 0.1506 - val_accuracy: 0.9458 - val_precision: 0.9633 - val_recall: 0.7940
+Epoch 18/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.1894 - accuracy: 0.9370 - precision: 0.9364 - recall: 0.7857 - val_loss: 0.1658 - val_accuracy: 0.9363 - val_precision: 0.9848 - val_recall: 0.7335
+Epoch 19/200
+18458/18458 [==============================] - 3s 144us/sample - loss: 0.1748 - accuracy: 0.9426 - precision: 0.9460 - recall: 0.8020 - val_loss: 0.1541 - val_accuracy: 0.9450 - val_precision: 0.9855 - val_recall: 0.7713
+Epoch 20/200
+18458/18458 [==============================] - 3s 143us/sample - loss: 0.1772 - accuracy: 0.9430 - precision: 0.9487 - recall: 0.8011 - val_loss: 0.1432 - val_accuracy: 0.9484 - val_precision: 0.9724 - val_recall: 0.7977
+Epoch 21/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.1881 - accuracy: 0.9385 - precision: 0.9378 - recall: 0.7912 - val_loss: 0.1620 - val_accuracy: 0.9402 - val_precision: 0.9780 - val_recall: 0.7561
+Epoch 22/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.1757 - accuracy: 0.9428 - precision: 0.9489 - recall: 0.8002 - val_loss: 0.1311 - val_accuracy: 0.9567 - val_precision: 0.9673 - val_recall: 0.8393
+Epoch 23/200
+18458/18458 [==============================] - 3s 142us/sample - loss: 0.1633 - accuracy: 0.9491 - precision: 0.9568 - recall: 0.8207 - val_loss: 0.1282 - val_accuracy: 0.9575 - val_precision: 0.9615 - val_recall: 0.8488
+Epoch 24/200
+18458/18458 [==============================] - 2s 129us/sample - loss: 0.1653 - accuracy: 0.9467 - precision: 0.9546 - recall: 0.8124 - val_loss: 0.1277 - val_accuracy: 0.9645 - val_precision: 0.9786 - val_recall: 0.8639
+Epoch 25/200
+18458/18458 [==============================] - 3s 138us/sample - loss: 0.1575 - accuracy: 0.9516 - precision: 0.9600 - recall: 0.8290 - val_loss: 0.1345 - val_accuracy: 0.9714 - val_precision: 0.9715 - val_recall: 0.9017
+Epoch 26/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.1517 - accuracy: 0.9518 - precision: 0.9569 - recall: 0.8326 - val_loss: 0.1194 - val_accuracy: 0.9718 - val_precision: 0.9696 - val_recall: 0.9055
+Epoch 27/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.1546 - accuracy: 0.9519 - precision: 0.9567 - recall: 0.8336 - val_loss: 0.1546 - val_accuracy: 0.9714 - val_precision: 0.9530 - val_recall: 0.9206
+Epoch 28/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.1399 - accuracy: 0.9561 - precision: 0.9614 - recall: 0.8476 - val_loss: 0.1711 - val_accuracy: 0.9710 - val_precision: 0.9262 - val_recall: 0.9490
+Epoch 29/200
+18458/18458 [==============================] - 2s 132us/sample - loss: 0.1476 - accuracy: 0.9546 - precision: 0.9599 - recall: 0.8423 - val_loss: 0.1175 - val_accuracy: 0.9632 - val_precision: 0.9723 - val_recall: 0.8639
+Epoch 30/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.1420 - accuracy: 0.9562 - precision: 0.9585 - recall: 0.8506 - val_loss: 0.1119 - val_accuracy: 0.9697 - val_precision: 0.9713 - val_recall: 0.8941
+Epoch 31/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.1488 - accuracy: 0.9539 - precision: 0.9561 - recall: 0.8430 - val_loss: 0.1121 - val_accuracy: 0.9736 - val_precision: 0.9680 - val_recall: 0.9149
+Epoch 32/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.1413 - accuracy: 0.9567 - precision: 0.9624 - recall: 0.8492 - val_loss: 0.1030 - val_accuracy: 0.9701 - val_precision: 0.9733 - val_recall: 0.8941
+Epoch 33/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.1398 - accuracy: 0.9547 - precision: 0.9580 - recall: 0.8444 - val_loss: 0.1127 - val_accuracy: 0.9775 - val_precision: 0.9649 - val_recall: 0.9357
+Epoch 34/200
+18458/18458 [==============================] - 3s 150us/sample - loss: 0.1326 - accuracy: 0.9582 - precision: 0.9625 - recall: 0.8559 - val_loss: 0.1092 - val_accuracy: 0.9775 - val_precision: 0.9704 - val_recall: 0.9301
+Epoch 35/200
+18458/18458 [==============================] - 3s 186us/sample - loss: 0.1385 - accuracy: 0.9577 - precision: 0.9643 - recall: 0.8517 - val_loss: 0.1370 - val_accuracy: 0.9740 - val_precision: 0.9383 - val_recall: 0.9490
+Epoch 36/200
+18458/18458 [==============================] - 4s 207us/sample - loss: 0.1301 - accuracy: 0.9604 - precision: 0.9672 - recall: 0.8610 - val_loss: 0.1323 - val_accuracy: 0.9567 - val_precision: 0.9633 - val_recall: 0.8431
+Epoch 37/200
+18458/18458 [==============================] - 4s 192us/sample - loss: 0.1275 - accuracy: 0.9605 - precision: 0.9626 - recall: 0.8658 - val_loss: 0.1484 - val_accuracy: 0.9749 - val_precision: 0.9305 - val_recall: 0.9622
+Epoch 38/200
+18458/18458 [==============================] - 3s 168us/sample - loss: 0.1423 - accuracy: 0.9550 - precision: 0.9549 - recall: 0.8490 - val_loss: 0.1096 - val_accuracy: 0.9684 - val_precision: 0.9653 - val_recall: 0.8941
+Epoch 39/200
+18458/18458 [==============================] - 3s 146us/sample - loss: 0.1412 - accuracy: 0.9543 - precision: 0.9548 - recall: 0.8460 - val_loss: 0.1397 - val_accuracy: 0.9701 - val_precision: 0.9212 - val_recall: 0.9509
+Epoch 40/200
+18458/18458 [==============================] - 3s 138us/sample - loss: 0.1285 - accuracy: 0.9598 - precision: 0.9649 - recall: 0.8605 - val_loss: 0.1038 - val_accuracy: 0.9679 - val_precision: 0.9577 - val_recall: 0.8998
+Epoch 41/200
+18458/18458 [==============================] - 3s 144us/sample - loss: 0.1324 - accuracy: 0.9584 - precision: 0.9625 - recall: 0.8568 - val_loss: 0.1238 - val_accuracy: 0.9757 - val_precision: 0.9355 - val_recall: 0.9603
+Epoch 42/200
+18458/18458 [==============================] - 3s 142us/sample - loss: 0.1273 - accuracy: 0.9613 - precision: 0.9635 - recall: 0.8686 - val_loss: 0.2219 - val_accuracy: 0.9376 - val_precision: 0.7966 - val_recall: 0.9773
+Epoch 43/200
+18458/18458 [==============================] - 3s 145us/sample - loss: 0.1220 - accuracy: 0.9625 - precision: 0.9670 - recall: 0.8702 - val_loss: 0.0966 - val_accuracy: 0.9701 - val_precision: 0.9832 - val_recall: 0.8847
+Epoch 44/200
+18458/18458 [==============================] - 3s 152us/sample - loss: 0.1265 - accuracy: 0.9610 - precision: 0.9658 - recall: 0.8651 - val_loss: 0.0997 - val_accuracy: 0.9697 - val_precision: 0.9752 - val_recall: 0.8904
+Epoch 45/200
+18458/18458 [==============================] - 3s 143us/sample - loss: 0.1268 - accuracy: 0.9615 - precision: 0.9633 - recall: 0.8695 - val_loss: 0.0941 - val_accuracy: 0.9710 - val_precision: 0.9676 - val_recall: 0.9036
+Epoch 46/200
+18458/18458 [==============================] - 3s 149us/sample - loss: 0.1285 - accuracy: 0.9601 - precision: 0.9635 - recall: 0.8633 - val_loss: 0.1479 - val_accuracy: 0.9684 - val_precision: 0.9028 - val_recall: 0.9660
+Epoch 47/200
+18458/18458 [==============================] - 3s 143us/sample - loss: 0.1328 - accuracy: 0.9585 - precision: 0.9571 - recall: 0.8623 - val_loss: 0.1346 - val_accuracy: 0.9658 - val_precision: 0.9151 - val_recall: 0.9376
+Epoch 48/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.1177 - accuracy: 0.9627 - precision: 0.9668 - recall: 0.8713 - val_loss: 0.1043 - val_accuracy: 0.9770 - val_precision: 0.9440 - val_recall: 0.9565
+Epoch 49/200
+18458/18458 [==============================] - 3s 144us/sample - loss: 0.1247 - accuracy: 0.9613 - precision: 0.9649 - recall: 0.8669 - val_loss: 0.0888 - val_accuracy: 0.9705 - val_precision: 0.9792 - val_recall: 0.8904
+Epoch 50/200
+18458/18458 [==============================] - 3s 159us/sample - loss: 0.1171 - accuracy: 0.9642 - precision: 0.9668 - recall: 0.8780 - val_loss: 0.0991 - val_accuracy: 0.9701 - val_precision: 0.9812 - val_recall: 0.8866
+Epoch 51/200
+18458/18458 [==============================] - 3s 169us/sample - loss: 0.1190 - accuracy: 0.9638 - precision: 0.9674 - recall: 0.8755 - val_loss: 0.1182 - val_accuracy: 0.9723 - val_precision: 0.9204 - val_recall: 0.9622
+Epoch 52/200
+18458/18458 [==============================] - 3s 161us/sample - loss: 0.1179 - accuracy: 0.9628 - precision: 0.9635 - recall: 0.8752 - val_loss: 0.1217 - val_accuracy: 0.9627 - val_precision: 0.9743 - val_recall: 0.8601
+Epoch 53/200
+18458/18458 [==============================] - 3s 150us/sample - loss: 0.1166 - accuracy: 0.9632 - precision: 0.9671 - recall: 0.8734 - val_loss: 0.1692 - val_accuracy: 0.9649 - val_precision: 0.8836 - val_recall: 0.9754
+Epoch 54/200
+18458/18458 [==============================] - 3s 138us/sample - loss: 0.1164 - accuracy: 0.9627 - precision: 0.9661 - recall: 0.8720 - val_loss: 0.0974 - val_accuracy: 0.9783 - val_precision: 0.9460 - val_recall: 0.9603
+Epoch 55/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.1215 - accuracy: 0.9627 - precision: 0.9659 - recall: 0.8725 - val_loss: 0.1093 - val_accuracy: 0.9766 - val_precision: 0.9406 - val_recall: 0.9584
+Epoch 56/200
+18458/18458 [==============================] - 3s 138us/sample - loss: 0.1217 - accuracy: 0.9619 - precision: 0.9636 - recall: 0.8709 - val_loss: 0.0962 - val_accuracy: 0.9783 - val_precision: 0.9460 - val_recall: 0.9603
+Epoch 57/200
+18458/18458 [==============================] - 3s 144us/sample - loss: 0.1147 - accuracy: 0.9635 - precision: 0.9672 - recall: 0.8748 - val_loss: 0.1161 - val_accuracy: 0.9744 - val_precision: 0.9288 - val_recall: 0.9622
+Epoch 58/200
+18458/18458 [==============================] - 3s 141us/sample - loss: 0.1266 - accuracy: 0.9596 - precision: 0.9610 - recall: 0.8633 - val_loss: 0.1003 - val_accuracy: 0.9697 - val_precision: 0.9674 - val_recall: 0.8979
+Epoch 59/200
+18458/18458 [==============================] - 3s 145us/sample - loss: 0.1082 - accuracy: 0.9647 - precision: 0.9641 - recall: 0.8831 - val_loss: 0.0879 - val_accuracy: 0.9710 - val_precision: 0.9833 - val_recall: 0.8885
+Epoch 60/200
+18458/18458 [==============================] - 3s 142us/sample - loss: 0.1127 - accuracy: 0.9633 - precision: 0.9636 - recall: 0.8773 - val_loss: 0.0904 - val_accuracy: 0.9727 - val_precision: 0.9854 - val_recall: 0.8941
+Epoch 61/200
+18458/18458 [==============================] - 3s 143us/sample - loss: 0.1044 - accuracy: 0.9679 - precision: 0.9688 - recall: 0.8923 - val_loss: 0.1206 - val_accuracy: 0.9688 - val_precision: 0.9044 - val_recall: 0.9660
+Epoch 62/200
+18458/18458 [==============================] - 3s 143us/sample - loss: 0.1095 - accuracy: 0.9641 - precision: 0.9619 - recall: 0.8824 - val_loss: 0.1610 - val_accuracy: 0.9545 - val_precision: 0.8522 - val_recall: 0.9698
+Epoch 63/200
+18458/18458 [==============================] - 3s 140us/sample - loss: 0.0996 - accuracy: 0.9681 - precision: 0.9686 - recall: 0.8936 - val_loss: 0.0970 - val_accuracy: 0.9775 - val_precision: 0.9425 - val_recall: 0.9603
+Epoch 64/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.1073 - accuracy: 0.9670 - precision: 0.9670 - recall: 0.8900 - val_loss: 0.0922 - val_accuracy: 0.9744 - val_precision: 0.9368 - val_recall: 0.9527
+Epoch 65/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.1280 - accuracy: 0.9597 - precision: 0.9658 - recall: 0.8591 - val_loss: 0.1154 - val_accuracy: 0.9688 - val_precision: 0.9117 - val_recall: 0.9565
+Epoch 66/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.1054 - accuracy: 0.9672 - precision: 0.9722 - recall: 0.8860 - val_loss: 0.0749 - val_accuracy: 0.9766 - val_precision: 0.9612 - val_recall: 0.9357
+Epoch 67/200
+18458/18458 [==============================] - 2s 132us/sample - loss: 0.1024 - accuracy: 0.9691 - precision: 0.9682 - recall: 0.8983 - val_loss: 0.0882 - val_accuracy: 0.9723 - val_precision: 0.9412 - val_recall: 0.9376
+Epoch 68/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.1017 - accuracy: 0.9684 - precision: 0.9709 - recall: 0.8923 - val_loss: 0.0765 - val_accuracy: 0.9792 - val_precision: 0.9529 - val_recall: 0.9565
+Epoch 69/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.1056 - accuracy: 0.9665 - precision: 0.9662 - recall: 0.8886 - val_loss: 0.1364 - val_accuracy: 0.9645 - val_precision: 0.8847 - val_recall: 0.9716
+Epoch 70/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.1099 - accuracy: 0.9668 - precision: 0.9670 - recall: 0.8893 - val_loss: 0.1352 - val_accuracy: 0.9619 - val_precision: 0.8769 - val_recall: 0.9698
+Epoch 71/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.1013 - accuracy: 0.9669 - precision: 0.9670 - recall: 0.8897 - val_loss: 0.0828 - val_accuracy: 0.9796 - val_precision: 0.9513 - val_recall: 0.9603
+Epoch 72/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.1045 - accuracy: 0.9680 - precision: 0.9695 - recall: 0.8923 - val_loss: 0.0694 - val_accuracy: 0.9766 - val_precision: 0.9837 - val_recall: 0.9130
+Epoch 73/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.1014 - accuracy: 0.9668 - precision: 0.9674 - recall: 0.8888 - val_loss: 0.1153 - val_accuracy: 0.9671 - val_precision: 0.8953 - val_recall: 0.9698
+Epoch 74/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.1091 - accuracy: 0.9641 - precision: 0.9663 - recall: 0.8782 - val_loss: 0.0874 - val_accuracy: 0.9753 - val_precision: 0.9664 - val_recall: 0.9244
+Epoch 75/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0947 - accuracy: 0.9706 - precision: 0.9698 - recall: 0.9031 - val_loss: 0.1204 - val_accuracy: 0.9593 - val_precision: 0.9801 - val_recall: 0.8393
+Epoch 76/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.1010 - accuracy: 0.9691 - precision: 0.9720 - recall: 0.8946 - val_loss: 0.0929 - val_accuracy: 0.9783 - val_precision: 0.9362 - val_recall: 0.9716
+Epoch 77/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0931 - accuracy: 0.9709 - precision: 0.9685 - recall: 0.9058 - val_loss: 0.0737 - val_accuracy: 0.9770 - val_precision: 0.9837 - val_recall: 0.9149
+Epoch 78/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0983 - accuracy: 0.9686 - precision: 0.9698 - recall: 0.8946 - val_loss: 0.0979 - val_accuracy: 0.9757 - val_precision: 0.9261 - val_recall: 0.9716
+Epoch 79/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0980 - accuracy: 0.9687 - precision: 0.9712 - recall: 0.8936 - val_loss: 0.0732 - val_accuracy: 0.9753 - val_precision: 0.9609 - val_recall: 0.9301
+Epoch 80/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0974 - accuracy: 0.9698 - precision: 0.9704 - recall: 0.8989 - val_loss: 0.3404 - val_accuracy: 0.8331 - val_precision: 0.5793 - val_recall: 0.9943
+Epoch 81/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0957 - accuracy: 0.9685 - precision: 0.9649 - recall: 0.8989 - val_loss: 0.0779 - val_accuracy: 0.9801 - val_precision: 0.9514 - val_recall: 0.9622
+Epoch 82/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0977 - accuracy: 0.9691 - precision: 0.9689 - recall: 0.8976 - val_loss: 0.1189 - val_accuracy: 0.9636 - val_precision: 0.8843 - val_recall: 0.9679
+Epoch 83/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.1032 - accuracy: 0.9686 - precision: 0.9724 - recall: 0.8918 - val_loss: 0.1481 - val_accuracy: 0.9523 - val_precision: 0.8463 - val_recall: 0.9679
+Epoch 84/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0898 - accuracy: 0.9713 - precision: 0.9706 - recall: 0.9056 - val_loss: 0.1526 - val_accuracy: 0.9549 - val_precision: 0.8489 - val_recall: 0.9773
+Epoch 85/200
+18458/18458 [==============================] - 3s 135us/sample - loss: 0.0930 - accuracy: 0.9711 - precision: 0.9694 - recall: 0.9056 - val_loss: 0.0901 - val_accuracy: 0.9783 - val_precision: 0.9378 - val_recall: 0.9698
+Epoch 86/200
+18458/18458 [==============================] - 3s 138us/sample - loss: 0.0908 - accuracy: 0.9713 - precision: 0.9695 - recall: 0.9065 - val_loss: 0.0664 - val_accuracy: 0.9792 - val_precision: 0.9598 - val_recall: 0.9490
+Epoch 87/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0961 - accuracy: 0.9710 - precision: 0.9708 - recall: 0.9038 - val_loss: 0.1742 - val_accuracy: 0.9480 - val_precision: 0.8231 - val_recall: 0.9849
+Epoch 88/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0930 - accuracy: 0.9714 - precision: 0.9723 - recall: 0.9045 - val_loss: 0.0733 - val_accuracy: 0.9766 - val_precision: 0.9507 - val_recall: 0.9471
+Epoch 89/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0891 - accuracy: 0.9719 - precision: 0.9705 - recall: 0.9084 - val_loss: 0.0863 - val_accuracy: 0.9710 - val_precision: 0.9894 - val_recall: 0.8828
+Epoch 90/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0916 - accuracy: 0.9716 - precision: 0.9714 - recall: 0.9061 - val_loss: 0.0992 - val_accuracy: 0.9766 - val_precision: 0.9295 - val_recall: 0.9716
+Epoch 91/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0935 - accuracy: 0.9716 - precision: 0.9704 - recall: 0.9068 - val_loss: 0.0771 - val_accuracy: 0.9792 - val_precision: 0.9512 - val_recall: 0.9584
+Epoch 92/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0949 - accuracy: 0.9701 - precision: 0.9705 - recall: 0.9003 - val_loss: 0.1643 - val_accuracy: 0.9480 - val_precision: 0.8251 - val_recall: 0.9811
+Epoch 93/200
+18458/18458 [==============================] - 3s 148us/sample - loss: 0.0939 - accuracy: 0.9699 - precision: 0.9707 - recall: 0.8994 - val_loss: 0.1503 - val_accuracy: 0.9536 - val_precision: 0.8436 - val_recall: 0.9792
+Epoch 94/200
+18458/18458 [==============================] - 3s 174us/sample - loss: 0.0853 - accuracy: 0.9726 - precision: 0.9722 - recall: 0.9095 - val_loss: 0.0682 - val_accuracy: 0.9809 - val_precision: 0.9550 - val_recall: 0.9622
+Epoch 95/200
+18458/18458 [==============================] - 3s 172us/sample - loss: 0.0918 - accuracy: 0.9735 - precision: 0.9742 - recall: 0.9114 - val_loss: 0.1143 - val_accuracy: 0.9675 - val_precision: 0.8914 - val_recall: 0.9773
+Epoch 96/200
+18458/18458 [==============================] - 3s 166us/sample - loss: 0.0991 - accuracy: 0.9674 - precision: 0.9636 - recall: 0.8953 - val_loss: 0.1964 - val_accuracy: 0.9380 - val_precision: 0.7915 - val_recall: 0.9905
+Epoch 97/200
+18458/18458 [==============================] - 3s 160us/sample - loss: 0.0984 - accuracy: 0.9678 - precision: 0.9659 - recall: 0.8946 - val_loss: 0.0652 - val_accuracy: 0.9814 - val_precision: 0.9602 - val_recall: 0.9584
+Epoch 98/200
+18458/18458 [==============================] - 3s 139us/sample - loss: 0.0891 - accuracy: 0.9730 - precision: 0.9722 - recall: 0.9111 - val_loss: 0.0734 - val_accuracy: 0.9809 - val_precision: 0.9482 - val_recall: 0.9698
+Epoch 99/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0890 - accuracy: 0.9712 - precision: 0.9681 - recall: 0.9077 - val_loss: 0.1848 - val_accuracy: 0.9410 - val_precision: 0.8028 - val_recall: 0.9849
+Epoch 100/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.0870 - accuracy: 0.9724 - precision: 0.9717 - recall: 0.9091 - val_loss: 0.1258 - val_accuracy: 0.9619 - val_precision: 0.8718 - val_recall: 0.9773
+Epoch 101/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0971 - accuracy: 0.9697 - precision: 0.9699 - recall: 0.8989 - val_loss: 0.0624 - val_accuracy: 0.9788 - val_precision: 0.9800 - val_recall: 0.9263
+Epoch 102/200
+18458/18458 [==============================] - 2s 132us/sample - loss: 0.0995 - accuracy: 0.9691 - precision: 0.9696 - recall: 0.8966 - val_loss: 0.0798 - val_accuracy: 0.9736 - val_precision: 0.9916 - val_recall: 0.8922
+Epoch 103/200
+18458/18458 [==============================] - 3s 143us/sample - loss: 0.0925 - accuracy: 0.9718 - precision: 0.9733 - recall: 0.9049 - val_loss: 0.0652 - val_accuracy: 0.9818 - val_precision: 0.9586 - val_recall: 0.9622
+Epoch 104/200
+18458/18458 [==============================] - 3s 141us/sample - loss: 0.0911 - accuracy: 0.9705 - precision: 0.9701 - recall: 0.9026 - val_loss: 0.1040 - val_accuracy: 0.9697 - val_precision: 0.8991 - val_recall: 0.9773
+Epoch 105/200
+18458/18458 [==============================] - 3s 141us/sample - loss: 0.0922 - accuracy: 0.9706 - precision: 0.9694 - recall: 0.9035 - val_loss: 0.1581 - val_accuracy: 0.9519 - val_precision: 0.8382 - val_recall: 0.9792
+Epoch 106/200
+18458/18458 [==============================] - 3s 139us/sample - loss: 0.1069 - accuracy: 0.9667 - precision: 0.9635 - recall: 0.8925 - val_loss: 0.1421 - val_accuracy: 0.9567 - val_precision: 0.8557 - val_recall: 0.9754
+Epoch 107/200
+18458/18458 [==============================] - 3s 141us/sample - loss: 0.0930 - accuracy: 0.9710 - precision: 0.9720 - recall: 0.9029 - val_loss: 0.1410 - val_accuracy: 0.9562 - val_precision: 0.8543 - val_recall: 0.9754
+Epoch 108/200
+18458/18458 [==============================] - 3s 139us/sample - loss: 0.0886 - accuracy: 0.9722 - precision: 0.9735 - recall: 0.9065 - val_loss: 0.1257 - val_accuracy: 0.9627 - val_precision: 0.8761 - val_recall: 0.9754
+Epoch 109/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0888 - accuracy: 0.9717 - precision: 0.9712 - recall: 0.9068 - val_loss: 0.0702 - val_accuracy: 0.9818 - val_precision: 0.9534 - val_recall: 0.9679
+Epoch 110/200
+18458/18458 [==============================] - 3s 138us/sample - loss: 0.0936 - accuracy: 0.9711 - precision: 0.9722 - recall: 0.9029 - val_loss: 0.0883 - val_accuracy: 0.9749 - val_precision: 0.9213 - val_recall: 0.9735
+Epoch 111/200
+18458/18458 [==============================] - 3s 138us/sample - loss: 0.0896 - accuracy: 0.9719 - precision: 0.9712 - recall: 0.9077 - val_loss: 0.0853 - val_accuracy: 0.9775 - val_precision: 0.9328 - val_recall: 0.9716
+Epoch 112/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0909 - accuracy: 0.9724 - precision: 0.9710 - recall: 0.9098 - val_loss: 0.1586 - val_accuracy: 0.9523 - val_precision: 0.8429 - val_recall: 0.9735
+Epoch 113/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0875 - accuracy: 0.9717 - precision: 0.9719 - recall: 0.9061 - val_loss: 0.0689 - val_accuracy: 0.9809 - val_precision: 0.9602 - val_recall: 0.9565
+Epoch 114/200
+18458/18458 [==============================] - 3s 153us/sample - loss: 0.0836 - accuracy: 0.9737 - precision: 0.9758 - recall: 0.9107 - val_loss: 0.0657 - val_accuracy: 0.9818 - val_precision: 0.9518 - val_recall: 0.9698
+Epoch 115/200
+18458/18458 [==============================] - 3s 142us/sample - loss: 0.0921 - accuracy: 0.9711 - precision: 0.9708 - recall: 0.9042 - val_loss: 0.0702 - val_accuracy: 0.9805 - val_precision: 0.9498 - val_recall: 0.9660
+Epoch 116/200
+18458/18458 [==============================] - 3s 140us/sample - loss: 0.0974 - accuracy: 0.9690 - precision: 0.9671 - recall: 0.8987 - val_loss: 0.1202 - val_accuracy: 0.9649 - val_precision: 0.8875 - val_recall: 0.9698
+Epoch 117/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0850 - accuracy: 0.9722 - precision: 0.9717 - recall: 0.9084 - val_loss: 0.1045 - val_accuracy: 0.9714 - val_precision: 0.9069 - val_recall: 0.9754
+Epoch 118/200
+18458/18458 [==============================] - 3s 162us/sample - loss: 0.0857 - accuracy: 0.9741 - precision: 0.9733 - recall: 0.9151 - val_loss: 0.0758 - val_accuracy: 0.9809 - val_precision: 0.9499 - val_recall: 0.9679
+Epoch 119/200
+18458/18458 [==============================] - 3s 156us/sample - loss: 0.0863 - accuracy: 0.9729 - precision: 0.9729 - recall: 0.9100 - val_loss: 0.2024 - val_accuracy: 0.9315 - val_precision: 0.7732 - val_recall: 0.9924
+Epoch 120/200
+18458/18458 [==============================] - 3s 155us/sample - loss: 0.1031 - accuracy: 0.9690 - precision: 0.9694 - recall: 0.8966 - val_loss: 0.0815 - val_accuracy: 0.9705 - val_precision: 0.9458 - val_recall: 0.9244
+Epoch 121/200
+18458/18458 [==============================] - 3s 155us/sample - loss: 0.0880 - accuracy: 0.9724 - precision: 0.9712 - recall: 0.9098 - val_loss: 0.1191 - val_accuracy: 0.9662 - val_precision: 0.9005 - val_recall: 0.9584
+Epoch 122/200
+18458/18458 [==============================] - 3s 145us/sample - loss: 0.0942 - accuracy: 0.9706 - precision: 0.9684 - recall: 0.9045 - val_loss: 0.1026 - val_accuracy: 0.9697 - val_precision: 0.9005 - val_recall: 0.9754
+Epoch 123/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0876 - accuracy: 0.9722 - precision: 0.9735 - recall: 0.9065 - val_loss: 0.0634 - val_accuracy: 0.9814 - val_precision: 0.9620 - val_recall: 0.9565
+Epoch 124/200
+18458/18458 [==============================] - 3s 145us/sample - loss: 0.0854 - accuracy: 0.9725 - precision: 0.9715 - recall: 0.9098 - val_loss: 0.0870 - val_accuracy: 0.9736 - val_precision: 0.9179 - val_recall: 0.9716
+Epoch 125/200
+18458/18458 [==============================] - 3s 147us/sample - loss: 0.0901 - accuracy: 0.9721 - precision: 0.9717 - recall: 0.9079 - val_loss: 0.1402 - val_accuracy: 0.9541 - val_precision: 0.8484 - val_recall: 0.9735
+Epoch 126/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0903 - accuracy: 0.9718 - precision: 0.9712 - recall: 0.9072 - val_loss: 0.1050 - val_accuracy: 0.9666 - val_precision: 0.8979 - val_recall: 0.9641
+Epoch 127/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0899 - accuracy: 0.9718 - precision: 0.9721 - recall: 0.9063 - val_loss: 0.0627 - val_accuracy: 0.9775 - val_precision: 0.9818 - val_recall: 0.9187
+Epoch 128/200
+18458/18458 [==============================] - 3s 148us/sample - loss: 0.0909 - accuracy: 0.9714 - precision: 0.9709 - recall: 0.9056 - val_loss: 0.1331 - val_accuracy: 0.9619 - val_precision: 0.8693 - val_recall: 0.9811
+Epoch 129/200
+18458/18458 [==============================] - 3s 140us/sample - loss: 0.0987 - accuracy: 0.9680 - precision: 0.9681 - recall: 0.8936 - val_loss: 0.1068 - val_accuracy: 0.9666 - val_precision: 0.8897 - val_recall: 0.9754
+Epoch 130/200
+18458/18458 [==============================] - 3s 140us/sample - loss: 0.0808 - accuracy: 0.9746 - precision: 0.9745 - recall: 0.9160 - val_loss: 0.0795 - val_accuracy: 0.9753 - val_precision: 0.9260 - val_recall: 0.9698
+Epoch 131/200
+18458/18458 [==============================] - 3s 140us/sample - loss: 0.0899 - accuracy: 0.9722 - precision: 0.9698 - recall: 0.9100 - val_loss: 0.1077 - val_accuracy: 0.9623 - val_precision: 0.8932 - val_recall: 0.9490
+Epoch 132/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0853 - accuracy: 0.9739 - precision: 0.9731 - recall: 0.9146 - val_loss: 0.1118 - val_accuracy: 0.9627 - val_precision: 0.8799 - val_recall: 0.9698
+Epoch 133/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0965 - accuracy: 0.9697 - precision: 0.9690 - recall: 0.8999 - val_loss: 0.1128 - val_accuracy: 0.9575 - val_precision: 0.8954 - val_recall: 0.9225
+Epoch 134/200
+18458/18458 [==============================] - 2s 130us/sample - loss: 0.0885 - accuracy: 0.9717 - precision: 0.9682 - recall: 0.9098 - val_loss: 0.0859 - val_accuracy: 0.9701 - val_precision: 0.9064 - val_recall: 0.9698
+Epoch 135/200
+18458/18458 [==============================] - 2s 129us/sample - loss: 0.0915 - accuracy: 0.9706 - precision: 0.9682 - recall: 0.9049 - val_loss: 0.0814 - val_accuracy: 0.9749 - val_precision: 0.9274 - val_recall: 0.9660
+Epoch 136/200
+18458/18458 [==============================] - 2s 129us/sample - loss: 0.0927 - accuracy: 0.9712 - precision: 0.9699 - recall: 0.9058 - val_loss: 0.1020 - val_accuracy: 0.9688 - val_precision: 0.8988 - val_recall: 0.9735
+Epoch 137/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0865 - accuracy: 0.9732 - precision: 0.9725 - recall: 0.9121 - val_loss: 0.0615 - val_accuracy: 0.9822 - val_precision: 0.9552 - val_recall: 0.9679
+Epoch 138/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0812 - accuracy: 0.9752 - precision: 0.9741 - recall: 0.9192 - val_loss: 0.0655 - val_accuracy: 0.9801 - val_precision: 0.9497 - val_recall: 0.9641
+Epoch 139/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0857 - accuracy: 0.9737 - precision: 0.9749 - recall: 0.9116 - val_loss: 0.1483 - val_accuracy: 0.9536 - val_precision: 0.8403 - val_recall: 0.9849
+Epoch 140/200
+18458/18458 [==============================] - 3s 138us/sample - loss: 0.1002 - accuracy: 0.9686 - precision: 0.9682 - recall: 0.8959 - val_loss: 0.1285 - val_accuracy: 0.9610 - val_precision: 0.8702 - val_recall: 0.9754
+Epoch 141/200
+18458/18458 [==============================] - 3s 143us/sample - loss: 0.0845 - accuracy: 0.9732 - precision: 0.9707 - recall: 0.9137 - val_loss: 0.0677 - val_accuracy: 0.9783 - val_precision: 0.9632 - val_recall: 0.9414
+Epoch 142/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0894 - accuracy: 0.9720 - precision: 0.9707 - recall: 0.9084 - val_loss: 0.1276 - val_accuracy: 0.9614 - val_precision: 0.8691 - val_recall: 0.9792
+Epoch 143/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0876 - accuracy: 0.9717 - precision: 0.9675 - recall: 0.9105 - val_loss: 0.1315 - val_accuracy: 0.9575 - val_precision: 0.8598 - val_recall: 0.9735
+Epoch 144/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.0983 - accuracy: 0.9679 - precision: 0.9683 - recall: 0.8930 - val_loss: 0.0673 - val_accuracy: 0.9805 - val_precision: 0.9583 - val_recall: 0.9565
+Epoch 145/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0851 - accuracy: 0.9726 - precision: 0.9692 - recall: 0.9128 - val_loss: 0.0735 - val_accuracy: 0.9762 - val_precision: 0.9309 - val_recall: 0.9679
+Epoch 146/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0843 - accuracy: 0.9733 - precision: 0.9707 - recall: 0.9144 - val_loss: 0.0745 - val_accuracy: 0.9762 - val_precision: 0.9309 - val_recall: 0.9679
+Epoch 147/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0854 - accuracy: 0.9731 - precision: 0.9718 - recall: 0.9121 - val_loss: 0.0767 - val_accuracy: 0.9740 - val_precision: 0.9718 - val_recall: 0.9130
+Epoch 148/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0862 - accuracy: 0.9727 - precision: 0.9694 - recall: 0.9130 - val_loss: 0.0895 - val_accuracy: 0.9705 - val_precision: 0.9094 - val_recall: 0.9679
+Epoch 149/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0892 - accuracy: 0.9712 - precision: 0.9683 - recall: 0.9072 - val_loss: 0.0793 - val_accuracy: 0.9779 - val_precision: 0.9377 - val_recall: 0.9679
+Epoch 150/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0947 - accuracy: 0.9705 - precision: 0.9696 - recall: 0.9031 - val_loss: 0.1545 - val_accuracy: 0.9536 - val_precision: 0.8425 - val_recall: 0.9811
+Epoch 151/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0906 - accuracy: 0.9716 - precision: 0.9681 - recall: 0.9091 - val_loss: 0.0634 - val_accuracy: 0.9788 - val_precision: 0.9858 - val_recall: 0.9206
+Epoch 152/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0887 - accuracy: 0.9726 - precision: 0.9720 - recall: 0.9098 - val_loss: 0.1612 - val_accuracy: 0.9502 - val_precision: 0.8339 - val_recall: 0.9773
+Epoch 153/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.0977 - accuracy: 0.9687 - precision: 0.9663 - recall: 0.8983 - val_loss: 0.1101 - val_accuracy: 0.9645 - val_precision: 0.8807 - val_recall: 0.9773
+Epoch 154/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0745 - accuracy: 0.9771 - precision: 0.9750 - recall: 0.9263 - val_loss: 0.1646 - val_accuracy: 0.9571 - val_precision: 0.8525 - val_recall: 0.9830
+Epoch 155/200
+18458/18458 [==============================] - 3s 139us/sample - loss: 0.0822 - accuracy: 0.9737 - precision: 0.9735 - recall: 0.9130 - val_loss: 0.1084 - val_accuracy: 0.9623 - val_precision: 0.8877 - val_recall: 0.9565
+Epoch 156/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0830 - accuracy: 0.9721 - precision: 0.9664 - recall: 0.9132 - val_loss: 0.0739 - val_accuracy: 0.9766 - val_precision: 0.9326 - val_recall: 0.9679
+Epoch 157/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0809 - accuracy: 0.9742 - precision: 0.9736 - recall: 0.9153 - val_loss: 0.1272 - val_accuracy: 0.9692 - val_precision: 0.8976 - val_recall: 0.9773
+Epoch 158/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.0957 - accuracy: 0.9708 - precision: 0.9685 - recall: 0.9054 - val_loss: 0.0702 - val_accuracy: 0.9801 - val_precision: 0.9464 - val_recall: 0.9679
+Epoch 159/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0760 - accuracy: 0.9756 - precision: 0.9739 - recall: 0.9208 - val_loss: 0.1130 - val_accuracy: 0.9736 - val_precision: 0.9224 - val_recall: 0.9660
+Epoch 160/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0873 - accuracy: 0.9726 - precision: 0.9722 - recall: 0.9098 - val_loss: 0.1625 - val_accuracy: 0.9484 - val_precision: 0.8213 - val_recall: 0.9905
+Epoch 161/200
+18458/18458 [==============================] - 2s 130us/sample - loss: 0.0889 - accuracy: 0.9708 - precision: 0.9696 - recall: 0.9042 - val_loss: 0.1490 - val_accuracy: 0.9510 - val_precision: 0.8344 - val_recall: 0.9811
+Epoch 162/200
+18458/18458 [==============================] - 2s 129us/sample - loss: 0.0771 - accuracy: 0.9758 - precision: 0.9735 - recall: 0.9222 - val_loss: 0.0893 - val_accuracy: 0.9740 - val_precision: 0.9180 - val_recall: 0.9735
+Epoch 163/200
+18458/18458 [==============================] - 2s 127us/sample - loss: 0.0778 - accuracy: 0.9752 - precision: 0.9725 - recall: 0.9208 - val_loss: 0.1083 - val_accuracy: 0.9645 - val_precision: 0.8834 - val_recall: 0.9735
+Epoch 164/200
+18458/18458 [==============================] - 2s 128us/sample - loss: 0.0917 - accuracy: 0.9722 - precision: 0.9738 - recall: 0.9061 - val_loss: 0.1728 - val_accuracy: 0.9410 - val_precision: 0.8066 - val_recall: 0.9773
+Epoch 165/200
+18458/18458 [==============================] - 2s 130us/sample - loss: 0.0893 - accuracy: 0.9721 - precision: 0.9689 - recall: 0.9107 - val_loss: 0.0724 - val_accuracy: 0.9805 - val_precision: 0.9465 - val_recall: 0.9698
+Epoch 166/200
+18458/18458 [==============================] - 2s 132us/sample - loss: 0.0803 - accuracy: 0.9741 - precision: 0.9719 - recall: 0.9164 - val_loss: 0.0907 - val_accuracy: 0.9701 - val_precision: 0.9244 - val_recall: 0.9471
+Epoch 167/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0843 - accuracy: 0.9752 - precision: 0.9744 - recall: 0.9187 - val_loss: 0.0675 - val_accuracy: 0.9805 - val_precision: 0.9515 - val_recall: 0.9641
+Epoch 168/200
+18458/18458 [==============================] - 2s 134us/sample - loss: 0.0885 - accuracy: 0.9733 - precision: 0.9723 - recall: 0.9128 - val_loss: 0.2243 - val_accuracy: 0.9207 - val_precision: 0.7464 - val_recall: 0.9905
+Epoch 169/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0760 - accuracy: 0.9772 - precision: 0.9778 - recall: 0.9240 - val_loss: 0.1398 - val_accuracy: 0.9545 - val_precision: 0.8464 - val_recall: 0.9792
+Epoch 170/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0936 - accuracy: 0.9717 - precision: 0.9716 - recall: 0.9063 - val_loss: 0.1020 - val_accuracy: 0.9649 - val_precision: 0.9870 - val_recall: 0.8582
+Epoch 171/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0839 - accuracy: 0.9727 - precision: 0.9724 - recall: 0.9098 - val_loss: 0.0609 - val_accuracy: 0.9818 - val_precision: 0.9728 - val_recall: 0.9471
+Epoch 172/200
+18458/18458 [==============================] - 2s 131us/sample - loss: 0.0874 - accuracy: 0.9721 - precision: 0.9717 - recall: 0.9079 - val_loss: 0.0986 - val_accuracy: 0.9684 - val_precision: 0.8972 - val_recall: 0.9735
+Epoch 173/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0808 - accuracy: 0.9742 - precision: 0.9724 - recall: 0.9164 - val_loss: 0.0894 - val_accuracy: 0.9727 - val_precision: 0.9146 - val_recall: 0.9716
+Epoch 174/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0875 - accuracy: 0.9709 - precision: 0.9685 - recall: 0.9058 - val_loss: 0.1509 - val_accuracy: 0.9471 - val_precision: 0.9880 - val_recall: 0.7788
+Epoch 175/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0845 - accuracy: 0.9733 - precision: 0.9739 - recall: 0.9111 - val_loss: 0.1013 - val_accuracy: 0.9666 - val_precision: 0.8897 - val_recall: 0.9754
+Epoch 176/200
+18458/18458 [==============================] - 3s 137us/sample - loss: 0.0906 - accuracy: 0.9718 - precision: 0.9721 - recall: 0.9063 - val_loss: 0.0845 - val_accuracy: 0.9762 - val_precision: 0.9293 - val_recall: 0.9698
+Epoch 177/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0943 - accuracy: 0.9703 - precision: 0.9691 - recall: 0.9026 - val_loss: 0.1231 - val_accuracy: 0.9580 - val_precision: 0.8636 - val_recall: 0.9698
+Epoch 178/200
+18458/18458 [==============================] - 2s 127us/sample - loss: 0.0820 - accuracy: 0.9752 - precision: 0.9741 - recall: 0.9190 - val_loss: 0.0791 - val_accuracy: 0.9731 - val_precision: 0.9238 - val_recall: 0.9622
+Epoch 179/200
+18458/18458 [==============================] - 2s 128us/sample - loss: 0.0810 - accuracy: 0.9746 - precision: 0.9736 - recall: 0.9171 - val_loss: 0.0765 - val_accuracy: 0.9757 - val_precision: 0.9308 - val_recall: 0.9660
+Epoch 180/200
+18458/18458 [==============================] - 2s 130us/sample - loss: 0.0872 - accuracy: 0.9720 - precision: 0.9705 - recall: 0.9086 - val_loss: 0.0805 - val_accuracy: 0.9753 - val_precision: 0.9245 - val_recall: 0.9716
+Epoch 181/200
+18458/18458 [==============================] - 2s 130us/sample - loss: 0.0781 - accuracy: 0.9755 - precision: 0.9739 - recall: 0.9206 - val_loss: 0.1136 - val_accuracy: 0.9606 - val_precision: 0.8712 - val_recall: 0.9716
+Epoch 182/200
+18458/18458 [==============================] - 2s 133us/sample - loss: 0.0909 - accuracy: 0.9705 - precision: 0.9708 - recall: 0.9017 - val_loss: 0.0902 - val_accuracy: 0.9718 - val_precision: 0.9143 - val_recall: 0.9679
+Epoch 183/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0750 - accuracy: 0.9774 - precision: 0.9776 - recall: 0.9252 - val_loss: 0.0919 - val_accuracy: 0.9701 - val_precision: 0.8993 - val_recall: 0.9792
+Epoch 184/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0709 - accuracy: 0.9789 - precision: 0.9778 - recall: 0.9316 - val_loss: 0.1111 - val_accuracy: 0.9640 - val_precision: 0.8805 - val_recall: 0.9754
+Epoch 185/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0779 - accuracy: 0.9749 - precision: 0.9741 - recall: 0.9176 - val_loss: 0.0660 - val_accuracy: 0.9796 - val_precision: 0.9382 - val_recall: 0.9754
+Epoch 186/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0750 - accuracy: 0.9761 - precision: 0.9735 - recall: 0.9233 - val_loss: 0.1257 - val_accuracy: 0.9610 - val_precision: 0.8714 - val_recall: 0.9735
+Epoch 187/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0818 - accuracy: 0.9738 - precision: 0.9719 - recall: 0.9153 - val_loss: 0.0921 - val_accuracy: 0.9675 - val_precision: 0.8982 - val_recall: 0.9679
+Epoch 188/200
+18458/18458 [==============================] - 3s 140us/sample - loss: 0.0838 - accuracy: 0.9730 - precision: 0.9711 - recall: 0.9123 - val_loss: 0.0624 - val_accuracy: 0.9840 - val_precision: 0.9677 - val_recall: 0.9622
+Epoch 189/200
+18458/18458 [==============================] - 3s 136us/sample - loss: 0.0829 - accuracy: 0.9742 - precision: 0.9729 - recall: 0.9160 - val_loss: 0.0748 - val_accuracy: 0.9766 - val_precision: 0.9342 - val_recall: 0.9660
+Epoch 190/200
+18458/18458 [==============================] - 3s 153us/sample - loss: 0.0881 - accuracy: 0.9717 - precision: 0.9700 - recall: 0.9079 - val_loss: 0.0644 - val_accuracy: 0.9801 - val_precision: 0.9464 - val_recall: 0.9679
+Epoch 191/200
+18458/18458 [==============================] - 3s 150us/sample - loss: 0.0774 - accuracy: 0.9759 - precision: 0.9756 - recall: 0.9208 - val_loss: 0.0579 - val_accuracy: 0.9840 - val_precision: 0.9624 - val_recall: 0.9679
+Epoch 192/200
+18458/18458 [==============================] - 3s 141us/sample - loss: 0.0717 - accuracy: 0.9779 - precision: 0.9742 - recall: 0.9307 - val_loss: 0.1076 - val_accuracy: 0.9640 - val_precision: 0.8845 - val_recall: 0.9698
+Epoch 193/200
+18458/18458 [==============================] - 3s 141us/sample - loss: 0.0916 - accuracy: 0.9706 - precision: 0.9692 - recall: 0.9040 - val_loss: 0.0836 - val_accuracy: 0.9731 - val_precision: 0.9162 - val_recall: 0.9716
+Epoch 194/200
+18458/18458 [==============================] - 3s 142us/sample - loss: 0.0653 - accuracy: 0.9797 - precision: 0.9806 - recall: 0.9321 - val_loss: 0.0641 - val_accuracy: 0.9805 - val_precision: 0.9449 - val_recall: 0.9716
+Epoch 195/200
+18458/18458 [==============================] - 3s 140us/sample - loss: 0.0856 - accuracy: 0.9733 - precision: 0.9709 - recall: 0.9139 - val_loss: 0.1037 - val_accuracy: 0.9662 - val_precision: 0.8881 - val_recall: 0.9754
+Epoch 196/200
+18458/18458 [==============================] - 3s 146us/sample - loss: 0.0813 - accuracy: 0.9735 - precision: 0.9695 - recall: 0.9162 - val_loss: 0.1329 - val_accuracy: 0.9601 - val_precision: 0.8660 - val_recall: 0.9773
+Epoch 197/200
+18458/18458 [==============================] - 3s 139us/sample - loss: 0.0766 - accuracy: 0.9764 - precision: 0.9766 - recall: 0.9217 - val_loss: 0.0815 - val_accuracy: 0.9705 - val_precision: 0.9080 - val_recall: 0.9698
+Epoch 198/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0770 - accuracy: 0.9752 - precision: 0.9721 - recall: 0.9210 - val_loss: 0.0955 - val_accuracy: 0.9697 - val_precision: 0.9033 - val_recall: 0.9716
+Epoch 199/200
+18458/18458 [==============================] - 2s 135us/sample - loss: 0.0745 - accuracy: 0.9766 - precision: 0.9734 - recall: 0.9259 - val_loss: 0.0863 - val_accuracy: 0.9688 - val_precision: 0.9059 - val_recall: 0.9641
+Epoch 200/200
+18458/18458 [==============================] - 3s 149us/sample - loss: 0.0731 - accuracy: 0.9768 - precision: 0.9750 - recall: 0.9250 - val_loss: 0.0722 - val_accuracy: 0.9740 - val_precision: 0.9241 - val_recall: 0.9660
+</pre></div></div>
+</div>
+<p>We’ve got a trained CNN! What can we learn from it? Behind the scenes, <span class="math notranslate nohighlight">\(\texttt{stella}\)</span> creates a table of the history output by each model run. What’s in your history depends on your metrics. So, for example, the default metrics are ‘accuracy’, ‘precision’, and ‘recall’, so in our <span class="math notranslate nohighlight">\(\texttt{cnn.history_table}\)</span> we see columns for each of these values from the training set as well as from the validation set (the columns beginning with ‘val_’).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnn</span><span class="o">.</span><span class="n">history_table</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<i>Table length=200</i>
+<table id="table5507393912" class="table-striped table-bordered table-condensed">
+<thead><tr><th>loss_s0002</th><th>accuracy_s0002</th><th>precision_s0002</th><th>recall_s0002</th><th>val_loss_s0002</th><th>val_accuracy_s0002</th><th>val_precision_s0002</th><th>val_recall_s0002</th></tr></thead>
+<thead><tr><th>float64</th><th>float32</th><th>float32</th><th>float32</th><th>float64</th><th>float32</th><th>float32</th><th>float32</th></tr></thead>
+<tr><td>0.5494471863194733</td><td>0.7645465</td><td>0.25</td><td>0.00023020258</td><td>0.5289232612599218</td><td>0.7706979</td><td>0.0</td><td>0.0</td></tr>
+<tr><td>0.5323696360742817</td><td>0.7646549</td><td>0.0</td><td>0.0</td><td>0.4919142103073759</td><td>0.7706979</td><td>0.0</td><td>0.0</td></tr>
+<tr><td>0.4736867796588091</td><td>0.7862715</td><td>0.97613364</td><td>0.09415285</td><td>0.38631349878234683</td><td>0.846554</td><td>0.99435025</td><td>0.3327032</td></tr>
+<tr><td>0.36041638068794263</td><td>0.8620111</td><td>0.96530294</td><td>0.4290976</td><td>0.3165891189685259</td><td>0.86432594</td><td>0.9864865</td><td>0.41398865</td></tr>
+<tr><td>0.3119629817292367</td><td>0.8820024</td><td>0.9577346</td><td>0.52163905</td><td>0.24189111077532294</td><td>0.9016038</td><td>0.9808917</td><td>0.5822306</td></tr>
+<tr><td>0.29376881588111137</td><td>0.89478815</td><td>0.9474665</td><td>0.5854052</td><td>0.2646928105873105</td><td>0.8881664</td><td>0.98916966</td><td>0.5179584</td></tr>
+<tr><td>0.2628104354419692</td><td>0.90551525</td><td>0.9513889</td><td>0.63075507</td><td>0.21784497176768927</td><td>0.9137408</td><td>0.97965115</td><td>0.63705105</td></tr>
+<tr><td>0.2714826945868974</td><td>0.9031314</td><td>0.94221455</td><td>0.6268416</td><td>0.2428721376813021</td><td>0.9068054</td><td>0.9815951</td><td>0.60491496</td></tr>
+<tr><td>0.2567230729437272</td><td>0.9083324</td><td>0.9310793</td><td>0.6593002</td><td>0.2139414006825593</td><td>0.92717814</td><td>0.9640103</td><td>0.7088847</td></tr>
+<tr><td>0.244666275207342</td><td>0.914021</td><td>0.9229825</td><td>0.69244933</td><td>0.2233845726928</td><td>0.92717814</td><td>0.9592875</td><td>0.7126654</td></tr>
+<tr><td>...</td><td>...</td><td>...</td><td>...</td><td>...</td><td>...</td><td>...</td><td>...</td></tr>
+<tr><td>0.0773628002437499</td><td>0.9759454</td><td>0.9756098</td><td>0.92081034</td><td>0.05785705019991585</td><td>0.9839619</td><td>0.96240604</td><td>0.9678639</td></tr>
+<tr><td>0.07167464291305722</td><td>0.97789574</td><td>0.9742169</td><td>0.930709</td><td>0.10761617743509075</td><td>0.9640225</td><td>0.88448274</td><td>0.9697543</td></tr>
+<tr><td>0.09162614602982669</td><td>0.970636</td><td>0.969151</td><td>0.9040055</td><td>0.08356246228180875</td><td>0.9731253</td><td>0.916221</td><td>0.97164464</td></tr>
+<tr><td>0.06531601481911439</td><td>0.9796836</td><td>0.98062485</td><td>0.9320902</td><td>0.0641237216293941</td><td>0.98049414</td><td>0.94485295</td><td>0.97164464</td></tr>
+<tr><td>0.08562272742490738</td><td>0.97329074</td><td>0.97089756</td><td>0.91390425</td><td>0.1036811023240075</td><td>0.96618986</td><td>0.8881239</td><td>0.9754253</td></tr>
+<tr><td>0.08131803582874625</td><td>0.9735074</td><td>0.96954936</td><td>0.91620624</td><td>0.13287109423365798</td><td>0.9601214</td><td>0.86599666</td><td>0.97731566</td></tr>
+<tr><td>0.07659747941817684</td><td>0.9763788</td><td>0.9765854</td><td>0.9217311</td><td>0.081510869220164</td><td>0.9705245</td><td>0.9079646</td><td>0.9697543</td></tr>
+<tr><td>0.07699505046901278</td><td>0.9751869</td><td>0.97206026</td><td>0.92104053</td><td>0.09550375936090248</td><td>0.96965754</td><td>0.9033392</td><td>0.97164464</td></tr>
+<tr><td>0.07447957267920366</td><td>0.9765955</td><td>0.9733785</td><td>0.92587477</td><td>0.0863423299417384</td><td>0.96879065</td><td>0.90586144</td><td>0.9640832</td></tr>
+<tr><td>0.07305251633495526</td><td>0.97675806</td><td>0.97500604</td><td>0.92495394</td><td>0.0722398692051673</td><td>0.97399217</td><td>0.9240506</td><td>0.96597356</td></tr>
+</table></div>
+</div>
+<p>It also keeps track of the ground truth (gt) values from your validation set flares and no-flares and what each model predicts. This table includes the TIC ID, gt label (0 = no flare; 1 = flare), tpeak (the time of the flare from the catalog), and, depending on the number of models you run, columns of the predicted labels. Each column keeps track of the random seed used to run that model.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnn</span><span class="o">.</span><span class="n">val_pred_table</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<i>Table length=2307</i>
+<table id="table5507394136" class="table-striped table-bordered table-condensed">
+<thead><tr><th>tic</th><th>gt</th><th>tpeak</th><th>pred_s0002</th></tr></thead>
+<thead><tr><th>float64</th><th>int64</th><th>float64</th><th>float32</th></tr></thead>
+<tr><td>55269690.0</td><td>0</td><td>1332.7376590932145</td><td>0.0053598885</td></tr>
+<tr><td>201795667.0</td><td>1</td><td>1373.0537959924561</td><td>1.0</td></tr>
+<tr><td>80453023.0</td><td>0</td><td>1374.3399511708512</td><td>0.00066155713</td></tr>
+<tr><td>161172848.0</td><td>0</td><td>1343.1752241130807</td><td>0.020634037</td></tr>
+<tr><td>231122278.0</td><td>0</td><td>1340.0770763736205</td><td>0.020502886</td></tr>
+<tr><td>25132694.0</td><td>0</td><td>1355.0857187085387</td><td>0.009274018</td></tr>
+<tr><td>31740375.0</td><td>1</td><td>1351.193163007814</td><td>0.99998176</td></tr>
+<tr><td>31852565.0</td><td>0</td><td>1332.3193510129825</td><td>0.016599169</td></tr>
+<tr><td>220557560.0</td><td>1</td><td>1345.0766190177035</td><td>0.99853826</td></tr>
+<tr><td>31740375.0</td><td>0</td><td>1380.7584138286325</td><td>9.603994e-05</td></tr>
+<tr><td>...</td><td>...</td><td>...</td><td>...</td></tr>
+<tr><td>5727213.0</td><td>0</td><td>1377.555473552861</td><td>0.0006570381</td></tr>
+<tr><td>25132999.0</td><td>0</td><td>1375.6855870175875</td><td>0.057495333</td></tr>
+<tr><td>176955267.0</td><td>1</td><td>1335.2901855122575</td><td>1.0</td></tr>
+<tr><td>231910796.0</td><td>0</td><td>1365.9642105949472</td><td>0.0011209704</td></tr>
+<tr><td>231831315.0</td><td>1</td><td>1370.6859209103193</td><td>1.0</td></tr>
+<tr><td>33837062.0</td><td>0</td><td>1372.1118069837337</td><td>2.2111965e-06</td></tr>
+<tr><td>231017428.0</td><td>1</td><td>1361.1166294240243</td><td>0.999871</td></tr>
+<tr><td>114794572.0</td><td>0</td><td>1357.4690767472318</td><td>0.012727063</td></tr>
+<tr><td>139996019.0</td><td>0</td><td>1336.5018758695448</td><td>0.014939568</td></tr>
+<tr><td>118327563.0</td><td>0</td><td>1369.8558114699342</td><td>0.45524606</td></tr>
+</table></div>
+</div>
+<p>We can visualize it this way, by plotting the time of flare peak versus the prediction of being a flare as determined by the CNN. This can be thought of as a probability. The points are colored by the ground truth of if that point is a flare or not as labeled in the initial catalog.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">val_pred_table</span><span class="p">[</span><span class="s1">&#39;tpeak&#39;</span><span class="p">],</span> <span class="n">cnn</span><span class="o">.</span><span class="n">val_pred_table</span><span class="p">[</span><span class="s1">&#39;pred_s0002&#39;</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">cnn</span><span class="o">.</span><span class="n">val_pred_table</span><span class="p">[</span><span class="s1">&#39;gt&#39;</span><span class="p">],</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Tpeak [BJD - 2457000]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Probability of Flare&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Ground Truth&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_tutorial_29_0.png" src="../_images/getting_started_tutorial_29_0.png" />
+</div>
+</div>
+<p>Most of the points with high probabilities are actually flares (ground truth = 1), which is great! The CNN is not perfect, but here is where ensembling a bunch of different models with different initial random seeds. By averaging across models, you can beat down the number of false positives (no flares with high probabilities) and false negatives (flares with low probabilities).</p>
+</div>
+<div class="section" id="1.3-Evaluating-your-Model">
+<h2>1.3 Evaluating your Model<a class="headerlink" href="#1.3-Evaluating-your-Model" title="Permalink to this headline">¶</a></h2>
+<p>How do you know if the model you created and trained is good? There are a few different metrics you can look at. The first is looking at your loss and accuracy histories. Here are some features you should look for:</p>
+<ul class="simple">
+<li><p>If your training and validation loss smoothly decline and flatten out at a low number, that’s good!</p></li>
+<li><p>If your validation loss traces your training loss, that’s good!</p></li>
+<li><p>If your validation loss starts to increase, your model is beginning to overfit. Rerun the model for fewer epochs and this should solve the issue.</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[33]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">history_table</span><span class="p">[</span><span class="s1">&#39;loss_s0002&#39;</span><span class="p">],</span> <span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Training&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">history_table</span><span class="p">[</span><span class="s1">&#39;val_loss_s0002&#39;</span><span class="p">],</span> <span class="s1">&#39;darkorange&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Validation&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Epochs&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Loss&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_tutorial_33_0.png" src="../_images/getting_started_tutorial_33_0.png" />
+</div>
+</div>
+<p>Some of the same rules as above apply here:</p>
+<ul class="simple">
+<li><p>If your accuracy increases smoothly and levels out at a high number, that’s good! It means your model is at that leveling value % accuracy.</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">history_table</span><span class="p">[</span><span class="s1">&#39;accuracy_s0002&#39;</span><span class="p">],</span> <span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Training&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">history_table</span><span class="p">[</span><span class="s1">&#39;val_accuracy_s0002&#39;</span><span class="p">],</span> <span class="s1">&#39;darkorange&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Validation&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Epochs&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Accuracy&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_tutorial_35_0.png" src="../_images/getting_started_tutorial_35_0.png" />
+</div>
+</div>
+</div>
+<div class="section" id="1.4-Predicting-Flares-in-your-Data">
+<h2>1.4 Predicting Flares in your Data<a class="headerlink" href="#1.4-Predicting-Flares-in-your-Data" title="Permalink to this headline">¶</a></h2>
+<p>The function to predict on light curves takes care of the pre-processing for you. All you have to do is pass in an array of times, fluxes, and flux errors. So load in your files in whatever manner you like. For this example, we’ll call a light curve using lightkurve.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[37]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1">#### create a lightkurve for a two minute target here for the example</span>
+<span class="kn">from</span> <span class="nn">lightkurve.search</span> <span class="kn">import</span> <span class="n">search_lightcurvefile</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">search_lightcurvefile</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="s1">&#39;tic62124646&#39;</span><span class="p">,</span> <span class="n">mission</span><span class="o">=</span><span class="s1">&#39;TESS&#39;</span><span class="p">)</span>
+<span class="n">lc</span> <span class="o">=</span> <span class="n">lc</span><span class="o">.</span><span class="n">download</span><span class="p">()</span><span class="o">.</span><span class="n">PDCSAP_FLUX</span>
+<span class="n">lc</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+//anaconda3/lib/python3.7/site-packages/lightkurve/lightcurvefile.py:47: LightkurveWarning: `LightCurveFile.header` is deprecated, please use `LightCurveFile.get_header()` instead.
+  LightkurveWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[37]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.axes._subplots.AxesSubplot at 0x1474df978&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_tutorial_38_2.png" src="../_images/getting_started_tutorial_38_2.png" />
+</div>
+</div>
+<p>Now we can use the model we saved to predict flares on new light curves! This is where it becomes important to keep track of your models and your output directory. To be extra sure you know what model you’re using, in order to predict on new light curves you <span class="math notranslate nohighlight">\(\textit{must}\)</span> input the model filename.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[38]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">cnn</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">modelname</span><span class="o">=</span><span class="s1">&#39;/Users/arcticfox/Desktop/results/ensemble_s0002_i0050_b0.73.h5&#39;</span><span class="p">,</span>
+            <span class="n">times</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+            <span class="n">fluxes</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">flux</span><span class="p">,</span>
+            <span class="n">errs</span><span class="o">=</span><span class="n">lc</span><span class="o">.</span><span class="n">flux_err</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 1/1 [00:00&lt;00:00,  1.29it/s]
+</pre></div></div>
+</div>
+<p>Et voila… Predictions!</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[39]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">cnn</span><span class="o">.</span><span class="n">predict_time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cnn</span><span class="o">.</span><span class="n">predict_flux</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">cnn</span><span class="o">.</span><span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Probability of Flare&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time [BJD-2457000]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Normalized Flux&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;TIC </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">lc</span><span class="o">.</span><span class="n">targetid</span><span class="p">));</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/getting_started_tutorial_42_0.png" src="../_images/getting_started_tutorial_42_0.png" />
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="other_features.html" class="btn btn-neutral float-right" title="Other Fun Features" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="shortest_demo.html" class="btn btn-neutral" title="Quickstart Tutorial" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019-2020, Adina D. Feinstein.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.4',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" src="../None"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+  
+
+
+</body>
+</html>
