@@ -48,9 +48,9 @@ def test_predict():
     lk = lk.remove_nans()
 
     cnn.predict(modelname='ensemble_s0002_i0010_b0.73.h5',
-                times=lk.time,
-                fluxes=lk.flux,
-                errs=lk.flux_err)
+                times=lk.time.value,
+                fluxes=lk.flux.value,
+                errs=lk.flux_err.value)
     assert(cnn.predictions.shape == (1,17939))
     assert_almost_equal(cnn.predictions[0][1000], 0.3, decimal=1)
 
