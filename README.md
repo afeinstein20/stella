@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/afeinstein20/stella/actions?query=workflow%3Astella-tests"><img src="https://github.com/afeinstein20/stella/workflows/stella-tests/badge.svg"/></a>
+  <a href="https://github.com/afeinstein20/stella/actions?query=workflow%3Astella-tests"><img src="https://github.com/afeinstein20/stella/workflows/stella-tests/badge.svg"?color=D35968/></a>
   <a href="https://ui.adsabs.harvard.edu/abs/2020AJ....160..219F/abstract"><img src="https://img.shields.io/badge/read-the_paper-3C1370.svg?style=flat"/></a>
   <a href="https://afeinstein20.github.io/stella/"><img src="https://img.shields.io/badge/read-the_docs-3C1370.svg?style=flat"/></a>
   <a href="https://pypi.org/project/stella"><img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dm/stella?color=D35968"></a>
