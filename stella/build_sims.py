@@ -88,6 +88,62 @@ class XOSims(object):
 
         Attributes
         ----------
+        transit_models : np.ndarray
+           Array of the transit models. Will be roughly shape
+           (nmodels, cadences).
+        transit_labels : np.ndarray
+           An array of ones used to identify which examples include
+           transits.
         transit_table : astropy.table.Table
            Table of output transit model parameters.
         """
+        transit_table = Table(names=['id','rstar', 'per', 'rprstar', 
+                                     'arstar', 'inc', 'ecc', 
+                                     'w', 'u1', 'u2'])
+        transit_models = np.zeros((nmodels, self.cadences))
+        transit_labels = np.zeros(nmodels, dtype=int)
+
+        time = np.linspace(1320, 1321.5, self.cadences)
+        outfn = 'batman_models/batman_{0:06d}.npy'
+        
+        if limits == None:
+            limits = [ [0.1, 1.5], #rstar (rsun)
+                       [1.0, 10.], #period (days)
+                       [4.0, 15.], #rplanet (rearth)
+                       [0, 0],     #placeholder for a/rstar
+                       [86., 90.], #inclination
+                       [0, 0],     #eccentricity
+                       [-180, 180],#periastron
+                       [0.0, 1.0], #limb darkening (u1)
+                       [0.0, 1.0]  #limb darkening (u2)
+                     ]
+
+        np.random.seed(seed)
+
+        for i in tqdm(range(nmodels)):
+            f, inp = self.batman_models(time,
+                                        [np.random.uniform(limits[0][0], limits[0][1], 1),
+                                         np.random.uniform(limits[1][0], limits[1][1], 1),
+                                         np.random.uniform(limits[2][0], limits[2][1], 1),
+                                         np.random.uniform(limits[3][0], limits[3][1], 1),
+                                         np.random.uniform(limits[4][0], limits[4][1], 1),
+                                         np.random.uniform(limits[5][0], limits[5][1], 1),
+                                         np.random.uniform(limits[6][0], limits[6][1], 1),
+                                         np.random.uniform(limits[7][0], limits[7][1], 1),
+                                         np.random.uniform(limits[8][0], limits[8][1], 1) ]
+                                        )
+            # checks to make sure there's a realistic transit in the model
+            if len(np.where(f==1)[0]) != CADENCES:
+                np.save(os.path.join(self.output_dir, outfn.format(i)),
+                        [f-1.0, np.append(i, inp)])
+                transit_table.add_row(np.append(i, inp))
+                transit_models[i] = f - 1.0
+                transit_labels[i] = 1
+
+        remove = np.where(transit_labels==0)[0]
+        transit_models = np.delete(transit_models, remove, axis=0)
+        transit_labels = np.delete(transit_labels, remove)
+
+        self.transit_models = transit_models
+        self.transit_labels = transit_labels
+        self.transit_table  = transit_table

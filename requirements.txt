@@ -19,3 +19,5 @@ numpy
 sklearn
 more-itertools
 scipy
+batman-package
+starry
