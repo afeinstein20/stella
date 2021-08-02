@@ -81,7 +81,6 @@ class FlareDataSet(object):
 
         self.train_data   = misc[0]
         self.train_labels = misc[1]
-
         self.val_data = misc[2]
         self.val_labels = misc[3]
         self.val_ids = misc[4]
