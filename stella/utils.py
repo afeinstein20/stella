@@ -121,7 +121,7 @@ def break_rest(time, flux, flux_err, cadences):
     """
     # BREAKING UP REST OF LIGHT CURVE INTO CADENCE SIZED BITES                                                        
     diff = np.diff(time)
-    breaking_points = np.where(diff > (np.nanmedian(diff) + 1.5*np.nanstd(diff)))[0]
+    breaking_points = np.where(diff > (np.median(diff) + 1.5*np.std(diff)))[0]
     
     tot = 100
     ss  = 1000

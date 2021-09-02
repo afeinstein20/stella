@@ -17,7 +17,7 @@ class ConvNN(object):
     def __init__(self, output_dir, ds=None,
                  layers=None, optimizer='adam',
                  loss='binary_crossentropy', 
-                 metrics=None):
+                 metrics=None, science='flare'):
         """
         Creates and trains a Tensorflow keras model
         with either layers that have been passed in
@@ -68,8 +68,9 @@ class ConvNN(object):
         self.optimizer = optimizer
         self.loss = loss
         self.metrics = metrics
+        self.science = science
 
-        if ds is not None:
+        if ds is not None and science.lower() == 'flare':
             self.training_matrix = np.copy(ds.training_matrix)
             self.labels = np.copy(ds.labels)
             self.cadences = np.copy(ds.cadences)
@@ -78,6 +79,16 @@ class ConvNN(object):
 
             self.tpeaks = ds.training_peaks
             self.training_ids = ds.training_ids
+
+        if ds is not None and science.lower() == 'exoplanet':
+            self.training_matrix = np.copy(ds.dataset)
+            self.labels = np.copy(ds.labels)
+            self.cadences = np.copy(ds.cadences)
+            
+            self.frac_balance = ds.frac_balance + 0.0
+
+            self.training_ids = ds.ids
+            self.tpeaks = ds.m_tracker
 
         else:
             print("WARNING: No stella.DataSet object passed in.")
@@ -120,6 +131,7 @@ class ConvNN(object):
                                              input_shape=(self.cadences, 1)))
             model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
             model.add(tf.keras.layers.Dropout(dropout))
+
             model.add(tf.keras.layers.Conv1D(filters=filter2, kernel_size=3, 
                                              activation='relu', padding='same'))
             model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
@@ -221,11 +233,18 @@ class ConvNN(object):
 
         # CREATES TABLES FOR SAVING DATA
         table = Table()
-        val_table  = Table([self.ds.val_ids, self.ds.val_labels, self.ds.val_tpeaks],
-                           names=['tic', 'gt', 'tpeak'])
-        test_table = Table([self.ds.test_ids, self.ds.test_labels, self.ds.test_tpeaks],
-                           names=['tic', 'gt', 'tpeak'])
-        
+
+        if self.science == 'flare':
+            val_table  = Table([self.ds.val_ids, self.ds.val_labels, self.ds.val_tpeaks],
+                               names=['tic', 'gt', 'tpeak'])
+            test_table = Table([self.ds.test_ids, self.ds.test_labels, self.ds.test_tpeaks],
+                               names=['tic', 'gt', 'tpeak'])
+        elif self.science == 'exoplanet':
+            val_table  = Table([self.ds.val_ids, self.ds.val_labels],
+                               names=['tic', 'gt'])
+            test_table = Table([self.ds.test_ids, self.ds.test_labels],
+                               names=['tic', 'gt'])
+            
         
         for seed in seeds:
             

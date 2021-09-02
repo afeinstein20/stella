@@ -137,7 +137,7 @@ class FlareDataSet(object):
         tics, time, flux, err, tpeaks = [], [], [], [], []
         
         for fn in files:
-            data = np.load(os.path.join(self.fn_dir, fn))
+            data = np.load(os.path.join(self.fn_dir, fn), allow_pickle=True)
             split_fn = fn.split('_')
             tic = int(split_fn[0])
             tics.append(tic)
@@ -152,11 +152,10 @@ class FlareDataSet(object):
             tpeaks.append(peaks)
 
         self.ids      = np.array(tics)
-        self.time     = np.array(time)   # in TBJD
-        self.flux     = np.array(flux)
-        self.flux_err = np.array(err)
-        self.tpeaks   = np.array(tpeaks) # in TBJD
-
+        self.time     = np.array(time, dtype=np.ndarray)   # in TBJD
+        self.flux     = np.array(flux, dtype=np.ndarray)
+        self.flux_err = np.array(err,  dtype=np.ndarray)
+        self.tpeaks   = tpeaks # in TBJD
 
     def reformat_data(self, random_seed=321):
         """
@@ -204,7 +203,7 @@ class FlareDataSet(object):
                         start = start - (end - len(self.time[i]))
                         end = len(self.time[i])
                     flare_region = np.arange(start, end,1,dtype=int)
-                    flares = np.append(flares,flare_region)
+                    flares = np.append(flares, flare_region)
                 
                     # ADD FLARE TO TRAINING MATRIX & LABEL PROPERLY
                     training_peaks[x]  = self.time[i][closest] + 0.0
@@ -216,7 +215,7 @@ class FlareDataSet(object):
             time_removed = np.delete(self.time[i], flares)
             flux_removed = np.delete(self.flux[i], flares)
             flux_err_removed = np.delete(self.flux_err[i], flares)
-        
+
             nontime, nonflux, nonerr = break_rest(time_removed, flux_removed, 
                                                   flux_err_removed, self.cadences)
             for j in range(len(nonflux)):
