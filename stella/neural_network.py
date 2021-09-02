@@ -118,30 +118,47 @@ class ConvNN(object):
 
         model = keras.models.Sequential()
 
-        # DEFAULT NETWORK MODEL FROM FEINSTEIN ET AL. (in prep)
+        # DEFAULT NETWORK MODEL FROM FEINSTEIN ET AL. (2020)
         if self.layers is None:
-            filter1 = 16
-            filter2 = 64
-            dense   = 32
-            dropout = 0.1
 
-            # CONVOLUTIONAL LAYERS
-            model.add(tf.keras.layers.Conv1D(filters=filter1, kernel_size=7, 
-                                             activation='relu', padding='same', 
-                                             input_shape=(self.cadences, 1)))
-            model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
-            model.add(tf.keras.layers.Dropout(dropout))
+            pool_size = 2
 
-            model.add(tf.keras.layers.Conv1D(filters=filter2, kernel_size=3, 
-                                             activation='relu', padding='same'))
-            model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
-            model.add(tf.keras.layers.Dropout(dropout))
-            
-            # DENSE LAYERS AND SOFTMAX OUTPUT
+            # CONVOLUTION LAYERS FOR THE FLARES & EXOPLANET CASES
+            if self.science == 'flares':
+                filter1 = 16
+                filter2 = 64
+                dense   = 32
+                dropout = 0.1
+                
+                model.add(tf.keras.layers.Conv1D(filters=filter1, kernel_size=7, 
+                                                 activation='relu', padding='same', 
+                                                 input_shape=(self.cadences, 1)))
+                model.add(tf.keras.layers.MaxPooling1D(pool_size=pool_size))
+                model.add(tf.keras.layers.Dropout(dropout))
+                
+                model.add(tf.keras.layers.Conv1D(filters=filter2, kernel_size=3, 
+                                                 activation='relu', padding='same'))
+                model.add(tf.keras.layers.MaxPooling1D(pool_size=pool_size))
+                model.add(tf.keras.layers.Dropout(dropout))
+
+            if self.science == 'exoplanet':
+                dropout = 0.5
+                ks      = [ 3,  3,  3,  3,  3,  4,  4,  4,  3,  7]
+                filters = [16, 32, 64, 64, 64, 64, 64, 20, 20, 20]
+
+                for i in range(len(filters)):
+                    model.add(tf.keras.layers.Conv1D(filters=filters[i],
+                                                     kernel_size=ks[i],
+                                                     activation='relu', padding='same'))
+                    model.add(tf.keras.layers.MaxPooling1D(pool_size=pool_size))
+                    model.add(tf.keras.layers.Dropout(dropout))
+
+            # DENSE LAYERS AND SOFTMAX OUTPUT                                                                                                              
             model.add(tf.keras.layers.Flatten())
             model.add(tf.keras.layers.Dense(dense, activation='relu'))
             model.add(tf.keras.layers.Dropout(dropout))
             model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
+                
             
         else:
             for l in self.layers:
