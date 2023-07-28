@@ -15,7 +15,7 @@ tornado
 matplotlib
 lightkurve>=2.0.0
 numpy
-sklearn
+scikit-learn
 more-itertools
 scipy!=1.4.1
 poetry
