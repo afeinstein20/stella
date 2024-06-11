@@ -10,12 +10,12 @@ coverage
 pytest
 pytest-cov
 lxml
-pybind11
+pybind11>=2.12
 tornado
 matplotlib
 lightkurve>=2.0.0
-numpy
-sklearn
+numpy>=1.26.0,<2.0.0
+scikit-learn
 more-itertools
 scipy!=1.4.1
 poetry
