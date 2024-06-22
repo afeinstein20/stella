@@ -117,7 +117,7 @@ class ConvNN(object):
             # CONVOLUTIONAL LAYERS
             model.add(tf.keras.layers.Conv1D(filters=filter1, kernel_size=7, 
                                              activation='relu', padding='same', 
-                                             input_shape=(self.cadences, 1)))
+                                             input_shape=(int(self.cadences), 1)))
             model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
             model.add(tf.keras.layers.Dropout(dropout))
             model.add(tf.keras.layers.Conv1D(filters=filter2, kernel_size=3, 
@@ -218,6 +218,13 @@ class ConvNN(object):
             seeds = np.array([seeds])
 
         self.epochs = epochs
+        
+        # Print the size of the validation data
+        print("Validation data shape:", self.ds.val_data.shape)
+        print("Validation labels shape:", self.ds.val_labels.shape)
+        print("Training data shape:", self.ds.train_data.shape)
+        print("Training labels shape:", self.ds.train_labels.shape)
+
 
         # CREATES TABLES FOR SAVING DATA
         table = Table()
@@ -514,13 +521,13 @@ class ConvNN(object):
                                                          1, dtype=int))
             bad_inds = np.sort(bad_inds)
             return np.delete(all_inds, bad_inds)
-
         model = keras.models.load_model(modelname)
 
         self.model = model
 
         # GETS REQUIRED INPUT SHAPE FROM MODEL
         cadences = model.input.shape[1]
+        print(cadences)
         cad_pad  = cadences/2
 
         # REFORMATS FOR A SINGLE LIGHT CURVE PASSED IN

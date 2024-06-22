@@ -6,22 +6,43 @@ Home-page: http://github.com/afeinstein20/stella
 Author: Adina D. Feinstein
 Author-email: adina.d.feinstein@gmail.com
 License: MIT
-Description: 
-        stella is a python package to identify and characterize flares in 
-        TESS short-cadence data using a convolutional neural network. In its
-        simplest form, stella takes an array of light curves and predicts where
-        flares are using the models provided in Feinstein et al. submitted and 
-        returns predictions. 
-        
-        Read the documentation at https://adina.feinste.in/stella
-        
-        Changes to v0.1.0 (2020-05-18):
-        *  
-        
-Platform: UNKNOWN
 Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Science/Research
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
 Classifier: Programming Language :: Python :: 3.7
 Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: nbsphinx
+Requires-Dist: ipykernel
+Requires-Dist: tensorflow>=2.1.0
+Requires-Dist: astroquery
+Requires-Dist: astropy
+Requires-Dist: tqdm
+Requires-Dist: cython
+Requires-Dist: codecov
+Requires-Dist: coverage
+Requires-Dist: pytest
+Requires-Dist: pytest-cov
+Requires-Dist: lxml
+Requires-Dist: pybind11>=2.12
+Requires-Dist: tornado
+Requires-Dist: matplotlib
+Requires-Dist: lightkurve>=2.0.0
+Requires-Dist: numpy<2.0.0,>=1.26.0
+Requires-Dist: scikit-learn
+Requires-Dist: more-itertools
+Requires-Dist: scipy!=1.4.1
+Requires-Dist: poetry
+
+
+stella is a python package to identify and characterize flares in 
+TESS short-cadence data using a convolutional neural network. In its
+simplest form, stella takes an array of light curves and predicts where
+flares are using the models provided in Feinstein et al. submitted and 
+returns predictions. 
+
+Read the documentation at https://adina.feinste.in/stella
+
+Changes to v0.1.0 (2020-05-18):
+*  
