@@ -89,6 +89,40 @@ class ConvNN(object):
 
         self.output_dir = output_dir
 
+        # Clean the training and validation data
+        self.clean_data()
+
+
+    def clean_data(self):
+        """
+        Removes NaN values from the traning and validation data, and replaces the values
+        with zeros
+        """
+        # Clean training data
+        valid_indices_train = ~np.isnan(self.ds.train_data).any(axis=(1, 2))
+        self.ds.train_data = self.ds.train_data[valid_indices_train]
+        self.ds.train_labels = self.ds.train_labels[valid_indices_train]
+        
+        # Clean validation data
+        valid_indices_val = ~np.isnan(self.ds.val_data).any(axis=(1, 2))
+        self.ds.val_data = self.ds.val_data[valid_indices_val]
+        self.ds.val_labels = self.ds.val_labels[valid_indices_val]
+        
+        # Clean additional validation attributes
+        self.ds.val_ids = self.ds.val_ids[valid_indices_val]
+        self.ds.val_tpeaks = self.ds.val_tpeaks[valid_indices_val]
+        
+        # Replace NaN values with zero
+        self.ds.train_data = np.nan_to_num(self.ds.train_data, nan=0.0)
+        self.ds.val_data = np.nan_to_num(self.ds.val_data, nan=0.0)
+        
+        # Replace NaN values with the mean of the corresponding feature
+        col_mean_train = np.nanmean(self.ds.train_data, axis=1, keepdims=True)
+        self.ds.train_data = np.where(np.isnan(self.ds.train_data), col_mean_train, self.ds.train_data)
+        
+        col_mean_val = np.nanmean(self.ds.val_data, axis=1, keepdims=True)
+        self.ds.val_data = np.where(np.isnan(self.ds.val_data), col_mean_val, self.ds.val_data)
+
 
     def create_model(self, seed):
         """
@@ -117,7 +151,7 @@ class ConvNN(object):
             # CONVOLUTIONAL LAYERS
             model.add(tf.keras.layers.Conv1D(filters=filter1, kernel_size=7, 
                                              activation='relu', padding='same', 
-                                             input_shape=(self.cadences, 1)))
+                                             input_shape=(int(self.cadences), 1)))
             model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
             model.add(tf.keras.layers.Dropout(dropout))
             model.add(tf.keras.layers.Conv1D(filters=filter2, kernel_size=3, 
@@ -517,30 +551,38 @@ class ConvNN(object):
 
         model = keras.models.load_model(modelname)
 
-        self.model = model
+# Create and compile the model
+        input_shape = model.input_shape
+
+        input_layer = keras.layers.Input(shape=input_shape[1:])
+        new_model = keras.models.Model(inputs=input_layer, outputs=model(input_layer))
+
+        new_model.compile(optimizer = self.optimizer,
+                  loss = self.loss,
+                  metrics = self.metrics)
+
+        self.model = new_model
 
         # GETS REQUIRED INPUT SHAPE FROM MODEL
         cadences = model.input.shape[1]
+        print(cadences)
         cad_pad  = cadences/2
 
         # REFORMATS FOR A SINGLE LIGHT CURVE PASSED IN
-        try:
-            times[0][0]
-        except:
-            times  = [times]
+        if not isinstance(times[0], np.ndarray):
+            times = [times]
             fluxes = [fluxes]
-            errs   = [errs]
+            errs = [errs]
         
-
         predictions = []
         pred_t, pred_f, pred_e = [], [], []
     
         for j in tqdm(range(len(times))):
-            time = times[j] + 0.0
-            lc   = fluxes[j] / np.nanmedian(fluxes[j]) # MUST BE NORMALIZED
-            err  = errs[j] + 0.0
+            time = np.array(times[j], dtype=float)
+            lc = np.array(fluxes[j], dtype=float) / np.nanmedian(fluxes[j])  # MUST BE NORMALIZED
+            err = np.array(errs[j], dtype=float) + 0.0
 
-            q = ( (np.isnan(time) == False) & (np.isnan(lc) == False))
+            q = (~np.isnan(time)) & (~np.isnan(lc))
             time, lc, err = time[q], lc[q], err[q]
             
             # APPENDS MASKED LIGHT CURVES TO KEEP TRACK OF

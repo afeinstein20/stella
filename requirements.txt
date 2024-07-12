@@ -14,8 +14,8 @@ pybind11
 tornado
 matplotlib
 lightkurve>=2.0.0
-numpy
-sklearn
+numpy<2,>=1.21
+scikit-learn
 more-itertools
 scipy!=1.4.1
 poetry
