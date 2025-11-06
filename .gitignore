@@ -1,3 +1,6 @@
+mastDownload/
+stella/mastDownload/
+*.fits
 __pycache__
 */__pycache__
 */*/__pycache__
@@ -16,3 +19,8 @@ dist
 *.cppimporthash
 .rendered.*
 *.egg-info
+
+## Local examples and helpers (not part of package)
+notebooks/jax_keras.ipynb
+scripts/
+site/

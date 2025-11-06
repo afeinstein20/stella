@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stella"
+description = "Find stellar flares in TESS 2-min data with a CNN"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Adina D. Feinstein", email = "adina.d.feinstein@gmail.com" }
+]
+requires-python = ">=3.8"
+dynamic = ["version"]
+keywords = ["astronomy", "tess", "flares", "keras", "jax", "pytorch"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+  "keras>=3.0.0",
+  "numpy",
+  "astropy",
+  "scikit-learn",
+  "scipy!=1.4.1",
+  "tqdm",
+  "lightkurve>=2.0.0",
+]
+
+[project.optional-dependencies]
+jax = [
+  "jax>=0.4.20",
+  "jaxlib>=0.4.20",
+]
+# JAX on Apple Silicon with Metal (macOS only)
+jax-mps = [
+  "jax>=0.4.20",
+  "jaxlib>=0.4.20",
+  "jax-metal>=0.0.7; platform_system=='Darwin'",
+]
+torch = [
+  "torch>=2.2.0",
+]
+dev = [
+  "pytest",
+  "pytest-cov",
+  "nbsphinx",
+  "ipykernel",
+  "coverage",
+  "codecov",
+  "pre-commit",
+  "sphinx>=7.0",
+  "sphinx_rtd_theme>=1.3",
+  "mkdocs>=1.6",
+  "mkdocs-material>=9.5",
+  "mkdocstrings[python]>=0.25",
+  "mkdocs-jupyter>=0.25",
+  "mkdocs-exclude>=1.0",
+  "rich>=13.0",
+]
+all-backends = [
+  "stella[jax,torch]",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["stella", "stella.*"]
+
+[tool.setuptools.package-data]
+"stella" = ["data/*.keras"]
+
+[tool.setuptools.dynamic]
+version = { attr = "stella.version.__version__" }
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+include = '\.pyi?$'
+exclude = '''
+/(
+  \.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|
+  _build|buck-out|build|dist|stella\.egg-info|docs/_build|mastDownload|run01
+)/
+'''
+
+[tool.pytest.ini_options]
+addopts = "-x --doctest-modules"
+testpaths = [
+  "stella/tests",
+]

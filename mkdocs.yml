@@ -1,0 +1,47 @@
+site_name: stella
+site_description: "Find stellar flares in TESS 2-min data with a CNN"
+repo_url: https://github.com/benjaminpope/stella
+repo_name: benjaminpope/stella
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: false
+            inherited_members: true
+  - mkdocs-jupyter:
+      execute: false
+  - exclude:
+      glob:
+        - getting_started/tutorial.md
+        - getting_started/shortest_demo.md
+        - getting_started/other_features.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - fenced_code
+  - codehilite
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - About: getting_started/about.md
+      - Installation: getting_started/installation.md
+      - Pipeline: getting_started/pipeline.md
+      - Backends: getting_started/backends.md
+      - Tutorial (notebook): getting_started/tutorial.ipynb
+      - Shortest Demo (notebook): getting_started/shortest_demo.ipynb
+      - Other Features (notebook): getting_started/other_features.ipynb
+  - API:
+      - stella: api.md

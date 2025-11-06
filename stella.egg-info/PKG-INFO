@@ -1,27 +1,171 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: stella
-Version: 0.2.0rc2
-Summary: For finding flares in TESS 2-min data with a CNN
-Home-page: http://github.com/afeinstein20/stella
-Author: Adina D. Feinstein
-Author-email: adina.d.feinstein@gmail.com
-License: MIT
-Description: 
-        stella is a python package to identify and characterize flares in 
-        TESS short-cadence data using a convolutional neural network. In its
-        simplest form, stella takes an array of light curves and predicts where
-        flares are using the models provided in Feinstein et al. submitted and 
-        returns predictions. 
+Version: 0.3.0
+Summary: Find stellar flares in TESS 2-min data with a CNN
+Author-email: "Adina D. Feinstein" <adina.d.feinstein@gmail.com>
+License: MIT License
         
-        Read the documentation at https://adina.feinste.in/stella
+        Copyright (c) 2019 Adina Feinstein
         
-        Changes to v0.1.0 (2020-05-18):
-        *  
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
         
-Platform: UNKNOWN
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Keywords: astronomy,tess,flares,keras,jax,pytorch
 Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Science/Research
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
-Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.8
 Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: keras>=3.0.0
+Requires-Dist: numpy
+Requires-Dist: astropy
+Requires-Dist: scikit-learn
+Requires-Dist: scipy!=1.4.1
+Requires-Dist: tqdm
+Requires-Dist: lightkurve>=2.0.0
+Provides-Extra: jax
+Requires-Dist: jax>=0.4.20; extra == "jax"
+Requires-Dist: jaxlib>=0.4.20; extra == "jax"
+Provides-Extra: jax-mps
+Requires-Dist: jax>=0.4.20; extra == "jax-mps"
+Requires-Dist: jaxlib>=0.4.20; extra == "jax-mps"
+Requires-Dist: jax-metal>=0.0.7; platform_system == "Darwin" and extra == "jax-mps"
+Provides-Extra: torch
+Requires-Dist: torch>=2.2.0; extra == "torch"
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: nbsphinx; extra == "dev"
+Requires-Dist: ipykernel; extra == "dev"
+Requires-Dist: coverage; extra == "dev"
+Requires-Dist: codecov; extra == "dev"
+Requires-Dist: pre-commit; extra == "dev"
+Requires-Dist: sphinx>=7.0; extra == "dev"
+Requires-Dist: sphinx_rtd_theme>=1.3; extra == "dev"
+Requires-Dist: mkdocs>=1.6; extra == "dev"
+Requires-Dist: mkdocs-material>=9.5; extra == "dev"
+Requires-Dist: mkdocstrings[python]>=0.25; extra == "dev"
+Requires-Dist: mkdocs-jupyter>=0.25; extra == "dev"
+Requires-Dist: mkdocs-exclude>=1.0; extra == "dev"
+Requires-Dist: rich>=13.0; extra == "dev"
+Provides-Extra: all-backends
+Requires-Dist: stella[jax,torch]; extra == "all-backends"
+Dynamic: license-file
+
+<p align="center">
+  <img width = "500" src="./figures/stella_logo.png"/>
+</p>
+
+<p align="center">
+  <a href="https://github.com/afeinstein20/stella/actions?query=workflow%3Astella-tests"><img src="https://github.com/afeinstein20/stella/workflows/stella-tests/badge.svg"?color=D35968/></a>
+  <a href="https://ui.adsabs.harvard.edu/abs/2020AJ....160..219F/abstract"><img src="https://img.shields.io/badge/read-the_paper-3C1370.svg?style=flat"/></a>
+  <a href="https://afeinstein20.github.io/stella/"><img src="https://img.shields.io/badge/read-the_docs-3C1370.svg?style=flat"/></a>
+  <a href="https://pypi.org/project/stella"><img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dm/stella?color=D35968"></a>
+  <a href="https://doi.org/10.21105/joss.02347">   <img src="https://joss.theoj.org/papers/10.21105/joss.02347/status.svg?color=D35968"></a>
+  <!-- Fork-specific docs status -->
+  <a href="https://github.com/benjaminpope/stella/actions/workflows/docs.yml"><img src="https://github.com/benjaminpope/stella/actions/workflows/docs.yml/badge.svg" alt="Docs Deploy"></a>
+  <a href="https://benjaminpope.github.io/stella/"><img src="https://img.shields.io/badge/docs-fork_pages-3C1370.svg?style=flat" alt="GitHub Pages"></a>
+</p>
+
+
+</p>
+stella is a Python package to create and train a neural network to identify stellar flares.
+Within stella, users can simulate flares as a training set, run a neural network, and feed
+in their own data to the neural network model. stella returns a probability at each data point
+that that data point is part of a flare or not. stella can also characterize the flares identified.
+</p>
+
+
+To install stella with pip:
+
+	pip install stella
+
+Alternatively you can install the current development version of stella:
+
+        git clone https://github.com/afeinstein20/stella
+        cd stella
+        python setup.py install
+
+Backends and models
+-------------------
+- stella uses Keras Core and works with multiple backends: JAX or PyTorch. Choose one, install, and set it before importing `keras`:
+
+```bash
+# JAX
+pip install -r requirements-jax.txt
+export KERAS_BACKEND=jax
+
+# or PyTorch
+pip install -r requirements-torch.txt
+export KERAS_BACKEND=torch
+```
+
+ Models are saved/loaded in the native Keras format (`.keras`). If you have older `.h5`
+  or legacy SavedModel models, use the included converter:
+
+```bash
+# Convert .h5 or legacy SavedModel to .keras (TensorFlow backend only for conversion)
+python scripts/convert_h5_to_keras.py /path/to/models -r --cadences 350 -o /path/to/out
+```
+
+Pipeline quickstart
+-------------------
+- See the new pipeline guide for a friendly, end-to-end example (TIC 62124646):
+  https://afeinstein20.github.io/stella/getting_started/pipeline.html
+
+Swap backends quickly
+---------------------
+- Inspect availability and devices:
+
+```python
+import stella
+stella.check_backend()
+```
+
+- Prepare a swap (restart your interpreter after):
+
+```python
+import stella
+stella.swap_backend('torch', accelerator='mps')   # Apple Silicon
+# or
+stella.swap_backend('jax', accelerator='cpu')
+```
+```
+
+<p>
+If your work uses the stella software, please cite <a href="https://ui.adsabs.harvard.edu/abs/2020JOSS....5.2347F/abstract">Feinstein, Montet, & Ansdell (2020)</a>.
+</p>
+<p>
+If your work discusses the flare rate of young stars in the TESS Southern Hemisphere or the details of the CNNs, please cite <a href="https://ui.adsabs.harvard.edu/abs/2020arXiv200507710F/abstract">Feinstein et al. (AJ, 2020)</a>.
+</p>
+
+<p>
+<b><u>Bug Reports, Questions, & Contributions</u></b>
+</p>
+<p>
+stella is an open source project under the MIT license. 
+The source code is available on GitHub. In case of any questions or problems, please contact us via the Git Issues. 
+Pull requests are also welcome through the GitHub page.
+</p>

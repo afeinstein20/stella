@@ -5,7 +5,8 @@ from astropy.table import Table
 from astroquery.vizier import Vizier
 from lightkurve.search import search_lightcurve
 
-__all__ = ['DownloadSets']
+__all__ = ["DownloadSets"]
+
 
 class DownloadSets(object):
     """
@@ -17,7 +18,6 @@ class DownloadSets(object):
     """
 
     def __init__(self, fn_dir=None, flare_catalog_name=None):
-
         """
         Parameters
         ----------
@@ -36,7 +36,7 @@ class DownloadSets(object):
         if fn_dir != None:
             self.fn_dir = fn_dir
         else:
-            self.fn_dir = os.path.join(os.path.expanduser('~'), '.stella')
+            self.fn_dir = os.path.join(os.path.expanduser("~"), ".stella")
 
         if os.path.isdir(self.fn_dir) == False:
             os.mkdir(self.fn_dir)
@@ -44,10 +44,9 @@ class DownloadSets(object):
         self.flare_table = None
 
         if flare_catalog_name is None:
-            self.flare_catalog_name = 'Guenther_2020_flare_catalog.txt'
+            self.flare_catalog_name = "Guenther_2020_flare_catalog.txt"
         else:
             self.flare_catalog_name = flare_catalog_name
-
 
     def download_catalog(self):
         """
@@ -63,15 +62,17 @@ class DownloadSets(object):
 
         Vizier.ROW_LIMIT = -1
 
-        catalog_list = Vizier.find_catalogs('TESS flares sectors')
+        catalog_list = Vizier.find_catalogs("TESS flares sectors")
         catalogs = Vizier.get_catalogs(catalog_list.keys())
 
         self.flare_table = catalogs[1]
-        self.flare_table.rename_column('_tab2_5', 'tpeak')
-        self.flare_table.write(os.path.join(self.fn_dir, self.flare_catalog_name),
-                          format='csv', overwrite=True)
+        self.flare_table.rename_column("_tab2_5", "tpeak")
+        self.flare_table.write(
+            os.path.join(self.fn_dir, self.flare_catalog_name),
+            format="csv",
+            overwrite=True,
+        )
         return
-
 
     def download_lightcurves(self, remove_fits=True):
         """
@@ -85,21 +86,21 @@ class DownloadSets(object):
              files when done. This will save space. Default is True.
         """
         if self.flare_table is None:
-            self.flare_table = Table.read(os.path.join(self.fn_dir,
-                                                       self.flare_catalog_name),
-                                          format='ascii')
+            self.flare_table = Table.read(
+                os.path.join(self.fn_dir, self.flare_catalog_name), format="ascii"
+            )
 
-
-        tics = np.unique(self.flare_table['TIC'])
-        npy_name = '{0:09d}_sector{1:02d}.npy'
+        tics = np.unique(self.flare_table["TIC"])
+        npy_name = "{0:09d}_sector{1:02d}.npy"
 
         for i in tqdm(range(len(tics))):
-            slc = search_lightcurve('TIC'+str(tics[i]),
-                                    mission='TESS',
-                                    exptime=120,
-                                    sector=[1,2],
-                                    author='SPOC')
-
+            slc = search_lightcurve(
+                "TIC" + str(tics[i]),
+                mission="TESS",
+                exptime=120,
+                sector=[1, 2],
+                author="SPOC",
+            )
 
             if len(slc) > 0:
                 lcs = slc.download_all(download_dir=self.fn_dir)
@@ -108,22 +109,23 @@ class DownloadSets(object):
                     # Default lightkurve flux = pdcsap_flux
                     lc = lcs[j].normalize()
 
-                    np.save(os.path.join(self.fn_dir, npy_name.format(tics[i], lc.sector)),
-                            np.array([lc.time.value,
-                                      lc.flux.value,
-                                      lc.flux_err.value]))
+                    np.save(
+                        os.path.join(self.fn_dir, npy_name.format(tics[i], lc.sector)),
+                        np.array([lc.time.value, lc.flux.value, lc.flux_err.value]),
+                    )
 
                     # Removes FITS files when done
                     if remove_fits == True:
-                        for dp, dn, fn in os.walk(os.path.join(self.fn_dir, 'mastDownload')):
-                            for file in [f for f in fn if f.endswith('.fits')]:
+                        for dp, dn, fn in os.walk(
+                            os.path.join(self.fn_dir, "mastDownload")
+                        ):
+                            for file in [f for f in fn if f.endswith(".fits")]:
                                 os.remove(os.path.join(dp, file))
                                 os.rmdir(dp)
 
-
         if remove_fits == True:
-            os.rmdir(os.path.join(self.fn_dir, 'mastDownload/TESS'))
-            os.rmdir(os.path.join(self.fn_dir, 'mastDownload'))
+            os.rmdir(os.path.join(self.fn_dir, "mastDownload/TESS"))
+            os.rmdir(os.path.join(self.fn_dir, "mastDownload"))
 
     def download_models(self, all_models=False):
         """
@@ -144,23 +146,26 @@ class DownloadSets(object):
         models : np.array
              Array of model filenames.
         """
-        hlsp_path = 'http://archive.stsci.edu/hlsps/stella/hlsp_stella_tess_ensemblemodel_all_tess_v0.1.0_bundle.tar.gz'
+        hlsp_path = "http://archive.stsci.edu/hlsps/stella/hlsp_stella_tess_ensemblemodel_all_tess_v0.1.0_bundle.tar.gz"
 
-        new_path = os.path.join(self.fn_dir, 'models')
+        new_path = os.path.join(self.fn_dir, "models")
 
         if os.path.isdir(new_path) == False:
             os.mkdir(new_path)
 
         if len(os.listdir(new_path)) == 100:
-            print('Models have already been downloaded to ~/.stella/models')
+            print("Models have already been downloaded to ~/.stella/models")
 
         else:
-            os.system('cd {0} && curl -O -L {1}'.format(self.fn_dir, hlsp_path))
-            tarball = [os.path.join(self.fn_dir, i) for i in os.listdir(self.fn_dir) if i.endswith('tar.gz')][0]
-            os.system('cd {0} && tar -xzvf {1}'.format(self.fn_dir, tarball))
+            os.system("cd {0} && curl -O -L {1}".format(self.fn_dir, hlsp_path))
+            tarball = [
+                os.path.join(self.fn_dir, i)
+                for i in os.listdir(self.fn_dir)
+                if i.endswith("tar.gz")
+            ][0]
+            os.system("cd {0} && tar -xzvf {1}".format(self.fn_dir, tarball))
 
-            os.system('cd {0} && mv *.h5 {1}'.format(self.fn_dir, new_path))
-
+            os.system("cd {0} && mv *.h5 {1}".format(self.fn_dir, new_path))
 
         self.model_dir = new_path
         models = np.sort([os.path.join(new_path, i) for i in os.listdir(new_path)])

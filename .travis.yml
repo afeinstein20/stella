@@ -1,11 +1,15 @@
-dist: xenial
+dist: focal
 
 language: python
-python: 3.7
 
 matrix:
   include:
   - os: linux
+    python: 3.10
+    env: BACKEND=jax
+  - os: osx
+    language: shell
+    env: BACKEND=torch PYTHON=3.10
 
 addons:
   apt_packages:
@@ -14,26 +18,15 @@ addons:
 cache: pip
 
 before_install:
-  - sudo apt-get install python3-pip
-  - sudo pip3 install requests
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get install -y python3-pip; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo pip3 install requests; fi
 
 install:
-  - pip install tornado
-  - pip install tensorflow>2.1.0
-  - pip install scipy!=1.4.1
-  - pip install lightkurve
-  - pip install astropy
-  - pip install astroquery
-  - pip install tqdm
-  - pip install sphinx
-  - pip install nbsphinx
-  - pip install cython
-  - pip install codecov
-  - pip install coverage
-  - pip install pytest
-  - pip install pytest-cov
-  - pip install lxml
-  - pip install pybind11
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then python3 -m pip install --upgrade pip; else pip install --upgrade pip; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then python3 -m pip install -r requirements.txt; else pip install -r requirements.txt; fi
+  - if [ "$BACKEND" = "jax" ]; then pip install -r requirements-jax.txt; export KERAS_BACKEND=jax; fi
+  - if [ "$BACKEND" = "torch" ]; then python3 -m pip install -r requirements-torch.txt; export KERAS_BACKEND=torch; fi
+  - pip install sphinx nbsphinx
   - python setup.py install
 
 script:
